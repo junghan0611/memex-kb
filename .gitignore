@@ -38,7 +38,17 @@ Thumbs.db
 *.bak
 .temp/
 
-# Generated docs (during testing)
-docs/**/*.md
+# Generated docs (during conversion)
+# 자동 변환된 문서는 제외하되, 프로젝트 문서는 포함
+docs/architecture/**/*.md
+docs/development/**/*.md
+docs/operations/**/*.md
+docs/products/**/*.md
+docs/_uncategorized/**/*.md
 !docs/**/.gitkeep
+
+# 프로젝트 문서는 커밋 (docs/ 루트)
+!docs/*.md
+
 bak
+dorray-docs/

@@ -1,0 +1,19 @@
+# Google API
+google-api-python-client==2.103.0
+google-auth==2.23.3
+google-auth-oauthlib==1.1.0
+google-auth-httplib2==0.1.1
+
+# Markdown processing
+markdown==3.5
+python-slugify==8.0.1
+beautifulsoup4==4.12.2
+
+# Utilities
+pyyaml==6.0.1
+python-dotenv==1.0.0
+click==8.1.7
+colorlog==6.7.0
+
+# Date handling
+python-dateutil==2.8.2

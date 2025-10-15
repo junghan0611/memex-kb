@@ -1,0 +1,44 @@
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Google API & Secrets
+config/*.json
+!config/.env.example
+config/token.json
+config/.env
+
+# Logs
+logs/*.log
+logs/*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary
+*.tmp
+*.bak
+.temp/
+
+# Generated docs (during testing)
+docs/**/*.md
+!docs/**/.gitkeep
+bak

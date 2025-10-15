@@ -1,0 +1,136 @@
+# 문서 자동 분류 규칙
+# 우선순위: 상단 카테고리부터 순차적으로 매칭
+
+categories:
+  architecture:
+    name: "시스템 설계"
+    keywords:
+      - 설계
+      - 아키텍처
+      - 구조
+      - 시스템
+      - 인프라
+      - 다이어그램
+      - 플로우
+    patterns:
+      - "^시스템.*설계"
+      - ".*아키텍처.*"
+      - ".*설계.*문서"
+    file_hints:
+      - architecture
+      - design
+      - system
+
+  development:
+    name: "개발 가이드"
+    keywords:
+      - 개발
+      - 코딩
+      - API
+      - 구현
+      - 프로그래밍
+      - 코드
+      - 함수
+      - 클래스
+      - 테스트
+    patterns:
+      - ".*가이드$"
+      - "^개발.*"
+      - ".*코딩.*규칙"
+      - "API.*문서"
+    file_hints:
+      - dev
+      - development
+      - api
+      - guide
+
+  operations:
+    name: "운영 문서"
+    keywords:
+      - 운영
+      - 배포
+      - 모니터링
+      - 트러블슈팅
+      - 장애
+      - 백업
+      - 로그
+      - 서버
+      - 인프라
+    patterns:
+      - "^장애.*"
+      - ".*운영.*"
+      - ".*배포.*가이드"
+      - "트러블슈팅.*"
+    file_hints:
+      - ops
+      - operations
+      - deploy
+      - monitoring
+
+  products:
+    name: "제품별 문서"
+    keywords:
+      - 제품
+      - 서비스
+      - 튜야
+      - 큐브
+      - IoT
+      - 플랫폼
+      - 앱
+      - 어플리케이션
+    patterns:
+      - "^\\[.*\\]"  # [제품명] 형식
+      - ".*제품.*사양"
+      - ".*서비스.*가이드"
+    file_hints:
+      - product
+      - service
+      - tuya
+      - cube
+      - iot
+
+# 분류 설정
+classification:
+  # 최소 매칭 점수 (0-100)
+  min_score: 30
+
+  # 가중치
+  weights:
+    title_keyword: 10     # 제목에 키워드 포함
+    title_pattern: 15     # 제목이 패턴 매칭
+    content_keyword: 5    # 본문에 키워드 포함
+    file_hint: 20         # 파일명 힌트 매칭
+
+  # 미분류 문서 처리
+  uncategorized:
+    folder: "_uncategorized"
+    add_review_tag: true
+    notify: true
+
+# 태그 추출 규칙
+tags:
+  # 자동 추출할 태그 목록
+  auto_extract:
+    - api
+    - backend
+    - frontend
+    - database
+    - docker
+    - kubernetes
+    - aws
+    - gcp
+    - python
+    - javascript
+    - react
+    - vue
+    - golang
+    - java
+
+  # 태그 정규화 규칙
+  normalize:
+    "node.js": "nodejs"
+    "node": "nodejs"
+    "k8s": "kubernetes"
+    "db": "database"
+    "fe": "frontend"
+    "be": "backend"

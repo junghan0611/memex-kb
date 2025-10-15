@@ -1,0 +1,28 @@
+{
+  "name": "memex-kb",
+  "version": "1.0.0",
+  "description": "> Google Drive 기반 사내 기술문서 지식베이스 시스템",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint:secrets": "secretlint \"**/*\"",
+    "lint:secrets:fix": "secretlint --fix \"**/*\"",
+    "check": "secretlint config/ scripts/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:junghan0611/memex-kb.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@secretlint/secretlint-rule-pattern": "^11.2.4",
+    "@secretlint/secretlint-rule-preset-recommend": "^11.2.4",
+    "secretlint": "^11.2.4"
+  }
+}

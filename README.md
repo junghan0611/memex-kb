@@ -4,9 +4,72 @@
 
 ## 📖 철학 (Philosophy)
 
-**Memex-KB는 지식 관리의 시작점입니다.**
+**Memex-KB는 지식 관리의 시작점이자, RAG 파이프라인의 입구입니다.**
 
-입문자에게 "일정한 규칙"을 제공하여, 산재된 지식을 체계적으로 정리할 수 있도록 돕습니다.
+입문자에게 "일정한 규칙"을 제공하여, 산재된 지식을 체계적으로 정리하고, **AI 협업 가능한 형태로 변환**합니다.
+
+### 왜 memex-kb인가?
+
+**기술 배경**:
+```
+✅ 검증된 기술 스택 (2025 Q3):
+- n8n: 40+ 노드 워크플로우 (AI Agent Automation)
+- Supabase pgvector: 벡터 DB (2,945개 Org 파일 임베딩 완료)
+- Ollama: 로컬 임베딩 (multilingual-e5-large, GPU 클러스터)
+- Airbyte: ETL 파이프라인 (Channel.io → PostgreSQL 등)
+- Rerank API Server: 자체 구축
+
+→ 기술 스택 자체는 "껍데기". 이미 다 해봤습니다.
+```
+
+**핵심 문제**:
+```
+그런데 Legacy 문서(Google Docs, Dooray, Confluence...)를
+어떻게 RAG-ready 형태로 변환하는가?
+
+변환만 하는 도구는 많습니다.
+Pandoc, Notion Exporter, Confluence API...
+
+하지만:
+- 일관성 없는 파일명 → 검색 어려움
+- 분류 기준 모호 → 찾기 어려움
+- 메타데이터 손실 → 컨텍스트 부족
+- Git 미연동 → 버전 관리 불가
+
+→ 임베딩해도 품질이 낮습니다.
+```
+
+**memex-kb의 독창적 접근**:
+```
+1. Denote 파일명 규칙:
+   timestamp--한글-제목__태그들.md
+   → 파싱 가능, 시간 정렬, 의미 명확
+
+2. 규칙 기반 자동 분류:
+   YAML 설정으로 일관성 확보
+   → LLM 비용 0원, 재현 가능
+
+3. Git 버전 관리:
+   모든 변환 과정 추적
+   → 투명성, 롤백 가능
+
+4. Backend 중립:
+   Adapter 패턴으로 확장
+   → 도구 바뀌어도 데이터는 유지
+
+5. 임베딩 파이프라인 통합 (v2.0):
+   변환 → Denote → Embedding → Vector DB → RAG
+   → 검증된 파이프라인 재사용
+```
+
+**결과**:
+```
+단순 변환 도구 (감흥 없음)
+    ↓
+RAG 파이프라인의 입구 (가치 있음)
+    ↓
+Legacy 문서가 AI Second Brain이 됩니다.
+```
 
 ### 핵심 원칙
 
@@ -373,26 +436,52 @@ git push origin main
 
 ## 📈 로드맵
 
-### v1.0 (현재)
-- ✅ Google Docs Adapter
-- ✅ Denote 파일명 생성
-- ✅ 규칙 기반 자동 분류
+### v1.0 (2025-09-13, 완료)
+- ✅ Google Docs Adapter (Pandoc 기반, 95% 정확도)
+- ✅ Denote 파일명 생성 (한글 제목 + 영어 태그)
+- ✅ 규칙 기반 자동 분류 (LLM 비용 0원)
 - ✅ Git 버전 관리
+- ✅ Secretlint 보안 스캔
 
-### v1.1 (개발 중)
-- 🔧 Dooray Adapter
-- 🔧 Adapter 패턴 리팩토링
+### v1.1 (2025-10-15, 개발 중)
+- 🔧 Dooray Wiki/Drive Adapter
+- 🔧 Adapter 패턴 리팩토링 (Base → Concrete)
 - 🔧 CLI 개선
+- 📋 문서화 강화 (기술 배경, 접근 방법론)
 
 ### v1.2 (계획 중)
 - 📋 Confluence Adapter
-- 📋 Notion Adapter
+- 📋 Notion Adapter (Airbyte 경험 활용)
 - 📋 웹 UI
 
-### v2.0 (미래)
-- 💡 AI 요약 기능
-- 💡 벡터 검색 (RAG)
-- 💡 자동 태깅 고도화
+### v2.0 (RAG Pipeline Integration)
+
+**배경**: n8n, Supabase pgvector, Ollama Embedding, Rerank API 서버 등 기술 스택 검증 완료 (2,945개 Org 파일 임베딩 성공)
+
+**목표**: Legacy → Denote → **RAG-ready** 변환 시스템
+
+```
+memex-kb v1.x (Conversion)
+    ↓ Denote Markdown
+memex-kb v2.0 (Embedding Pipeline) ← NEW!
+    ↓ Vector DB
+n8n RAG Orchestration (검증됨)
+    ↓ AI Second Brain
+```
+
+**주요 기능**:
+- 💡 Denote Markdown → Vector Embedding
+  - Ollama (mxbai-embed-large, 로컬)
+  - 폴더별 차별화 청킹 (meta 1500, bib 1200, journal 800, notes 1000)
+- 💡 Supabase pgvector 통합 (검증된 파이프라인 재사용)
+- 💡 n8n RAG Workflow (Hybrid Search: 키워드 + 벡터 + 그래프)
+- 💡 지식 계층 구조 반영 (meta → bib → journal → notes)
+
+**차별화**:
+- 단순 변환 도구와 다름
+- **Legacy → RAG 파이프라인의 입구**
+- 검증된 기술 스택 통합 (실전 경험 기반)
+- 독창적 접근: Denote + 계층적 지식 구조 + RAG
 
 ---
 

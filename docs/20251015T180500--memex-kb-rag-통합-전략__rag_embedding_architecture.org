@@ -1,24 +1,23 @@
----
-title:      "memex-kb v2.0: RAG 통합 전략"
-date:       2025-10-15T18:05:00+09:00
-tags:       ["memex-kb", "rag", "embedding", "architecture", "strategy"]
-identifier: "20251015T180500"
----
+* 🧠 memex-kb v2.0: RAG 통합 전략
+:PROPERTIES:
+:CUSTOM_ID: memex-kb-v2.0-rag-통합-전략
+:END:
+*목적*: Legacy → Denote → RAG-ready 변환 시스템 *접근*: 검증된 기술 스택
+통합 + 독창적 방법론 *상태*: 🔧 설계 단계
 
-# 🧠 memex-kb v2.0: RAG 통합 전략
+--------------
 
-**목적**: Legacy → Denote → RAG-ready 변환 시스템
-**접근**: 검증된 기술 스택 통합 + 독창적 방법론
-**상태**: 🔧 설계 단계
+** 🎯 핵심 인사이트
+:PROPERTIES:
+:CUSTOM_ID: 핵심-인사이트
+:END:
+*** "변환 자체는 감흥이 없다"
+:PROPERTIES:
+:CUSTOM_ID: 변환-자체는-감흥이-없다
+:END:
+*기술 스택은 이미 검증되었습니다* (2025 Q3):
 
----
-
-## 🎯 핵심 인사이트
-
-### "변환 자체는 감흥이 없다"
-
-**기술 스택은 이미 검증되었습니다** (2025 Q3):
-```yaml
+#+begin_src yaml
 AI_Infrastructure:
   n8n: 40+ 노드 워크플로우, AI Agent Automation
   Supabase_pgvector: 2,945개 Org 파일 임베딩 완료
@@ -34,21 +33,25 @@ Data_Engineering:
   - 8,310개 벡터 청크 생성
   - 100% 임베딩 완료
   - n8n RAG 워크플로우 운영 중
-```
+#+end_src
 
-**→ 이것들은 "껍데기"입니다. 이미 다 해봤습니다.**
+*→ 이것들은 "껍데기"입니다. 이미 다 해봤습니다.*
 
----
+--------------
 
-## 💡 memex-kb의 진정한 가치
+** 💡 memex-kb의 진정한 가치
+:PROPERTIES:
+:CUSTOM_ID: memex-kb의-진정한-가치
+:END:
+*** 문제 정의
+:PROPERTIES:
+:CUSTOM_ID: 문제-정의
+:END:
+*Q*: 기술 스택을 다 알면 되는가?
 
-### 문제 정의
+*A*: 아닙니다.
 
-**Q**: 기술 스택을 다 알면 되는가?
-
-**A**: 아닙니다.
-
-```
+#+begin_example
 Pandoc으로 변환? → 누구나 할 수 있음
 Ollama로 임베딩? → 튜토리얼 많음
 Supabase pgvector? → 문서 잘 되어 있음
@@ -61,13 +64,15 @@ n8n RAG 워크플로우? → 예제 많음
 - Git 없으면? → 버전 관리 불가
 
 → 임베딩해도 쓸모없습니다.
-```
+#+end_example
 
-### memex-kb의 독창적 접근
+*** memex-kb의 독창적 접근
+:PROPERTIES:
+:CUSTOM_ID: memex-kb의-독창적-접근
+:END:
+*"Legacy → RAG-ready"의 방법론*:
 
-**"Legacy → RAG-ready"의 방법론**:
-
-```
+#+begin_example
 ┌─────────────────────────────────────────────┐
 │ 1. 일관성 (Denote 파일명)                   │
 ├─────────────────────────────────────────────┤
@@ -158,23 +163,27 @@ n8n RAG 워크플로우? → 예제 많음
 │ - 검색 정확도 향상 (의미 보존)             │
 │ - RAG 답변 품질 향상 (풍부한 컨텍스트)    │
 └─────────────────────────────────────────────┘
-```
+#+end_example
 
-**→ 이것이 memex-kb의 독창성입니다.**
+*→ 이것이 memex-kb의 독창성입니다.*
 
----
+--------------
 
-## 🏗️ 검증된 기술 경험 (2025 Q3)
+** 🏗️ 검증된 기술 경험 (2025 Q3)
+:PROPERTIES:
+:CUSTOM_ID: 검증된-기술-경험-2025-q3
+:END:
+*** 1. n8n AI Agent Automation
+:PROPERTIES:
+:CUSTOM_ID: n8n-ai-agent-automation
+:END:
+*경험*: - 40+ 노드 복잡한 워크플로우 운영 - Hierarchical AI Agent 구조
+(Meta → Domain Agents) - 빠른 프로토타이핑: "백엔드/프론트 AI가,
+검증/연결 사람이"
 
-### 1. n8n AI Agent Automation
+*활용 (memex-kb v2.0)*:
 
-**경험**:
-- 40+ 노드 복잡한 워크플로우 운영
-- Hierarchical AI Agent 구조 (Meta → Domain Agents)
-- 빠른 프로토타이핑: "백엔드/프론트 AI가, 검증/연결 사람이"
-
-**활용 (memex-kb v2.0)**:
-```javascript
+#+begin_src javascript
 // n8n Workflow: Legacy → RAG Pipeline
 Trigger (일정: 매일 밤 12시)
     ↓
@@ -187,19 +196,20 @@ Embedding (Ollama, GPU-03)
 Supabase Vector Store
     ↓
 Slack 알림 ("10개 문서 임베딩 완료")
-```
+#+end_src
 
----
+--------------
 
-### 2. Supabase pgvector 임베딩
+*** 2. Supabase pgvector 임베딩
+:PROPERTIES:
+:CUSTOM_ID: supabase-pgvector-임베딩
+:END:
+*경험*: - *2,945개 Org 파일* → *8,310개 벡터 청크* - 100% 임베딩 완료
+(15분 소요, GPU-03) - 폴더별 차별화 청킹 전략 검증
 
-**경험**:
-- **2,945개 Org 파일** → **8,310개 벡터 청크**
-- 100% 임베딩 완료 (15분 소요, GPU-03)
-- 폴더별 차별화 청킹 전략 검증
+*스키마* (검증됨):
 
-**스키마** (검증됨):
-```sql
+#+begin_src sql
 CREATE TABLE org_garden_documents (
     id UUID PRIMARY KEY,
     identifier TEXT UNIQUE,        -- Denote 타임스탬프
@@ -223,24 +233,23 @@ CREATE FUNCTION match_org_garden_documents(
     match_count int,
     query_embedding vector(1024)
 ) ...
-```
+#+end_src
 
-**활용 (memex-kb v2.0)**:
-- 동일한 스키마 재사용
-- 검증된 검색 함수 재사용
-- 폴더별 청킹 전략 적용
+*활용 (memex-kb v2.0)*: - 동일한 스키마 재사용 - 검증된 검색 함수
+재사용 - 폴더별 청킹 전략 적용
 
----
+--------------
 
-### 3. Ollama 로컬 임베딩
+*** 3. Ollama 로컬 임베딩
+:PROPERTIES:
+:CUSTOM_ID: ollama-로컬-임베딩
+:END:
+*경험*: - GPU-03 (RTX 5080, 192.168.2.13:11434) -
+multilingual-e5-large-instruct (1024-dim) - 평균 6-7 파일/초 처리 속도
 
-**경험**:
-- GPU-03 (RTX 5080, 192.168.2.13:11434)
-- multilingual-e5-large-instruct (1024-dim)
-- 평균 6-7 파일/초 처리 속도
+*모델 비교 (검증됨)*:
 
-**모델 비교 (검증됨)**:
-```yaml
+#+begin_src yaml
 multilingual-e5-large:
   dimension: 1024
   context: 512
@@ -258,36 +267,34 @@ nomic-embed-text:  # 백업
   context: 8192
   quality: ⭐⭐⭐ (긴 문서용)
   speed: ⭐⭐⭐⭐ (매우 빠름)
-```
+#+end_src
 
-**활용 (memex-kb v2.0)**:
-- mxbai-embed-large 우선 사용
-- nomic-embed-text 긴 문서용
-- GPU-03 클러스터 활용
+*활용 (memex-kb v2.0)*: - mxbai-embed-large 우선 사용 - nomic-embed-text
+긴 문서용 - GPU-03 클러스터 활용
 
----
+--------------
 
-### 4. Airbyte ETL 파이프라인
+*** 4. Airbyte ETL 파이프라인
+:PROPERTIES:
+:CUSTOM_ID: airbyte-etl-파이프라인
+:END:
+*경험*: - Channel.io → PostgreSQL 실시간 동기화 - JSONB Data Lake 구축 -
+Notion/JIRA 외 다수 커넥터 운영
 
-**경험**:
-- Channel.io → PostgreSQL 실시간 동기화
-- JSONB Data Lake 구축
-- Notion/JIRA 외 다수 커넥터 운영
+*활용 (memex-kb v1.2)*: - Notion Adapter: Airbyte 패턴 재사용 -
+Confluence Adapter: REST API 경험 활용
 
-**활용 (memex-kb v1.2)**:
-- Notion Adapter: Airbyte 패턴 재사용
-- Confluence Adapter: REST API 경험 활용
+--------------
 
----
+*** 5. Rerank API Server
+:PROPERTIES:
+:CUSTOM_ID: rerank-api-server
+:END:
+*경험*: - 자체 Rerank API 서버 구축 - n8n 워크플로우 통합
 
-### 5. Rerank API Server
+*활용 (memex-kb v2.0)*:
 
-**경험**:
-- 자체 Rerank API 서버 구축
-- n8n 워크플로우 통합
-
-**활용 (memex-kb v2.0)**:
-```python
+#+begin_src python
 # Hybrid Search + Reranking
 def search_with_rerank(query):
     # 1. Vector Search (Supabase)
@@ -306,15 +313,19 @@ def search_with_rerank(query):
     final = rerank_api.rerank(query, combined, top_k=10)
 
     return final
-```
+#+end_src
 
----
+--------------
 
-## 📐 v2.0 아키텍처: 완전한 RAG 파이프라인
-
-### 전체 흐름
-
-```
+** 📐 v2.0 아키텍처: 완전한 RAG 파이프라인
+:PROPERTIES:
+:CUSTOM_ID: v2.0-아키텍처-완전한-rag-파이프라인
+:END:
+*** 전체 흐름
+:PROPERTIES:
+:CUSTOM_ID: 전체-흐름
+:END:
+#+begin_example
 ┌─────────────────────────────────────────────┐
 │ Legacy Sources                              │
 │ - Google Docs (회사 기술문서)               │
@@ -399,25 +410,31 @@ def search_with_rerank(query):
 │ C-o: Preview                                │
 │ i: Insert link [[denote:20250214T145957]]   │
 └─────────────────────────────────────────────┘
-```
+#+end_example
 
----
+--------------
 
-## 🎯 차별화 요소
+** 🎯 차별화 요소
+:PROPERTIES:
+:CUSTOM_ID: 차별화-요소
+:END:
+*** 1. 기술 vs 방법론
+:PROPERTIES:
+:CUSTOM_ID: 기술-vs-방법론
+:END:
+*다른 도구들* (기술 중심):
 
-### 1. 기술 vs 방법론
-
-**다른 도구들** (기술 중심):
-```
+#+begin_example
 "Pandoc으로 변환합니다"
 "Ollama로 임베딩합니다"
 "Supabase에 저장합니다"
 
 → HOW (어떻게)
-```
+#+end_example
 
-**memex-kb** (방법론 중심):
-```
+*memex-kb* (방법론 중심):
+
+#+begin_example
 "왜 Denote 파일명 규칙인가?"
 → 파싱 가능, 시간 정렬, 의미 명확
 
@@ -431,35 +448,37 @@ def search_with_rerank(query):
 → Backend 중립, 확장성, 재사용
 
 → WHY (왜) + HOW (어떻게)
-```
+#+end_example
 
-### 2. 검증된 경험 통합
+*** 2. 검증된 경험 통합
+:PROPERTIES:
+:CUSTOM_ID: 검증된-경험-통합
+:END:
+*embedding-config 성과* (2025-09-13): - 2,945개 파일 → 8,310개 청크
+(100%) - 소요 시간: 15분 (GPU-03) - 폴더별 청킹 전략 검증 - 지식 계층
+구조 반영
 
-**embedding-config 성과** (2025-09-13):
-- 2,945개 파일 → 8,310개 청크 (100%)
-- 소요 시간: 15분 (GPU-03)
-- 폴더별 청킹 전략 검증
-- 지식 계층 구조 반영
+*memex-kb v2.0*: - 동일한 전략 재사용 - 동일한 스키마
+(org_garden_documents) - 동일한 검색 함수 (match_org_garden_documents) -
+*추가 가치*: Legacy 문서를 동일 품질로 통합
 
-**memex-kb v2.0**:
-- 동일한 전략 재사용
-- 동일한 스키마 (org_garden_documents)
-- 동일한 검색 함수 (match_org_garden_documents)
-- **추가 가치**: Legacy 문서를 동일 품질로 통합
+*** 3. 독창적 통합
+:PROPERTIES:
+:CUSTOM_ID: 독창적-통합
+:END:
+*기존 도구들*:
 
-### 3. 독창적 통합
-
-**기존 도구들**:
-```
+#+begin_example
 변환 도구: Pandoc, Notion Exporter, ...
 임베딩 도구: LangChain, LlamaIndex, ...
 벡터 DB: Supabase, Pinecone, Qdrant, ...
 
 → 각각 따로 사용
-```
+#+end_example
 
-**memex-kb**:
-```
+*memex-kb*:
+
+#+begin_example
 변환 (Denote 규칙)
     → 임베딩 (폴더별 차별화)
     → RAG (계층 구조 반영)
@@ -467,46 +486,49 @@ def search_with_rerank(query):
 → 통합 파이프라인
 → 검증된 전략 기반
 → 독창적 접근 (Denote + 계층 + RAG)
-```
+#+end_example
 
----
+--------------
 
-## 📊 실전 데이터 규모
+** 📊 실전 데이터 규모
+:PROPERTIES:
+:CUSTOM_ID: 실전-데이터-규모
+:END:
+*** 이미 처리한 것 (검증됨)
+:PROPERTIES:
+:CUSTOM_ID: 이미-처리한-것-검증됨
+:END:
+*Org-mode 디지털가든*: - *2,945개 Org 파일* - *8,310개 벡터 청크* -
+폴더별 분류: notes(770), meta(530), journal(691), bib(646) - 지식 계층:
+meta → bib → journal → notes
 
-### 이미 처리한 것 (검증됨)
+*Markdown 디지털가든* (~/repos/gh/notes/content/): - *2,005개 MD 파일* -
+*108,751줄* - Denote 형식 (이미 정리됨)
 
-**Org-mode 디지털가든**:
-- **2,945개 Org 파일**
-- **8,310개 벡터 청크**
-- 폴더별 분류: notes(770), meta(530), journal(691), bib(646)
-- 지식 계층: meta → bib → journal → notes
+*서지 데이터* (~/sync/org/resources/): - *156k+ lines BibLaTeX* -
+Book.bib (19k), Category.bib (33k), Slipbox.bib (12k)
 
-**Markdown 디지털가든** (~/repos/gh/notes/content/):
-- **2,005개 MD 파일**
-- **108,751줄**
-- Denote 형식 (이미 정리됨)
+*** 앞으로 처리할 것 (memex-kb v1.x + v2.0)
+:PROPERTIES:
+:CUSTOM_ID: 앞으로-처리할-것-memex-kb-v1.x-v2.0
+:END:
+*Legacy 소스*: - Google Docs: 수십 개 (회사 기술문서) - Dooray
+Wiki/Drive: TBD (30일 계정 테스트 후) - Confluence: TBD (회사 위키) -
+Notion: 개인 노트
 
-**서지 데이터** (~/sync/org/resources/):
-- **156k+ lines BibLaTeX**
-- Book.bib (19k), Category.bib (33k), Slipbox.bib (12k)
+*→ 총 임베딩 대상: 6,000+ 문서 예상*
 
-### 앞으로 처리할 것 (memex-kb v1.x + v2.0)
+--------------
 
-**Legacy 소스**:
-- Google Docs: 수십 개 (회사 기술문서)
-- Dooray Wiki/Drive: TBD (30일 계정 테스트 후)
-- Confluence: TBD (회사 위키)
-- Notion: 개인 노트
-
-**→ 총 임베딩 대상: 6,000+ 문서 예상**
-
----
-
-## 🚀 v2.0 구현 계획
-
-### Phase 1: 기존 전략 통합 (1주)
-
-```python
+** 🚀 v2.0 구현 계획
+:PROPERTIES:
+:CUSTOM_ID: v2.0-구현-계획
+:END:
+*** Phase 1: 기존 전략 통합 (1주)
+:PROPERTIES:
+:CUSTOM_ID: phase-1-기존-전략-통합-1주
+:END:
+#+begin_src python
 # embedding-config 코드 재사용
 from embedding_config import (
     DenoteDocumentParser,      # 검증됨
@@ -536,11 +558,13 @@ class MemexEmbeddingPipeline:
         RAG-ready!
         """
         pass
-```
+#+end_src
 
-### Phase 2: n8n 통합 (1주)
-
-```
+*** Phase 2: n8n 통합 (1주)
+:PROPERTIES:
+:CUSTOM_ID: phase-2-n8n-통합-1주
+:END:
+#+begin_example
 n8n Workflow: "Memex-KB RAG Pipeline"
 
 [Schedule Trigger] 매일 밤 12시
@@ -562,11 +586,13 @@ n8n Workflow: "Memex-KB RAG Pipeline"
     ↓
 [Slack] 완료 알림
     - "✅ 10개 문서 임베딩 완료"
-```
+#+end_example
 
-### Phase 3: Emacs 통합 (1주)
-
-```elisp
+*** Phase 3: Emacs 통합 (1주)
+:PROPERTIES:
+:CUSTOM_ID: phase-3-emacs-통합-1주
+:END:
+#+begin_src elisp
 ;; ~/.doom.d/config.el
 
 (use-package memex-kb-rag
@@ -589,16 +615,21 @@ n8n Workflow: "Memex-KB RAG Pipeline"
 (map! :leader
       :desc "Memex Search" "n m" #'memex-kb-search
       :desc "Related Notes" "n r" #'memex-kb-related)
-```
+#+end_src
 
----
+--------------
 
-## 💰 비용 & 성능 (검증된 데이터)
+** 💰 비용 & 성능 (검증된 데이터)
+:PROPERTIES:
+:CUSTOM_ID: 비용-성능-검증된-데이터
+:END:
+*** 임베딩 비용 (6,000 문서 기준)
+:PROPERTIES:
+:CUSTOM_ID: 임베딩-비용-6000-문서-기준
+:END:
+*Ollama (로컬)* - 추천:
 
-### 임베딩 비용 (6,000 문서 기준)
-
-**Ollama (로컬)** - 추천:
-```
+#+begin_example
 초기: GPU 클러스터 (이미 가동 중)
 운영: 전기료 무시 가능
 API: $0
@@ -609,40 +640,43 @@ API: $0
 - 소요 시간: ~28시간 (1회만, 이후 증분)
 
 → 완전 무료
-```
+#+end_example
 
-**OpenAI** (비교):
-```
+*OpenAI* (비교):
+
+#+begin_example
 text-embedding-3-small:
 - 3M tokens × $0.02/1M = $0.06 (1회)
 - 증분: ~$0.01/월
 - 총: ~$0.2/년
 
 → 저렴하지만 Ollama보다 비쌈
-```
+#+end_example
 
-### 검색 성능 (검증됨)
+*** 검색 성능 (검증됨)
+:PROPERTIES:
+:CUSTOM_ID: 검색-성능-검증됨
+:END:
+*Latency*: - Vector Search (Supabase): ~50ms - BM25 Search (로컬):
+~10ms - Link Graph (NetworkX): ~20ms - Rerank API: ~100ms - *Total*:
+<200ms
 
-**Latency**:
-- Vector Search (Supabase): ~50ms
-- BM25 Search (로컬): ~10ms
-- Link Graph (NetworkX): ~20ms
-- Rerank API: ~100ms
-- **Total**: <200ms
+*Quality*: - MRR@10: 0.85 (85% 정확도) - Recall@5: 0.78 - Recall@10:
+0.92
 
-**Quality**:
-- MRR@10: 0.85 (85% 정확도)
-- Recall@5: 0.78
-- Recall@10: 0.92
+--------------
 
----
+** 📝 문서화 전략의 독창성
+:PROPERTIES:
+:CUSTOM_ID: 문서화-전략의-독창성
+:END:
+*** "왜 이렇게 하는가"를 드러내기
+:PROPERTIES:
+:CUSTOM_ID: 왜-이렇게-하는가를-드러내기
+:END:
+*전통적 문서화*:
 
-## 📝 문서화 전략의 독창성
-
-### "왜 이렇게 하는가"를 드러내기
-
-**전통적 문서화**:
-```markdown
+#+begin_src markdown
 ## Installation
 pip install xxx
 
@@ -650,10 +684,11 @@ pip install xxx
 python script.py
 
 → HOW만 설명
-```
+#+end_src
 
-**memex-kb 문서화**:
-```markdown
+*memex-kb 문서화*:
+
+#+begin_src markdown
 ## 기술 배경
 - n8n, Supabase, Ollama 이미 검증
 - 2,945개 파일 임베딩 완료
@@ -675,10 +710,11 @@ python script.py
 - 실전 경험 기반
 
 → WHY + HOW + WHAT + 검증
-```
+#+end_src
 
-**효과**:
-```
+*효과*:
+
+#+begin_example
 1. 기술 경험 드러내기
    "n8n, Supabase 모릅니까?" → 아닙니다. 이미 검증했습니다.
 
@@ -690,73 +726,69 @@ python script.py
 
 4. 방법론 드러내기
    "기술만 아십니까?" → 아닙니다. 왜 이렇게 접근하는지 압니다.
-```
+#+end_example
 
----
+--------------
 
-## 🔗 관련 프로젝트
+** 🔗 관련 프로젝트
+:PROPERTIES:
+:CUSTOM_ID: 관련-프로젝트
+:END:
+*embedding-config* (Private): -
+~/repos/gh/embedding-config/org_embedding/ - 2,945개 Org 파일 → 8,310개
+청크 임베딩 완료 - Supabase pgvector + n8n 연동 운영 중 - 검증된 스키마
+& 검색 함수
 
-**embedding-config** (Private):
-- ~/repos/gh/embedding-config/org_embedding/
-- 2,945개 Org 파일 → 8,310개 청크 임베딩 완료
-- Supabase pgvector + n8n 연동 운영 중
-- 검증된 스키마 & 검색 함수
+*-config 생태계* (8개 프로젝트): - memex-kb: Layer 5a (Migration +
+Embedding) - memacs-config: Layer 5b (Life Timeline) - claude-config:
+Layer 4 (AI Memory) - zotero-config: Layer 3 (Bibliography) -
+doomemacs-config: Layer 2 (Development) - nixos-config: Layer 1
+(Infrastructure) - meta-config: Layer 6 (Orchestration)
 
-**-config 생태계** (8개 프로젝트):
-- memex-kb: Layer 5a (Migration + Embedding)
-- memacs-config: Layer 5b (Life Timeline)
-- claude-config: Layer 4 (AI Memory)
-- zotero-config: Layer 3 (Bibliography)
-- doomemacs-config: Layer 2 (Development)
-- nixos-config: Layer 1 (Infrastructure)
-- meta-config: Layer 6 (Orchestration)
+*디지털가든*: - https://notes.junghanacs.com - 2,005개 MD 파일 (Denote
+형식) - 공개 지식 공유
 
-**디지털가든**:
-- https://notes.junghanacs.com
-- 2,005개 MD 파일 (Denote 형식)
-- 공개 지식 공유
+--------------
 
----
+** 📚 참고 문서
+:PROPERTIES:
+:CUSTOM_ID: 참고-문서
+:END:
+*memex-kb 프로젝트 문서* (docs/): -
+[[file:docs/20251015T150842--dooray-api-기술-조사__dooray_api_research.md][Dooray
+API 기술 조사]] -
+[[file:docs/20251015T180500--memex-kb-rag-통합-전략__rag_embedding_architecture.md][RAG
+통합 전략]] (본 문서)
 
-## 📚 참고 문서
+*embedding-config 참고*: - ORG_GARDEN_EMBEDDING_STRATEGY.md -
+ORG_GARDEN_EMBEDDING_RESULT.md - KNOWLEDGE_HIERARCHY.md -
+N8N_ORG_GARDEN_SETUP.md
 
-**memex-kb 프로젝트 문서** (docs/):
-- [Dooray API 기술 조사](docs/20251015T150842--dooray-api-기술-조사__dooray_api_research.md)
-- [RAG 통합 전략](docs/20251015T180500--memex-kb-rag-통합-전략__rag_embedding_architecture.md) (본 문서)
+--------------
 
-**embedding-config 참고**:
-- ORG_GARDEN_EMBEDDING_STRATEGY.md
-- ORG_GARDEN_EMBEDDING_RESULT.md
-- KNOWLEDGE_HIERARCHY.md
-- N8N_ORG_GARDEN_SETUP.md
+** 🎓 핵심 배운 점
+:PROPERTIES:
+:CUSTOM_ID: 핵심-배운-점
+:END:
+*** "기술은 껍데기, 방법론이 본질"
+:PROPERTIES:
+:CUSTOM_ID: 기술은-껍데기-방법론이-본질
+:END:
+*기술 검증 (완료)*: - n8n, Supabase, Ollama, Airbyte, Rerank API - NixOS
+클러스터, Docker, PostgreSQL - Vector DB, RAG Orchestration
 
----
+*방법론 구축 (진행 중)*: - Legacy → RAG-ready 변환 방법 - Denote
+규칙으로 일관성 확보 - 폴더별 차별화 청킹으로 품질 향상 - Git으로 모든
+과정 추적
 
-## 🎓 핵심 배운 점
+*독창적 통합*: - 검증된 기술 + 독창적 방법론 - 실전 경험 + 문서화 전략 -
+"왜 이렇게 하는가" 드러내기
 
-### "기술은 껍데기, 방법론이 본질"
+--------------
 
-**기술 검증 (완료)**:
-- n8n, Supabase, Ollama, Airbyte, Rerank API
-- NixOS 클러스터, Docker, PostgreSQL
-- Vector DB, RAG Orchestration
+*최종 업데이트*: 2025-10-15T18:05:00+09:00 *작성자*: Junghan Kim
+(junghanacs@gmail.com)
 
-**방법론 구축 (진행 중)**:
-- Legacy → RAG-ready 변환 방법
-- Denote 규칙으로 일관성 확보
-- 폴더별 차별화 청킹으로 품질 향상
-- Git으로 모든 과정 추적
+--------------
 
-**독창적 통합**:
-- 검증된 기술 + 독창적 방법론
-- 실전 경험 + 문서화 전략
-- "왜 이렇게 하는가" 드러내기
-
----
-
-**최종 업데이트**: 2025-10-15T18:05:00+09:00
-**작성자**: Junghan Kim (junghanacs@gmail.com)
-
----
-
-**"기술을 넘어 방법론으로, 방법론을 넘어 지혜로"**
+*"기술을 넘어 방법론으로, 방법론을 넘어 지혜로"*

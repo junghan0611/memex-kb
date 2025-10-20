@@ -173,6 +173,93 @@ n8n RAG 워크플로우? → 예제 많음
 :PROPERTIES:
 :CUSTOM_ID: 검증된-기술-경험-2025-q3
 :END:
+
+*** ⭐ 0. org-db-v3: 전문가 코드 재사용 (2025-10-18 추가)
+:PROPERTIES:
+:CUSTOM_ID: org-db-v3-전문가-코드-재사용
+:END:
+
+*발견*: John Kitchin의 org-db-v3 (Carnegie Mellon University)
+
+*프로젝트 규모*:
+- *17,131 lines* (Elisp 3,073 + Python 3,668 + Tests 1,734 + Docs 7,094)
+- *22.8% test coverage*
+- *93% documentation coverage*
+- Production-ready RAG 파이프라인
+
+*핵심 기술 스택*:
+#+begin_src yaml
+Embedding:
+  model: all-MiniLM-L6-v2 (384-dim)
+  multilingual: YES (한글 지원 ✅)
+  speed: ~50 sentences/second (CPU)
+  size: ~90MB (자동 다운로드)
+
+Vector_DB:
+  storage: SQLite + libsql vector extension
+  format: F32_BLOB (최적화)
+  search: ANN (Approximate Nearest Neighbor)
+  similarity: Cosine distance
+
+Chunking:
+  strategy: Fixed-size (800 chars, 100 overlap)
+  documented: chunking-comparison.md
+  optimized: Performance benchmarks
+
+Document_Conversion:
+  PDF: pymupdf4llm
+  Word: python-docx
+  PowerPoint: python-pptx
+  Memory: 95% reduction vs docling
+#+end_src
+
+*재사용 전략*:
+#+begin_example
+org-db-v3에서 가져올 것:
+  ✅ embeddings.py      # sentence-transformers 최적 활용
+  ✅ chunking.py        # 검증된 청킹 전략
+  ✅ database.py        # F32_BLOB 벡터 검색
+  ✅ converter.py       # PDF/DOCX 변환
+
+우리가 작성할 것:
+  ⭐ korean_utils.py    # 한글 처리만 집중
+     - 한글 토크나이저
+     - 한글 stopwords
+     - Denote 파일명 처리
+#+end_example
+
+*통합 구조*:
+#+begin_src python
+memex-kb/
+├── scripts/adapters/   # 기존 유지
+│   ├── base.py
+│   ├── gdocs.py
+│   └── dooray.py
+│
+├── scripts/rag/        # ⭐ 신규 (org-db-v3 기반)
+│   ├── embeddings.py   # ← org-db-v3
+│   ├── chunking.py     # ← org-db-v3
+│   ├── vector_db.py    # ← org-db-v3
+│   ├── converter.py    # ← org-db-v3
+│   └── korean_utils.py # 신규 작성
+│
+├── denote_namer.py
+└── categorizer.py
+#+end_src
+
+*이점*:
+- ✅ 검증된 17k+ lines 코드 재사용
+- ✅ 문서화된 청킹 비교 (chunking-comparison.md)
+- ✅ 테스트 코드 1,734 lines 참고
+- ✅ 한글 처리에만 집중 가능
+
+*참고 링크*:
+- GitHub: https://github.com/jkitchin/org-db-v3
+- 로컬: =~/repos/3rd/org-db-v3/=
+- 전략 문서: =~/claude-memory/resources/solutions/20251018T203000--org-db-v3-분석-memex-kb-rag-통합전략__solution_rag_korean.md=
+
+--------------
+
 *** 1. n8n AI Agent Automation
 :PROPERTIES:
 :CUSTOM_ID: n8n-ai-agent-automation
@@ -524,41 +611,75 @@ Notion: 개인 노트
 :PROPERTIES:
 :CUSTOM_ID: v2.0-구현-계획
 :END:
-*** Phase 1: 기존 전략 통합 (1주)
+*** Phase 1: org-db-v3 코드 통합 (1주) ⭐ 업데이트 2025-10-18
 :PROPERTIES:
-:CUSTOM_ID: phase-1-기존-전략-통합-1주
+:CUSTOM_ID: phase-1-org-db-v3-코드-통합-1주
 :END:
+
+*전략*: 전문가 코드 재사용 → 한글에만 집중
+
 #+begin_src python
-# embedding-config 코드 재사용
-from embedding_config import (
-    DenoteDocumentParser,      # 검증됨
-    SemanticChunker,           # 검증됨
-    SupabaseVectorDB,          # 검증됨
-    match_org_garden_documents # 검증됨
-)
+# org-db-v3 코드 재사용
+from scripts.rag.embeddings import get_embedding_model      # ← org-db-v3
+from scripts.rag.chunking import chunk_text                  # ← org-db-v3
+from scripts.rag.vector_db import VectorDB                   # ← org-db-v3
+from scripts.rag.korean_utils import preprocess_korean_text # 신규
 
 # memex-kb와 통합
 class MemexEmbeddingPipeline:
     def __init__(self):
-        self.parser = DenoteDocumentParser()
-        self.chunker = SemanticChunker()
-        self.embedder = OllamaEmbedder("mxbai-embed-large")
-        self.vectordb = SupabaseVectorDB()
+        # org-db-v3 검증된 구현 활용
+        self.embedding_model = get_embedding_model("all-MiniLM-L6-v2")
+        self.vector_db = VectorDB(db_path="~/memex-kb/memex.db")
 
     def process_converted_docs(self, memex_kb_docs_path):
         """
         ~/memex-kb/docs/*.md
             ↓ parse (Denote)
         metadata + content
-            ↓ chunk (폴더별 차별화)
-        semantic chunks
-            ↓ embed (Ollama, GPU-03)
-        vectors (1024-dim)
-            ↓ store (Supabase)
+            ↓ preprocess (Korean)
+        normalized text
+            ↓ chunk (org-db-v3 strategy)
+        semantic chunks (800 chars, 100 overlap)
+            ↓ embed (all-MiniLM-L6-v2)
+        vectors (384-dim)
+            ↓ store (SQLite F32_BLOB)
         RAG-ready!
         """
-        pass
+        for md_file in glob(f"{memex_kb_docs_path}/**/*.md"):
+            # 1. Denote 파일명 파싱
+            metadata = parse_denote_filename(md_file)
+
+            # 2. 내용 읽기
+            content = read_file(md_file)
+
+            # 3. 한글 전처리 (신규)
+            processed = preprocess_korean_text(content)
+
+            # 4. 청킹 (org-db-v3)
+            chunks = chunk_text(processed, chunk_size=800, overlap=100)
+
+            # 5. 임베딩 (org-db-v3)
+            embeddings = self.embedding_model.encode(chunks)
+
+            # 6. 저장 (org-db-v3)
+            for chunk, embedding in zip(chunks, embeddings):
+                self.vector_db.insert(
+                    text=chunk,
+                    embedding=embedding,
+                    metadata=metadata
+                )
 #+end_src
+
+*Day 1-2*:
+- [ ] org-db-v3 핵심 파일 4개 복사
+- [ ] korean_utils.py 스켈레톤
+- [ ] requirements.txt 업데이트
+
+*Day 3-4*:
+- [ ] 한글 임베딩 테스트
+- [ ] Dooray Adapter 통합
+- [ ] 벡터 검색 테스트
 
 *** Phase 2: n8n 통합 (1주)
 :PROPERTIES:

@@ -90,6 +90,7 @@ Legacy 문서가 AI Second Brain이 됩니다.
 
 4. **Backend 중립**: 여러 소스 지원
    - Google Docs (✅ 구현됨)
+   - Threads SNS (✅ 구현됨) - **NEW!**
    - Dooray Wiki (🔧 개발 중)
    - Confluence (📋 계획 중)
 
@@ -122,12 +123,13 @@ Legacy 문서가 AI Second Brain이 됩니다.
 ```
 [Backend Sources]
     ├── Google Docs    (✅ 구현됨)
+    ├── Threads SNS    (✅ 구현됨) ← NEW!
     ├── Dooray Wiki    (🔧 개발 중)
     └── Confluence     (📋 계획 중)
          ↓
 [Backend Adapter] ← 확장 가능한 설계
          ↓
-[Markdown Conversion]
+[Markdown/Org Conversion]
          ↓
 [공통 파이프라인]
     ├── DenoteNamer      (파일명 생성)
@@ -158,21 +160,21 @@ memex-kb/
 ├── scripts/                     # 변환 및 동기화 스크립트
 │   ├── adapters/                # Backend Adapters (확장 가능)
 │   │   ├── base.py              # BaseAdapter (추상 클래스)
-│   │   ├── gdocs.py             # Google Docs Adapter
-│   │   └── dooray.py            # Dooray Adapter (개발 중)
+│   │   └── threads.py           # Threads API Adapter ✅
+│   ├── gdocs_to_markdown.py     # Google Docs 변환 ✅
+│   ├── threads_exporter.py      # Threads 포스트 내보내기 ✅
+│   ├── get_threads_token.py     # Threads OAuth 헬퍼 ✅
+│   ├── test_threads_api.py      # Threads API 테스트 ✅
 │   ├── denote_namer.py          # Denote 파일명 생성 (공통)
-│   ├── categorizer.py           # 문서 자동 분류 (공통)
-│   └── batch_processor.py       # 일괄 처리
-├── docs/                        # 변환된 Markdown 문서
-│   ├── architecture/            # 시스템 설계
-│   ├── development/             # 개발 가이드
-│   ├── operations/              # 운영 문서
-│   ├── products/                # 제품별 문서
-│   └── _uncategorized/          # 미분류 문서
+│   └── categorizer.py           # 문서 자동 분류 (공통)
+├── docs/                        # 변환된 문서
+│   ├── threads-aphorisms.org    # Threads 아포리즘 통합 파일 ✅
+│   ├── attachments/threads/     # Threads 이미지 첨부파일
+│   └── 2025*.org                # 프로젝트 문서들
 ├── config/
-│   ├── categories.yaml          # 분류 규칙 (사용자 정의)
-│   ├── credentials.json         # API 인증 (gitignore)
-│   └── .env                     # 환경변수
+│   ├── .env                     # 환경변수 (gitignore)
+│   ├── .env.threads.example     # Threads 설정 예시
+│   └── credentials.json         # API 인증 (gitignore)
 ├── logs/                        # 실행 로그
 └── README.md                    # 이 파일
 ```
@@ -198,7 +200,7 @@ brew install pandoc
 nix-shell -p pandoc
 ```
 
-### 2. Google Docs 연동 (예시)
+### 2A. Google Docs 연동
 
 ```bash
 # 1. Google Cloud Console에서 프로젝트 생성
@@ -209,21 +211,88 @@ nix-shell -p pandoc
 # 환경변수 설정
 cp config/.env.example config/.env
 # config/.env 파일 편집
+
+# 단일 문서 변환
+python scripts/gdocs_to_markdown.py "DOCUMENT_ID"
 ```
 
-### 3. 문서 변환
+### 2B. Threads SNS 연동 (NEW! 🎉)
+
+**아포리즘을 디지털가든으로**: Threads 포스트를 단일 Org 파일로 통합
+
+#### 환경 설정
 
 ```bash
-# 단일 문서 변환
-python scripts/adapters/gdocs.py "DOCUMENT_ID"
-
-# 전체 폴더 변환
-python scripts/batch_processor.py
-
-# Git 커밋 (옵션)
-git add docs/
-git commit -m "Add: 새 문서 변환"
+# 환경변수 설정
+cp config/.env.threads.example config/.env.threads
+# config/.env.threads 파일 편집 (APP_ID, APP_SECRET, REDIRECT_URI)
 ```
+
+#### 사용법
+
+```bash
+# Step 1: Access Token 획득 (대화형)
+python scripts/get_threads_token.py
+# → Facebook 로그인으로 OAuth 플로우 진행
+# → config/.env.threads에 ACCESS_TOKEN 자동 추가
+
+# Step 2: API 연결 테스트
+python scripts/test_threads_api.py
+
+# Step 3: 전체 포스트 내보내기
+python scripts/threads_exporter.py --download-images
+
+# 결과: docs/threads-aphorisms.org 생성
+# - 193개 포스트 (시간순 정렬)
+# - 34개 주제로 자동 분류
+# - 댓글 포함
+# - 이미지 다운로드 (docs/attachments/threads/)
+# - Permalink 연결
+# - "어쏠리즘(Assholism)": 추천 알고리즘을 넘어선 진정한 연결
+```
+
+#### Org 구조
+
+```org
+* 서론 :META:
+  (프로필 정보 및 통계)
+
+* 주제: (미분류)
+  :PROPERTIES:
+  :POST_COUNT: 160
+  :END:
+
+** [포스트 제목 (첫 줄 50자)]
+   :PROPERTIES:
+   :POST_ID: 18101712844662284
+   :TIMESTAMP: 2025-11-06T22:34:08+0000
+   :PERMALINK: https://www.threads.com/@junghanacs/post/...
+   :MEDIA_TYPE: IMAGE
+   :END:
+
+   [포스트 본문]
+
+*** 이미지
+    - [[file:docs/attachments/threads/18101712844662284.jpg]]
+
+*** 댓글
+**** @username ([2025-11-06 Thu 22:34])
+     [댓글 내용]
+```
+
+**옵션**:
+```bash
+# 테스트로 5개만 내보내기
+python scripts/threads_exporter.py --max-posts 5
+
+# 이미지 다운로드 포함
+python scripts/threads_exporter.py --download-images
+
+# 오래된 순으로 정렬
+python scripts/threads_exporter.py --reverse
+```
+
+**상세 문서**: [docs/20251107T123200--threads-aphorism-exporter-프로젝트__threads_aphorism_assholism.org](docs/20251107T123200--threads-aphorism-exporter-프로젝트__threads_aphorism_assholism.org)
 
 ---
 
@@ -555,8 +624,8 @@ MIT License
 
 ---
 
-**버전**: 1.1.0
-**최종 업데이트**: 2025-10-15
+**버전**: 1.1.1
+**최종 업데이트**: 2025-11-07
 **상태**: 🟢 활발히 개발 중
 
 ---

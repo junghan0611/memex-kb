@@ -18,6 +18,11 @@ config/*.json
 !config/.env.example
 config/token.json
 config/.env
+config/.env.threads
+
+# Claude Code
+.claude/
+.mcp.json
 
 # Logs
 logs/*.log

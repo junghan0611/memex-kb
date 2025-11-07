@@ -1,0 +1,467 @@
+#+title:      Threads API 데이터 구조 분석
+#+date:       [2025-11-07 Thu 14:52]
+#+filetags:   :threads:api:analysis:
+#+identifier: 20251107T145225
+
+* 분석 목적 :ANALYSIS:
+
+주제별 그룹화, 댓글 헤딩 구조화, 이미지 다운로드 기능을 추가하기 위한
+Threads API 데이터 구조 분석 및 내보내기 로직 재설계.
+
+* Threads API 데이터 구조 :STRUCTURE:
+
+** Post 기본 필드
+
+#+begin_src json
+{
+  "id": "18039228554496358",
+  "text": "포스트 본문...",
+  "timestamp": "2025-11-05T21:38:00+0000",
+  "media_type": "IMAGE | TEXT_POST | CAROUSEL_ALBUM | VIDEO",
+  "media_url": "https://...",
+  "permalink": "https://www.threads.com/@junghanacs/post/...",
+  "username": "junghanacs"
+}
+#+end_src
+
+** CAROUSEL_ALBUM 구조 (핵심!)
+
+캐러셀 포스트는 ~children~ 필드에 모든 이미지/비디오 목록 포함:
+
+#+begin_src json
+{
+  "media_type": "CAROUSEL_ALBUM",
+  "media_url": "https://... (첫 번째 이미지)",
+  "children": {
+    "data": [
+      {
+        "id": "17931138749999051",
+        "media_type": "IMAGE",
+        "media_url": "https://..."
+      },
+      {
+        "id": "18086395987769513",
+        "media_type": "IMAGE",
+        "media_url": "https://..."
+      }
+    ]
+  }
+}
+#+end_src
+
+** Reply (댓글) 필드
+
+#+begin_src json
+{
+  "id": "17931138749999051",
+  "text": "댓글 내용...",
+  "username": "junghanacs",
+  "timestamp": "2025-11-06T22:41:00+0000"
+}
+#+end_src
+
+* 개선 요구사항 :REQUIREMENTS:
+
+** 1. 이미지 다운로드 (images/ 폴더)
+
+*** 현재 상태
+~download_attachment()~ 메서드는 있지만 미사용
+
+*** 개선 방안
+- *저장 위치*: ~images/threads/~
+- *파일명 규칙*:
+  - 단일 이미지: ~{post_id}.jpg~
+  - 캐러셀: ~{post_id}_01.jpg~, ~{post_id}_02.jpg~, ...
+- *처리 로직*:
+  1. IMAGE: ~media_url~ 다운로드
+  2. CAROUSEL_ALBUM: ~children.data[]~ 모든 이미지 다운로드
+  3. TEXT_POST: 이미지 없음
+
+*** 필요 API 필드
+#+begin_src python
+fields = [
+    'id', 'text', 'timestamp', 'media_type',
+    'media_url', 'permalink',
+    'children{id,media_type,media_url}'  # ← 추가!
+]
+#+end_src
+
+** 2. 주제 단어 중심 그룹화
+
+*** 현재 상태
+시간순 평면 나열
+
+*** 개선 방안
+
+*주제 추출 우선순위*:
+1. 해시태그 (~#keyword~)
+2. 첫 줄 키워드 (20자 이내)
+3. "(미분류)"
+
+*Org 구조*:
+#+begin_example
+,* 주제: 독서법
+,** [2025-11-06 22:34] 친구의질문: 근데 같은 책을...
+   본문...
+
+,** [2025-11-06 13:10] 처음에는 나도 꿀팁 전달자가...
+   본문...
+
+,* 주제: 초월
+,** [2025-11-06 12:44] 생과사. 깨어남. 해탈...
+   본문...
+
+,* 주제: (미분류)
+,** [2025-11-05 21:38] 호놀룰루 비행기 안...
+   본문...
+#+end_example
+
+*** 처리 로직
+
+#+begin_src python
+def extract_topic(text: str) -> str:
+    """주제 추출: 해시태그 → 첫 줄 → 미분류"""
+    # 1. 해시태그
+    hashtags = re.findall(r'#(\w+)', text)
+    if hashtags:
+        return hashtags[0]
+
+    # 2. 첫 줄 (20자 이내)
+    first_line = text.split('\n')[0].strip()
+    if len(first_line) <= 20:
+        return first_line
+
+    # 3. 미분류
+    return "(미분류)"
+
+def group_by_topic(posts: List[Dict]) -> Dict[str, List[Dict]]:
+    """포스트를 주제별로 그룹화"""
+    groups = {}
+    for post in posts:
+        topic = extract_topic(post.get('text', ''))
+        if topic not in groups:
+            groups[topic] = []
+        groups[topic].append(post)
+    return groups
+#+end_src
+
+** 3. 댓글 헤딩 구조화
+
+*** 현재 상태
+
+#+begin_example
+,* [2025-11-06] 포스트
+본문...
+
+,** 댓글
+- [2025-11-06 22:41] @junghanacs: 댓글 내용...
+- [2025-11-06 23:00] @other: 다른 댓글...
+#+end_example
+
+*** 개선 방안
+
+#+begin_example
+,* [2025-11-06 22:34] 포스트 제목
+본문...
+
+,** 이미지
+- [[file:images/threads/18039228554496358_01.jpg]]
+- [[file:images/threads/18039228554496358_02.jpg]]
+
+,** 댓글: @junghanacs (2025-11-06 22:41)
+요즈음에 결국 듣는 책이...
+
+,** 댓글: @other_user (2025-11-06 23:00)
+다른 댓글 내용...
+#+end_example
+
+*** 처리 로직
+
+#+begin_src python
+def format_replies_as_headings(replies: List[Dict]) -> str:
+    """댓글을 헤딩으로 구조화"""
+    if not replies:
+        return ""
+
+    sections = []
+    for reply in replies:
+        timestamp = parse_timestamp(reply['timestamp'])
+        username = reply['username']
+        text = reply['text']
+
+        section = f"""** 댓글: @{username} ({timestamp})
+{text}
+"""
+        sections.append(section)
+
+    return "\n".join(sections)
+#+end_src
+
+* API 정보 활용 최적화 :OPTIMIZATION:
+
+** 필드 선택 전략
+
+*** Phase 1: 전체 포스트 목록 조회 (list_documents)
+
+#+begin_src python
+fields = [
+    'id',           # 필수: 포스트 ID
+    'text',         # 필수: 본문
+    'timestamp',    # 필수: 작성 시간
+    'media_type',   # 필수: 미디어 타입 판단
+    'media_url',    # 선택: 대표 이미지 (CAROUSEL는 첫 이미지)
+    'permalink',    # 필수: 링크
+    'children{id,media_type,media_url}'  # 필수: 캐러셀 이미지들
+]
+#+end_src
+
+*** Phase 2: 개별 포스트 상세 조회 (fetch_document)
+
+- 목적: 댓글 추가 조회만 수행
+- 이미 ~list_documents~ 에서 충분한 정보 확보
+- 필요시에만 호출 (댓글 있는 포스트만)
+
+** API 호출 최적화
+
+*** 현재 문제점
+- ~list_documents~: 기본 필드만 (children 없음)
+- ~fetch_document~: 각 포스트마다 개별 호출 (비효율)
+
+*** 개선 방안
+1. ~list_documents~ 에서 children 필드 포함
+2. 댓글이 있는 포스트만 ~fetch_document~ 호출
+3. 이미지 다운로드는 병렬 처리
+
+* 구현 계획 :IMPLEMENTATION:
+
+** 1. ThreadsAdapter 개선
+
+*** download_all_images() 메서드 추가
+
+#+begin_src python
+# scripts/adapters/threads.py
+
+def download_all_images(self, post: Dict, output_dir: str) -> List[str]:
+    """포스트의 모든 이미지 다운로드"""
+    downloaded = []
+    post_id = post['id']
+    media_type = post.get('media_type')
+
+    if media_type == 'CAROUSEL_ALBUM':
+        # 캐러셀: children 배열 처리
+        children = post.get('children', {}).get('data', [])
+        for i, child in enumerate(children, 1):
+            url = child.get('media_url')
+            if url:
+                filename = f"{post_id}_{i:02d}.jpg"
+                path = os.path.join(output_dir, filename)
+                if self.download_attachment(url, path):
+                    downloaded.append(path)
+
+    elif media_type == 'IMAGE':
+        # 단일 이미지
+        url = post.get('media_url')
+        if url:
+            filename = f"{post_id}.jpg"
+            path = os.path.join(output_dir, filename)
+            if self.download_attachment(url, path):
+                downloaded.append(path)
+
+    return downloaded
+#+end_src
+
+*** list_documents() 필드 추가
+
+#+begin_src python
+def list_documents(self, ...):
+    """children 필드 추가"""
+    if fields is None:
+        fields = [
+            'id', 'text', 'timestamp', 'media_type',
+            'media_url', 'permalink',
+            'children{id,media_type,media_url}'  # ← 추가
+        ]
+    # ...
+#+end_src
+
+*** _convert_to_org() 댓글 헤딩 구조화
+
+#+begin_src python
+def _convert_to_org(self, post: Dict) -> str:
+    """댓글을 헤딩으로 구조화"""
+    # ... 기존 코드 ...
+
+    # 댓글 헤딩 구조
+    replies = post.get('replies', [])
+    replies_section = ""
+
+    if replies:
+        for reply in replies:
+            timestamp = parse_timestamp(reply['timestamp'])
+            username = reply['username']
+            text = reply['text']
+
+            replies_section += f"\n** 댓글: @{username} ({timestamp})\n{text}\n"
+
+    return f"""* {heading_date} {title}
+{body}
+
+{permalink_line}
+{tags_line}
+{media_section}
+{replies_section}
+"""
+#+end_src
+
+** 2. 주제별 그룹화 Exporter
+
+#+begin_src python
+# scripts/threads_exporter.py
+
+def extract_topic(text: str) -> str:
+    """주제 추출"""
+    # 해시태그
+    hashtags = re.findall(r'#(\w+)', text)
+    if hashtags:
+        return hashtags[0]
+
+    # 첫 줄 (20자)
+    first_line = text.split('\n')[0].strip()
+    if first_line and len(first_line) <= 20:
+        return first_line
+
+    return "(미분류)"
+
+def group_posts_by_topic(posts: List[Dict]) -> Dict[str, List[Dict]]:
+    """주제별 그룹화"""
+    groups = {}
+    for post in posts:
+        topic = extract_topic(post.get('text', ''))
+        if topic not in groups:
+            groups[topic] = []
+        groups[topic].append(post)
+    return groups
+
+def export_by_topics(posts: List[Dict], output_path: str, images_dir: str):
+    """주제별 내보내기"""
+    groups = group_posts_by_topic(posts)
+
+    with open(output_path, 'w', encoding='utf-8') as f:
+        # 프론트매터
+        write_frontmatter(f, len(posts))
+
+        # 주제별 섹션
+        for topic, topic_posts in sorted(groups.items()):
+            f.write(f"\n* 주제: {topic}\n\n")
+
+            for post in sorted(topic_posts, key=lambda p: p['timestamp'], reverse=True):
+                # 포스트 변환
+                org_content = adapter.convert_to_format(post)
+                f.write(org_content)
+                f.write("\n")
+
+                # 이미지 다운로드
+                if download_images:
+                    images = adapter.download_all_images(post, images_dir)
+                    if images:
+                        f.write("** 이미지\n")
+                        for img_path in images:
+                            f.write(f"- [[file:{img_path}]]\n")
+                        f.write("\n")
+#+end_src
+
+* 예상 결과 :RESULT:
+
+** 디렉토리 구조
+
+#+begin_example
+memex-kb/
+├── docs/
+│   └── threads-aphorisms.org
+├── images/
+│   └── threads/
+│       ├── 18039228554496358_01.jpg
+│       ├── 18039228554496358_02.jpg
+│       ├── 18039228554496358_03.jpg
+│       └── 18101712844662284.jpg
+└── scripts/
+    └── ...
+#+end_example
+
+** Org 파일 구조
+
+#+begin_example
+,#+title: Threads Aphorisms (@junghanacs)
+,#+date: [2025-11-07 Thu]
+,#+filetags: :threads:aphorism:assholism:
+,#+post_count: 193
+
+,* 주제: 독서법
+,** [2025-11-06 22:34] 친구의질문: 근데 같은 책을 500시간을 듣는다는게 도대체 무슨 독서법인가?
+본문 내용...
+
+- Permalink: https://www.threads.com/@junghanacs/post/DQu2Bf3k1xw
+- Tags: #독서법
+
+,** 이미지
+- [[file:images/threads/18101712844662284.jpg]]
+
+,** 댓글: @junghanacs (2025-11-06 22:41)
+요즈음에 결국 듣는 책이 (저는 책을 읽지 않습니다)
+톨레, 마이클싱어, 벤야민, 마하리시, 에머슨 등...
+
+,* 주제: 초월
+,** [2025-11-06 12:44] 생과사. 깨어남. 해탈. 뭐 이런 단어들을 연이어 떠올려 보았다.
+본문 내용...
+
+,* 주제: (미분류)
+,** [2025-11-05 21:38] 호놀룰루 비행기 안. 이제 귀국.
+본문 내용...
+
+,** 이미지
+- [[file:images/threads/18039228554496358_01.jpg]]
+- [[file:images/threads/18039228554496358_02.jpg]]
+- [[file:images/threads/18039228554496358_03.jpg]]
+#+end_example
+
+* 주요 개선 사항 요약 :SUMMARY:
+
+| 항목       | 현재            | 개선 후                          |
+|------------|-----------------|----------------------------------|
+| *이미지*   | 미지원          | ~images/threads/~ 자동 다운로드  |
+| *캐러셀*   | 첫 이미지만     | 모든 이미지 다운로드             |
+| *구조*     | 시간순 평면     | 주제별 그룹화                    |
+| *댓글*     | 평면 리스트     | 헤딩 구조화                      |
+| *주제*     | 없음            | 해시태그/첫줄 추출               |
+| *API 필드* | 기본            | children 추가                    |
+
+* 실행 계획 :PLAN:
+
+** Phase 1: 코드 개선
+1. [ ] ~ThreadsAdapter.list_documents()~: children 필드 추가
+2. [ ] ~ThreadsAdapter.download_all_images()~: 이미지 다운로드 로직
+3. [ ] ~ThreadsAdapter._convert_to_org()~: 댓글 헤딩 구조화
+4. [ ] ~threads_exporter.py~: 주제별 그룹화 로직
+
+** Phase 2: 테스트
+1. [ ] CAROUSEL_ALBUM 포스트 이미지 다운로드 확인
+2. [ ] 주제 추출 및 그룹화 검증
+3. [ ] 댓글 헤딩 구조 확인
+4. [ ] Emacs에서 Org 파일 렌더링 확인
+
+** Phase 3: 재실행
+
+#+begin_src bash
+# 이미지 포함 전체 내보내기
+python scripts/threads_exporter.py --download-images
+
+# 결과 확인
+ls -lh images/threads/
+emacs docs/threads-aphorisms.org
+#+end_src
+
+* 참고 :REFERENCES:
+
+- [[file:20251107T123200--threads-aphorism-exporter-프로젝트__threads_aphorism_assholism.org][Threads Aphorism Exporter 프로젝트]]
+- [[file:../scripts/adapters/threads.py][ThreadsAdapter 소스코드]]
+- [[file:../scripts/threads_exporter.py][Exporter 메인 스크립트]]

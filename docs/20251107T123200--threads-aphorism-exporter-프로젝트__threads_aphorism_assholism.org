@@ -1,0 +1,502 @@
+#+title:      Threads Aphorism Exporter 프로젝트
+#+date:       [2025-11-07 Thu 12:32]
+#+filetags:   :threads:aphorism:assholism:exporter:project:
+#+identifier: 20251107T123200
+
+* 프로젝트 개요 :PROJECT:
+
+** 목적
+Threads SNS (@junghanacs)에 작성한 500여개 아포리즘을 memex-kb 시스템으로 가져와,
+디지털가든과 통합하여 "어쏠리즘(Assholism)"으로 연결하는 프로젝트.
+
+** 배경: SNS 활용 철학
+
+#+begin_quote
+추천 알고리즘은 나를 작은 세상에 가둔다.
+주변에 아포리즘을 아는 사람도 없는데,
+SNS 추천은 온통 아포리즘 글뿐이다.
+그것은 진실이 아니다.
+
+나는 세상의 진실에 다가서며 외친다.
+떠오르는 단어, 키워드에 집중하여 글을 쓴다.
+AI에게 요청하지 않고, 내가 직접 쓴다.
+디지털가든의 노트와 링크로 연결한다.
+
+외치는 글을 디지털가든에 "어쏠리즘"으로 담으면,
+하나로 연결될 것이다.
+#+end_quote
+
+** 핵심 개념
+
+- *아포리즘 구조*:
+  - 주제 단어/키워드 (직접 선정)
+  - 한 문단 분량의 글
+  - 댓글로 남긴 관련 설명
+  - 이미지 첨부 (선택)
+  - 디지털가든 노트 링크
+
+- *어쏠리즘(Assholism)*:
+  - Aphorism + 개인적 연결 방식
+  - 추천 알고리즘 거부
+  - 진정한 연결: 키워드 → 노트 → 사유
+
+- *memex-kb 통합 전략*:
+  - ❌ 개별 문서 생성 (500개 파일은 과도)
+  - ✅ 단일 Org 문서에 시간순 통합
+  - Denote 링크로 디지털가든 노트 연결
+  - Git 버전 관리로 변경사항 추적
+
+* 기술 스택 :TECHNICAL:
+
+** Threads API
+- *인증*: Facebook App (autholism-exporter)
+- *Base URL*: https://graph.threads.net
+- *권한*:
+  - ~threads_basic~ (필수)
+  - ~threads_read_replies~ (댓글 조회)
+
+** API 엔드포인트
+
+#+begin_src http
+# 1. 사용자 ID 조회
+GET https://graph.threads.net/v1.0/me
+  ?access_token={token}
+
+# 2. 포스트 목록 조회 (페이지네이션)
+GET https://graph.threads.net/v1.0/{user_id}/threads
+  ?fields=id,text,timestamp,media_type,media_url,permalink
+  &access_token={token}
+  &limit=100
+
+# 3. 개별 포스트 상세
+GET https://graph.threads.net/v1.0/{media_id}
+  ?fields=id,text,timestamp,media_url,permalink,username
+  &access_token={token}
+
+# 4. 댓글 조회
+GET https://graph.threads.net/v1.0/{media_id}/replies
+  ?fields=id,text,username,timestamp
+  &access_token={token}
+#+end_src
+
+** Python 구현
+
+#+begin_src python
+# scripts/adapters/threads.py
+import requests
+from .base import BaseAdapter
+
+class ThreadsAdapter(BaseAdapter):
+    """Threads API Adapter"""
+    
+    def __init__(self, access_token: str):
+        self.access_token = access_token
+        self.base_url = "https://graph.threads.net/v1.0"
+        
+    def authenticate(self):
+        """사용자 ID 조회"""
+        response = self._get("/me")
+        return response.get("id")
+    
+    def list_documents(self):
+        """전체 포스트 목록 조회 (페이지네이션)"""
+        user_id = self.authenticate()
+        all_posts = []
+        url = f"/{user_id}/threads"
+        
+        while url:
+            response = self._get(url, params={
+                "fields": "id,text,timestamp,media_url,permalink",
+                "limit": 100
+            })
+            all_posts.extend(response.get("data", []))
+            url = response.get("paging", {}).get("next")
+        
+        return all_posts
+    
+    def fetch_document(self, media_id: str):
+        """포스트 상세 + 댓글 조회"""
+        post = self._get(f"/{media_id}", params={
+            "fields": "id,text,timestamp,media_url,permalink,username"
+        })
+        
+        replies = self._get(f"/{media_id}/replies", params={
+            "fields": "id,text,username,timestamp"
+        })
+        
+        post["replies"] = replies.get("data", [])
+        return post
+    
+    def _get(self, endpoint: str, params: dict = None):
+        """API 요청 헬퍼"""
+        url = f"{self.base_url}{endpoint}"
+        params = params or {}
+        params["access_token"] = self.access_token
+        
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+#+end_src
+
+* 아키텍처 :ARCHITECTURE:
+
+** 데이터 플로우
+
+#+begin_example
+[Threads API]
+    ↓ 인증 (Access Token)
+[ThreadsAdapter]
+    ↓ 포스트 500개 조회 (페이지네이션)
+[데이터 정규화]
+    ├── 타임스탬프 파싱 (ISO 8601 → Org 타임스탬프)
+    ├── 이미지 다운로드 (옵션)
+    └── 댓글 구조화
+    ↓
+[단일 Org 파일 생성]
+    ├── 시간 역순 정렬 (최신 글 위)
+    ├── Denote 프론트매터
+    ├── Org 헤딩 계층 구조:
+    │   * [YYYY-MM-DD] 제목 첫 줄
+    │     - 본문
+    │     - 댓글 (있을 경우)
+    │     - 이미지 링크
+    │     - Permalink
+    └── 저장: docs/threads-aphorisms.org
+    ↓
+[Git 커밋]
+    └── memex-kb 저장소 관리
+#+end_example
+
+** 파일 구조
+
+#+begin_example
+memex-kb/
+├── docs/
+│   ├── threads-aphorisms.org          # ← 통합 문서
+│   └── attachments/
+│       └── threads/                   # 이미지 첨부파일
+│           ├── 20251107_img1.jpg
+│           └── ...
+├── scripts/
+│   ├── adapters/
+│   │   ├── base.py
+│   │   ├── threads.py                 # ← 새로 추가
+│   │   └── ...
+│   └── threads_exporter.py            # ← 메인 스크립트
+└── config/
+    └── .env
+        THREADS_ACCESS_TOKEN=xxxxx
+        THREADS_USER_ID=xxxxx
+#+end_example
+
+* Org 파일 형식 :FORMAT:
+
+** 프론트매터
+
+#+begin_example
+#+title:      Threads Aphorisms (@junghanacs)
+#+date:       [2025-11-07 Thu 12:00]
+#+filetags:   :threads:aphorism:assholism:sns:
+#+identifier: 20251107T120000
+#+threads_user: @junghanacs
+#+threads_profile: https://www.threads.net/@junghanacs
+#+last_sync: [2025-11-07 Thu 12:32]
+#+post_count: 500
+
+* 서론
+
+Threads SNS에 작성한 아포리즘 모음.
+떠오르는 키워드에 집중하여 직접 작성한 외침.
+추천 알고리즘이 아닌, 진실에 다가서는 연결.
+
+링크: [[https://www.threads.net/@junghanacs][@junghanacs Profile]]
+#+end_example
+
+** 포스트 항목 형식
+
+#+begin_example
+* [2025-11-07 Thu 10:30] 키워드로 사유하기
+
+떠오르는 단어에 집중한다.
+AI에게 요청하지 않는다.
+내가 직접 쓰고, 디지털가든과 연결한다.
+이것이 진정한 사유의 시작이다.
+
+- Permalink: https://www.threads.net/@junghanacs/post/xyz123
+- Tags: #키워드 #사유 #디지털가든
+- 디지털가든 연결: [[denote:20251015T140000][관련 노트 제목]]
+
+** 댓글 (관련 설명)
+- [2025-11-07 Thu 10:45] @junghanacs: 
+  추천 알고리즘은 작은 세상에 가둔다.
+  나는 외친다.
+#+end_example
+
+* Access Token 획득 방법 :CRITICAL:
+
+** 간단한 해결책: Instagram 비밀번호 재설정 ✅
+
+Instagram 계정 @junghanacs의 비밀번호를 재설정하여,
+Meta Developer User Token Generator를 사용할 수 있게 되었습니다.
+
+#+begin_example
+1. Instagram 비밀번호 재설정 완료
+   ↓
+2. Meta Developer Dashboard 접속
+   ↓
+3. User Token Generator 사용
+   ↓
+4. Instagram 계정으로 로그인
+   ↓
+5. Long-lived Access Token (60일) 즉시 생성
+   ↓
+6. config/.env 파일에 저장
+#+end_example
+
+** Facebook App 정보
+
+- *App Name*: autholism-exporter
+- *App ID*: ~1351795096326806~
+- *App Secret*: (보안상 비공개, pass 저장)
+- *Dashboard*: https://developers.facebook.com/apps/1351795096326806/
+
+** 활성화된 권한
+
+- ✅ ~threads_basic~ (필수)
+- ✅ ~threads_read_replies~ (댓글 조회)
+
+* 구현 계획 :PLAN:
+
+** Phase 1: API 연결 및 테스트 (Day 1) ✅
+
+1. ✅ Access Token 획득 스크립트 작성
+   #+begin_src bash
+   python scripts/get_threads_token.py
+   #+end_src
+
+2. ✅ 테스트 스크립트 작성
+   #+begin_src bash
+   python scripts/test_threads_api.py
+   # - 인증 확인
+   # - 포스트 1개 조회
+   # - 댓글 조회
+   #+end_src
+
+3. ✅ 환경변수 자동 설정
+   #+begin_src bash
+   # config/.env (get_threads_token.py가 자동 생성)
+   THREADS_ACCESS_TOKEN=EAAxxxxx...
+   THREADS_USER_ID=123456789
+   THREADS_USERNAME=junghanacs
+   #+end_src
+
+** Phase 2: Adapter 구현 (Day 1-2) ✅
+
+1. ✅ ~scripts/adapters/base.py~ 작성
+   - BaseAdapter 추상 클래스
+   - 확장 가능한 인터페이스
+
+2. ✅ ~scripts/adapters/threads.py~ 작성
+   - BaseAdapter 상속
+   - 인증, 포스트 목록, 상세 조회, 댓글 메서드
+   - 페이지네이션 자동 처리 (100개씩)
+   - Org-mode 변환 로직
+
+3. ✅ 에러 핸들링
+   - Rate Limiting 대비
+   - 네트워크 재시도 로직
+
+** Phase 3: Org 파일 생성 (Day 2) ✅
+
+1. ✅ ~scripts/threads_exporter.py~ 메인 스크립트
+   - 전체 포스트 조회 (페이지네이션)
+   - 시간순 정렬 (최신순/오래된순 선택)
+   - 단일 Org 파일 생성
+
+2. ✅ 타임스탬프 파싱
+   #+begin_src python
+   # ISO 8601 → Org 타임스탬프
+   "2025-11-07T10:30:00+0000" 
+   → "[2025-11-07 Thu 10:30]"
+   #+end_src
+
+3. ✅ 이미지 처리 (옵션)
+   - ~--download-images~ 플래그
+   - ~docs/attachments/threads/~ 저장
+
+** Phase 4: 테스트 및 검증 (진행 예정)
+
+1. Access Token 획득
+   #+begin_src bash
+   python scripts/get_threads_token.py
+   # → config/.env 자동 생성
+   #+end_src
+
+2. API 연결 테스트
+   #+begin_src bash
+   python scripts/test_threads_api.py
+   # 4가지 테스트:
+   # - 인증
+   # - 프로필 조회
+   # - 포스트 목록 (5개)
+   # - 댓글 조회
+   #+end_src
+
+3. 전체 포스트 내보내기
+   #+begin_src bash
+   # 기본: 전체 포스트, 최신순
+   python scripts/threads_exporter.py
+
+   # 옵션: 최대 50개만
+   python scripts/threads_exporter.py --max-posts 50
+
+   # 옵션: 이미지 포함
+   python scripts/threads_exporter.py --download-images
+
+   # 옵션: 오래된 순 정렬
+   python scripts/threads_exporter.py --reverse
+   #+end_src
+
+4. Org 파일 검증
+   - Emacs에서 ~docs/threads-aphorisms.org~ 열기
+   - 링크 동작 확인 (Permalink)
+   - 타임스탬프 정렬 확인
+   - 댓글 포함 여부 확인
+
+5. Git 커밋
+   #+begin_src bash
+   git add docs/threads-aphorisms.org
+   git add scripts/adapters/
+   git add scripts/get_threads_token.py
+   git add scripts/threads_exporter.py
+   git add scripts/test_threads_api.py
+   
+   git commit -m "feat: Add Threads aphorism exporter
+
+   - OAuth flow for Facebook-linked Instagram accounts
+   - 500+ posts exportable from @junghanacs
+   - Single Org file with chronological order
+   - Includes comments and permalinks
+   - Assholism: authentic connection beyond algorithm"
+   #+end_src
+
+** Phase 5: 증분 동기화 (미래)
+
+1. 마지막 동기화 시간 추적
+   - ~#+last_sync:~ 메타데이터 활용
+
+2. 새 포스트만 추가
+   - ~since~ 파라미터 사용
+
+3. Cron/systemd 자동화 (옵션)
+
+* 보안 고려사항 :SECURITY:
+
+** 환경변수 관리
+
+#+begin_src bash
+# config/.env (gitignore 필수!)
+THREADS_ACCESS_TOKEN=EAAxxxxx...
+THREADS_USER_ID=123456789
+
+# .gitignore 추가
+config/.env
+config/credentials.json
+*.token
+#+end_src
+
+** Access Token 갱신
+
+- Long-lived Token: 60일 유효
+- 만료 30일 전 자동 갱신 스크립트
+
+#+begin_src python
+# scripts/refresh_token.py
+def refresh_access_token(token):
+    url = "https://graph.threads.net/refresh_access_token"
+    params = {
+        "grant_type": "th_refresh_token",
+        "access_token": token
+    }
+    # ...
+#+end_src
+
+** 개인정보 보호
+
+- ❌ 공개 저장소에 Access Token 커밋 금지
+- ✅ Private 저장소 권장
+- ✅ Secretlint 자동 스캔
+
+* 성공 기준 :SUCCESS:
+
+** 기능적 요구사항
+
+- [X] Threads API 인증 성공
+- [ ] 500개 포스트 전체 조회
+- [ ] 댓글 포함 데이터 수집
+- [ ] 단일 Org 파일 생성 (시간순 정렬)
+- [ ] Emacs에서 정상 렌더링
+- [ ] Git 버전 관리
+
+** 철학적 요구사항
+
+#+begin_quote
+외치는 글이 디지털가든에 "어쏠리즘"으로 담기면,
+하나로 연결될 것이다.
+#+end_quote
+
+- [ ] 추천 알고리즘 없이 진정한 연결
+- [ ] 키워드 중심 사유 시스템
+- [ ] 디지털가든 노트와 유기적 링크
+- [ ] memex-kb RAG 파이프라인 통합 가능
+
+* 참고 자료 :REFERENCES:
+
+** API 문서
+- [[https://developers.facebook.com/docs/threads][Threads API Documentation]]
+- [[https://github.com/spoolappio/threads-graph-api][threads-graph-api (TypeScript)]]
+
+** 관련 프로젝트
+- [[file:20251015T180500--memex-kb-rag-통합-전략__rag_embedding_architecture.org][memex-kb RAG 통합 전략]]
+- [[file:../README.md][memex-kb README]]
+
+** 철학적 배경
+- Vannevar Bush, "As We May Think" (1945)
+- [[https://notes.junghanacs.com][힣's 디지털가든]]
+
+* 변경 이력 :CHANGELOG:
+
+** [2025-11-07 Thu 12:32] 프로젝트 초안 작성
+- Threads Aphorism Exporter 컨셉 정립
+- "어쏠리즘(Assholism)" 철학 정의
+- memex-kb 통합 아키텍처 설계
+- Phase 1-5 구현 계획 수립
+
+** [2025-11-07 Thu 13:00] 핵심 구현 완료 ✅
+- ✅ BaseAdapter 추상 클래스 작성 (~scripts/adapters/base.py~)
+- ✅ ThreadsAdapter 구현 (~scripts/adapters/threads.py~)
+  - 페이지네이션 자동 처리
+  - Org-mode 변환 로직
+  - 댓글 포함 조회
+- ✅ 메인 Exporter 스크립트 (~scripts/threads_exporter.py~)
+  - CLI 인터페이스
+  - 시간순 정렬 (최신순/오래된순)
+  - 이미지 다운로드 옵션
+- ✅ API 테스트 스크립트 (~scripts/test_threads_api.py~)
+  - 4단계 테스트 (인증, 프로필, 포스트, 댓글)
+
+** [2025-11-07 Thu 13:30] Access Token 획득 완료 ✅
+- ✅ Instagram 비밀번호 재설정으로 간단 해결
+- ✅ User Token Generator에서 Long-lived Token (60일) 생성
+- ✅ config/.env에 Access Token 저장
+- ✅ API 테스트 전체 통과 (4/4)
+  - 인증: User ID 24940359982322710, Username @junghanacs
+  - 프로필 조회 성공
+  - 포스트 5개 조회 성공
+  - 댓글 조회 성공
+
+** [2025-11-07 Thu 14:35] 전체 포스트 내보내기 완료 🎉
+- ✅ 193개 포스트 전체 조회 성공 (2개 페이지)
+- ✅ 단일 Org 파일 생성: ~docs/threads-aphorisms.org~
+- ✅ 시간순 정렬 완료
+- ✅ 모든 포스트 Org-mode 형식 변환 완료

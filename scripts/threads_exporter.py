@@ -180,6 +180,39 @@ class ThreadsOrgExporter:
             groups[topic].append(post)
         return dict(groups)
 
+    def _group_by_datetree(self, posts: List[Dict]) -> Dict[str, Dict[str, Dict[str, List[Dict]]]]:
+        """
+        포스트를 datetree 구조로 그룹화
+
+        Args:
+            posts: 포스트 목록
+
+        Returns:
+            {year: {month: {day: [posts]}}} 구조
+        """
+        tree = {}
+        for post in posts:
+            timestamp = post.get('timestamp', '')
+            try:
+                dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                year = str(dt.year)
+                month = dt.strftime('%m')
+                day = dt.strftime('%d')
+
+                if year not in tree:
+                    tree[year] = {}
+                if month not in tree[year]:
+                    tree[year][month] = {}
+                if day not in tree[year][month]:
+                    tree[year][month][day] = []
+
+                tree[year][month][day].append(post)
+            except:
+                # 타임스탬프 파싱 실패시 건너뛰기
+                continue
+
+        return tree
+
     def _write_org_file(self, posts: List[Dict]):
         """
         Org 파일 작성 (주제별 그룹화)
@@ -220,69 +253,130 @@ AI에게 요청하지 않고, 디지털가든과 연결한다.
 
 """
 
-        # 주제별 그룹화
-        logger.info("📂 주제별 그룹화 중...")
-        topic_groups = self._group_by_topic(posts)
-        logger.info(f"✅ {len(topic_groups)}개 주제로 분류됨")
+        # 날짜별 그룹화 (datetree 스타일)
+        logger.info("📂 날짜별 그룹화 중 (datetree)...")
+        date_tree = self._group_by_datetree(posts)
+        logger.info(f"✅ {len(date_tree)}개 연도로 분류됨")
 
         # Org 파일 작성
         with open(self.output_file, 'w', encoding='utf-8') as f:
             f.write(frontmatter)
 
-            # 주제별로 섹션 생성
+            # 연도별 → 월별 → 일별 → 포스트
             total_count = 0
-            for topic in sorted(topic_groups.keys()):
-                topic_posts = topic_groups[topic]
-                f.write(f"\n* 주제: {topic}\n")
-                f.write(f":PROPERTIES:\n")
-                f.write(f":POST_COUNT: {len(topic_posts)}\n")
-                f.write(f":END:\n\n")
+            for year in sorted(date_tree.keys(), reverse=True):
+                f.write(f"\n* {year}\n\n")
 
-                # 주제 내 포스트는 시간순 정렬 (최신순)
-                sorted_posts = sorted(
-                    topic_posts,
-                    key=lambda p: p.get('timestamp', ''),
-                    reverse=True
-                )
+                for month in sorted(date_tree[year].keys(), reverse=True):
+                    month_name = datetime.strptime(f"{year}-{month}-01", "%Y-%m-%d").strftime("%B")
+                    f.write(f"** {year}-{month} {month_name}\n\n")
 
-                for post in sorted_posts:
-                    total_count += 1
-                    logger.info(f"  [{total_count}/{len(posts)}] 변환 중... (주제: {topic}, ID: {post.get('id')})")
+                    for day in sorted(date_tree[year][month].keys(), reverse=True):
+                        day_posts = date_tree[year][month][day]
+                        # 첫 포스트로 요일 확인
+                        first_post = day_posts[0]
+                        try:
+                            dt = datetime.fromisoformat(first_post['timestamp'].replace('Z', '+00:00'))
+                            day_name = dt.strftime("%A")
+                        except:
+                            day_name = ""
 
-                    # Org 형식 변환 (레벨 2)
-                    org_entry = self.adapter.convert_to_format(post, output_format='org')
-                    f.write(org_entry)
+                        f.write(f"*** {year}-{month}-{day} {day_name}\n\n")
 
-                    # 이미지 섹션 (레벨 3)
-                    if self.download_images:
-                        images = self.adapter.download_all_images(
-                            post,
-                            str(self.attachments_dir)
+                        # 포스트는 시간순 정렬 (오래된 순)
+                        sorted_posts = sorted(
+                            day_posts,
+                            key=lambda p: p.get('timestamp', ''),
+                            reverse=False
                         )
-                        if images:
-                            f.write("\n*** 이미지\n\n")
-                            for img_path in images:
-                                f.write(f"- [[file:{img_path}]]\n")
 
-                    # 댓글 섹션 (레벨 3)
-                    replies = post.get('replies', [])
-                    if replies:
-                        f.write("\n*** 댓글\n")
-                        for reply in replies:
-                            reply_timestamp = reply.get('timestamp', '')
+                        for post in sorted_posts:
+                            total_count += 1
+                            logger.info(f"  [{total_count}/{len(posts)}] 변환 중... (날짜: {year}-{month}-{day}, ID: {post.get('id')})")
+
+                            # 타임스탬프 파싱
+                            timestamp_iso = post.get('timestamp', '')
                             try:
-                                reply_dt = datetime.fromisoformat(reply_timestamp.replace('Z', '+00:00'))
-                                reply_time = reply_dt.strftime('[%Y-%m-%d %a %H:%M]')
+                                dt = datetime.fromisoformat(timestamp_iso.replace('Z', '+00:00'))
+                                time_str = dt.strftime('%H:%M')
+                                org_timestamp = dt.strftime('[%Y-%m-%d %a %H:%M]')
                             except:
-                                reply_time = reply_timestamp
+                                time_str = '00:00'
+                                org_timestamp = timestamp_iso
 
-                            reply_username = reply.get('username', 'unknown')
-                            reply_text = reply.get('text', '')
+                            # 텍스트 처리 (첫 줄을 제목으로)
+                            text = post.get('text', '(내용 없음)')
+                            lines = text.strip().split('\n')
+                            # 제목에서 특수문자 이스케이프
+                            raw_title = lines[0][:50] + '...' if len(lines[0]) > 50 else lines[0]
+                            title = raw_title.replace('*', '\\*').replace('[', '\\[').replace(']', '\\]')
 
-                            f.write(f"\n**** @{reply_username} ({reply_time})\n\n")
-                            f.write(f"{reply_text}\n")
+                            # 본문 이스케이프 처리
+                            body_lines = text.strip().split('\n')
+                            escaped_lines = []
+                            for line in body_lines:
+                                # *로 시작하는 줄 → ,* (Org heading 충돌 방지)
+                                if line.strip().startswith('*'):
+                                    escaped_lines.append(',' + line)
+                                else:
+                                    escaped_lines.append(line)
+                            body = '\n'.join(escaped_lines)
 
-                    f.write('\n')
+                            # Permalink
+                            permalink = post.get('permalink', '')
+
+                            # 레벨 4: 포스트 엔트리
+                            f.write(f"**** {time_str} - {title}\n")
+                            f.write(f":PROPERTIES:\n")
+                            f.write(f":POST_ID: {post.get('id', '')}\n")
+                            f.write(f":TIMESTAMP: {timestamp_iso}\n")
+                            f.write(f":PERMALINK: {permalink}\n")
+                            f.write(f":MEDIA_TYPE: {post.get('media_type', 'TEXT')}\n")
+                            f.write(f":END:\n")
+                            f.write(f"{org_timestamp}\n\n")
+                            f.write(f"{body}\n\n")
+
+                            # 이미지 섹션 (레벨 5)
+                            if self.download_images:
+                                images = self.adapter.download_all_images(
+                                    post,
+                                    str(self.attachments_dir)
+                                )
+                                if images:
+                                    f.write("***** 이미지\n\n")
+                                    for img_path in images:
+                                        # docs/attachments/... → attachments/... 상대 경로로 변환
+                                        rel_path = img_path.replace('docs/', '')
+                                        f.write(f"- [[file:{rel_path}]]\n")
+                                    f.write("\n")
+
+                            # 댓글 섹션 (레벨 5)
+                            replies = post.get('replies', [])
+                            if replies:
+                                f.write("***** 댓글\n\n")
+                                for reply in replies:
+                                    reply_timestamp = reply.get('timestamp', '')
+                                    try:
+                                        reply_dt = datetime.fromisoformat(reply_timestamp.replace('Z', '+00:00'))
+                                        reply_time = reply_dt.strftime('[%Y-%m-%d %a %H:%M]')
+                                    except:
+                                        reply_time = reply_timestamp
+
+                                    reply_username = reply.get('username', 'unknown')
+                                    reply_text = reply.get('text', '')
+
+                                    # 댓글 본문 이스케이프 처리
+                                    reply_lines = reply_text.split('\n')
+                                    escaped_reply_lines = []
+                                    for line in reply_lines:
+                                        if line.strip().startswith('*'):
+                                            escaped_reply_lines.append(',' + line)
+                                        else:
+                                            escaped_reply_lines.append(line)
+                                    escaped_reply_text = '\n'.join(escaped_reply_lines)
+
+                                    f.write(f"****** @{reply_username} ({reply_time})\n\n")
+                                    f.write(f"{escaped_reply_text}\n\n")
 
         logger.info(f"✅ Org 파일 작성 완료: {self.output_file}")
 

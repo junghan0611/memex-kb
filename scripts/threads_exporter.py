@@ -51,7 +51,7 @@ class ThreadsOrgExporter:
         access_token: str,
         user_id: str = None,
         output_file: str = 'docs/threads-aphorisms.org',
-        attachments_dir: str = 'docs/attachments/threads',
+        images_dir: str = 'docs/images/threads',
         download_images: bool = False
     ):
         """
@@ -61,22 +61,22 @@ class ThreadsOrgExporter:
             access_token: Threads API Access Token
             user_id: Threads User ID (선택)
             output_file: 출력 Org 파일 경로
-            attachments_dir: 이미지 첨부파일 디렉토리
+            images_dir: 이미지 디렉토리
             download_images: 이미지 다운로드 여부
         """
         self.adapter = ThreadsAdapter(access_token, user_id)
         self.output_file = Path(output_file)
-        self.attachments_dir = Path(attachments_dir)
+        self.images_dir = Path(images_dir)
         self.download_images = download_images
 
         # 디렉토리 생성
         self.output_file.parent.mkdir(parents=True, exist_ok=True)
         if self.download_images:
-            self.attachments_dir.mkdir(parents=True, exist_ok=True)
+            self.images_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"ThreadsOrgExporter 초기화 완료")
         logger.info(f"  출력 파일: {self.output_file}")
-        logger.info(f"  첨부파일 디렉토리: {self.attachments_dir}")
+        logger.info(f"  이미지 디렉토리: {self.images_dir}")
         logger.info(f"  이미지 다운로드: {self.download_images}")
 
     def export_all_posts(
@@ -115,10 +115,34 @@ class ThreadsOrgExporter:
 
             logger.info(f"✅ 총 {len(posts)}개 포스트 조회 완료\n")
 
+            # 각 포스트의 댓글 가져오기
+            logger.info("💬 포스트별 댓글 조회 중...")
+            posts_with_replies = []
+            for i, post in enumerate(posts, 1):
+                logger.info(f"  [{i}/{len(posts)}] 포스트 {post.get('id')} 댓글 조회 중...")
+                try:
+                    # 댓글 포함 상세 정보 조회
+                    post_detail = self.adapter.fetch_document(
+                        post.get('id'),
+                        include_replies=True
+                    )
+                    # 기존 포스트 데이터 업데이트 (children 필드 유지)
+                    post.update(post_detail)
+                    posts_with_replies.append(post)
+
+                    reply_count = len(post.get('replies', []))
+                    if reply_count > 0:
+                        logger.info(f"    ✅ {reply_count}개 댓글 발견")
+                except Exception as e:
+                    logger.warning(f"    ⚠️  댓글 조회 실패: {e}")
+                    posts_with_replies.append(post)
+
+            logger.info(f"✅ 댓글 조회 완료\n")
+
             # 시간순 정렬 (기본: 최신순)
             logger.info("📊 포스트 정렬 중...")
             posts_sorted = sorted(
-                posts,
+                posts_with_replies,
                 key=lambda p: p.get('timestamp', ''),
                 reverse=not reverse  # reverse=False면 최신순
             )
@@ -340,12 +364,12 @@ AI에게 요청하지 않고, 디지털가든과 연결한다.
                             if self.download_images:
                                 images = self.adapter.download_all_images(
                                     post,
-                                    str(self.attachments_dir)
+                                    str(self.images_dir)
                                 )
                                 if images:
                                     f.write("***** 이미지\n\n")
                                     for img_path in images:
-                                        # docs/attachments/... → attachments/... 상대 경로로 변환
+                                        # docs/images/... → images/... 상대 경로로 변환
                                         rel_path = img_path.replace('docs/', '')
                                         f.write(f"- [[file:{rel_path}]]\n")
                                     f.write("\n")
@@ -436,7 +460,7 @@ def main():
   THREADS_ACCESS_TOKEN       필수 - Threads API Access Token
   THREADS_USER_ID            선택 - Threads User ID
   THREADS_OUTPUT_FILE        선택 - 출력 파일 경로 (기본: docs/threads-aphorisms.org)
-  THREADS_ATTACHMENTS_DIR    선택 - 첨부파일 디렉토리 (기본: docs/attachments/threads)
+  THREADS_IMAGES_DIR         선택 - 이미지 디렉토리 (기본: docs/images/threads)
   LOG_LEVEL                  선택 - 로그 레벨 (기본: INFO)
 """
     )
@@ -501,7 +525,7 @@ def main():
     # 설정 값
     user_id = os.getenv('THREADS_USER_ID')
     output_file = args.output or os.getenv('THREADS_OUTPUT_FILE', 'docs/threads-aphorisms.org')
-    attachments_dir = os.getenv('THREADS_ATTACHMENTS_DIR', 'docs/attachments/threads')
+    images_dir = os.getenv('THREADS_IMAGES_DIR', 'docs/images/threads')
     download_images = args.download_images or os.getenv('THREADS_DOWNLOAD_IMAGES', 'false').lower() == 'true'
 
     # Exporter 생성 및 실행
@@ -510,7 +534,7 @@ def main():
             access_token=access_token,
             user_id=user_id,
             output_file=output_file,
-            attachments_dir=attachments_dir,
+            images_dir=images_dir,
             download_images=download_images
         )
 

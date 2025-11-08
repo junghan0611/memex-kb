@@ -23,6 +23,7 @@ config/.env.threads
 # Claude Code
 .claude/
 .mcp.json
+CLAUDE.md
 
 # Logs
 logs/*.log
@@ -54,6 +55,9 @@ docs/_uncategorized/**/*.md
 
 # 프로젝트 문서는 커밋 (docs/ 루트)
 !docs/*.md
+
+# Images (downloaded from Threads, etc.)
+docs/images/
 
 bak
 dorray-docs/

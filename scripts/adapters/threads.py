@@ -160,7 +160,7 @@ class ThreadsAdapter(BaseAdapter):
             post = self._make_request(
                 f"/{media_id}",
                 params={
-                    'fields': 'id,text,timestamp,media_type,media_url,permalink,username'
+                    'fields': 'id,text,timestamp,media_type,media_url,permalink,username,children{id,media_type,media_url}'
                 }
             )
 

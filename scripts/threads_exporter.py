@@ -52,7 +52,7 @@ class ThreadsOrgExporter:
         user_id: str = None,
         output_file: str = 'docs/threads-aphorisms.org',
         images_dir: str = 'docs/images/threads',
-        download_images: bool = False
+        download_images: bool = True
     ):
         """
         초기화

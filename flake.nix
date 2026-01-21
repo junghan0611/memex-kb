@@ -52,6 +52,7 @@
             echo "명령어:"
             echo "  python scripts/refresh_threads_token.py --help"
             echo "  python scripts/threads_exporter.py --help"
+            echo "  scripts/export-threads.sh"
             echo "  gitleaks detect              # git repo 스캔"
             echo "  gitleaks detect --no-git     # 파일 스캔"
             echo ""

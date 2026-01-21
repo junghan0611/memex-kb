@@ -1,6 +1,6 @@
 #+title:      Threads Aphorism Exporter 프로젝트
 #+date:       [2025-11-07 Thu 12:32]
-#+filetags:   :threads:aphorism:assholism:exporter:project:
+#+filetags:   :threads:aphorism:exporter:project:
 #+identifier: 20251107T123200
 
 * 프로젝트 개요 :PROJECT:

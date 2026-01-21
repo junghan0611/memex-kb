@@ -251,7 +251,7 @@ class ThreadsOrgExporter:
         username = self.adapter._username or "junghanacs"
         frontmatter = f"""#+title:      Threads Aphorisms (@{username})
 #+date:       {now}
-#+filetags:   :threads:aphorism:assholism:sns:
+#+filetags:   :threads:aphorism:autholism:sns:
 #+identifier: {datetime.now().strftime('%Y%m%dT%H%M%S')}
 #+threads_user: @{username}
 #+threads_profile: https://www.threads.net/@{username}

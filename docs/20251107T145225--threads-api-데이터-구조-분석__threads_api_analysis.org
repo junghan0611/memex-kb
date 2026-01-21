@@ -393,7 +393,7 @@ memex-kb/
 #+begin_example
 ,#+title: Threads Aphorisms (@junghanacs)
 ,#+date: [2025-11-07 Thu]
-,#+filetags: :threads:aphorism:assholism:
+,#+filetags: :threads:aphorism:
 ,#+post_count: 193
 
 ,* 주제: 독서법

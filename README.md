@@ -157,23 +157,25 @@ Legacy 문서가 AI Second Brain이 됩니다.
 
 ```
 memex-kb/
+├── flake.nix                    # Nix Flake (의존성 관리) ✅
+├── flake.lock                   # 잠금 파일 (재현성)
+├── .envrc                       # direnv 설정
 ├── scripts/                     # 변환 및 동기화 스크립트
 │   ├── adapters/                # Backend Adapters (확장 가능)
 │   │   ├── base.py              # BaseAdapter (추상 클래스)
 │   │   └── threads.py           # Threads API Adapter ✅
 │   ├── gdocs_to_markdown.py     # Google Docs 변환 ✅
 │   ├── threads_exporter.py      # Threads 포스트 내보내기 ✅
-│   ├── get_threads_token.py     # Threads OAuth 헬퍼 ✅
-│   ├── test_threads_api.py      # Threads API 테스트 ✅
+│   ├── refresh_threads_token.py # Threads OAuth 토큰 갱신 ✅
 │   ├── denote_namer.py          # Denote 파일명 생성 (공통)
 │   └── categorizer.py           # 문서 자동 분류 (공통)
 ├── docs/                        # 변환된 문서
 │   ├── threads-aphorisms.org    # Threads 아포리즘 통합 파일 ✅
-│   ├── attachments/threads/     # Threads 이미지 첨부파일
+│   ├── images/threads/          # Threads 이미지 (gitignored)
 │   └── 2025*.org                # 프로젝트 문서들
 ├── config/
 │   ├── .env                     # 환경변수 (gitignore)
-│   ├── .env.threads.example     # Threads 설정 예시
+│   ├── .env.example             # 설정 예시
 │   └── credentials.json         # API 인증 (gitignore)
 ├── logs/                        # 실행 로그
 └── README.md                    # 이 파일
@@ -185,20 +187,29 @@ memex-kb/
 
 ### 1. 환경 설정
 
+**이 프로젝트는 Nix Flake (`flake.nix`)를 사용합니다 - 수동 설치 불필요!**
+
 ```bash
-# Python 패키지 설치
-pip install -r requirements.txt
+# ✅ Nix Flake 환경 진입 (권장)
+nix develop
 
-# Pandoc 설치 (문서 변환용)
-# Ubuntu/Debian
-sudo apt-get install pandoc
+# ✅ 또는 direnv 사용 (자동 환경 로드)
+direnv allow
+# → cd 시 자동으로 환경 활성화
 
-# macOS
-brew install pandoc
-
-# NixOS
-nix-shell -p pandoc
+# 확인 메시지:
+# 🚀 memex-kb 개발 환경 (flake)
+# ================================
+# Python: Python 3.12.x
+# Pandoc: pandoc 3.x
+# Gitleaks: 8.x
 ```
+
+**포함된 패키지** (`flake.nix`):
+- Python 3.12 + 모든 필요 패키지
+- Pandoc (문서 변환)
+- Git, jq, rclone
+- gitleaks (비밀 탐지)
 
 ### 2A. Google Docs 연동
 
@@ -213,7 +224,7 @@ cp config/.env.example config/.env
 # config/.env 파일 편집
 
 # 단일 문서 변환
-python scripts/gdocs_to_markdown.py "DOCUMENT_ID"
+nix develop --command python scripts/gdocs_to_markdown.py "DOCUMENT_ID"
 ```
 
 ### 2B. Threads SNS 연동 (NEW! 🎉)
@@ -231,22 +242,24 @@ cp config/.env.threads.example config/.env.threads
 #### 사용법
 
 ```bash
-# Step 1: Access Token 획득 (대화형)
-python scripts/get_threads_token.py
-# → Facebook 로그인으로 OAuth 플로우 진행
-# → config/.env.threads에 ACCESS_TOKEN 자동 추가
+# Step 1: Access Token 획득 (Graph API Explorer 사용)
+# https://developers.facebook.com/tools/explorer/
+# → API를 "threads.net"으로 변경 (중요!)
+# → Generate Access Token
 
-# Step 2: API 연결 테스트
-python scripts/test_threads_api.py
+# Step 2: 장기 토큰(60일)으로 교환
+nix develop --command python scripts/refresh_threads_token.py --exchange "단기토큰"
 
-# Step 3: 전체 포스트 내보내기
-python scripts/threads_exporter.py --download-images
+# Step 3: 토큰 테스트
+nix develop --command python scripts/refresh_threads_token.py --test
+
+# Step 4: 전체 포스트 내보내기
+nix develop --command python scripts/threads_exporter.py --download-images
 
 # 결과: docs/threads-aphorisms.org 생성
-# - 193개 포스트 (시간순 정렬)
-# - 34개 주제로 자동 분류
+# - 포스트 (시간순 정렬)
 # - 댓글 포함
-# - 이미지 다운로드 (docs/attachments/threads/)
+# - 이미지 다운로드 (docs/images/threads/)
 # - Permalink 연결
 # - "어쏠리즘(Assholism)": 추천 알고리즘을 넘어선 진정한 연결
 ```
@@ -283,13 +296,10 @@ python scripts/threads_exporter.py --download-images
 **옵션**:
 ```bash
 # 테스트로 5개만 내보내기
-python scripts/threads_exporter.py --max-posts 5
-
-# 이미지 다운로드 포함
-python scripts/threads_exporter.py --download-images
+nix develop --command python scripts/threads_exporter.py --max-posts 5 --download-images
 
 # 오래된 순으로 정렬
-python scripts/threads_exporter.py --reverse
+nix develop --command python scripts/threads_exporter.py --reverse --download-images
 ```
 
 **상세 문서**: [docs/20251107T123200--threads-aphorism-exporter-프로젝트__threads_aphorism_assholism.org](docs/20251107T123200--threads-aphorism-exporter-프로젝트__threads_aphorism_assholism.org)
@@ -336,16 +346,16 @@ Confluence에서 Export한 `.doc` 파일을 pandoc으로 변환 시:
 
 ```bash
 # 단일 파일 변환
-python3 scripts/confluence_to_markdown.py document.doc
+nix develop --command python scripts/confluence_to_markdown.py document.doc
 
 # 출력 파일명 지정
-python3 scripts/confluence_to_markdown.py document.doc output.md
+nix develop --command python scripts/confluence_to_markdown.py document.doc output.md
 
 # 일괄 변환 (디렉토리)
-python3 scripts/confluence_to_markdown.py --batch input_dir/ output_dir/
+nix develop --command python scripts/confluence_to_markdown.py --batch input_dir/ output_dir/
 
 # 자세한 로그
-python3 scripts/confluence_to_markdown.py -v document.doc
+nix develop --command python scripts/confluence_to_markdown.py -v document.doc
 ```
 
 #### 변환 결과
@@ -603,14 +613,27 @@ git push origin main
 1. **로컬 우선**: 모든 데이터 로컬 저장
 2. **Git 버전관리**: 변경사항 추적 가능
 3. **.gitignore**: credentials 파일 제외
-4. **Secretlint**: 민감 정보 자동 탐지
+4. **gitleaks**: 민감 정보 자동 탐지 (네이티브)
+
+### 보안 스캔
+
+```bash
+# Git 리포지토리 스캔
+gitleaks detect
+
+# 파일 스캔 (디지털 가든 배포 전)
+gitleaks detect --no-git
+
+# 특정 경로 스캔
+gitleaks detect --source ./docs
+```
 
 ### 권장사항
 
 - API 키는 환경변수 사용
 - credentials 파일은 절대 커밋 금지
 - Private 저장소 사용 권장
-- 정기적 보안 스캔 (secretlint)
+- 정기적 보안 스캔 (커밋 전 gitleaks 실행)
 
 ---
 
@@ -621,18 +644,23 @@ git push origin main
 - ✅ Denote 파일명 생성 (한글 제목 + 영어 태그)
 - ✅ 규칙 기반 자동 분류 (LLM 비용 0원)
 - ✅ Git 버전 관리
-- ✅ Secretlint 보안 스캔
 
-### v1.1 (2025-10-15, 개발 중)
-- 🔧 Dooray Wiki/Drive Adapter
-- 🔧 Adapter 패턴 리팩토링 (Base → Concrete)
-- 🔧 CLI 개선
-- 📋 문서화 강화 (기술 배경, 접근 방법론)
+### v1.1 (2025-10-15, 완료)
+- ✅ Threads SNS Adapter (아포리즘 내보내기)
+- ✅ Confluence Adapter (MIME 파싱, UTF-8 정규화)
+- ✅ Adapter 패턴 리팩토링
+- ✅ 문서화 강화
 
-### v1.2 (계획 중)
-- 📋 Confluence Adapter
+### v1.2 (2026-01-21, 완료)
+- ✅ Nix Flake 마이그레이션 (`shell.nix` → `flake.nix`)
+- ✅ gitleaks 통합 (secretlint 대체)
+- ✅ Threads 토큰 갱신 스크립트 (`refresh_threads_token.py`)
+- ✅ direnv 통합 (`.envrc`)
+
+### v1.3 (계획 중)
+- 📋 Dooray Wiki Adapter
 - 📋 Notion Adapter (Airbyte 경험 활용)
-- 📋 웹 UI
+- 📋 CLI 개선
 
 ### v2.0 (RAG Pipeline Integration)
 
@@ -729,14 +757,14 @@ MIT License
 
 ## 📚 추가 문서
 
-- [SETUP_GUIDE.md](SETUP_GUIDE.md) - 상세 설치 가이드
-- [POC_RESULTS.md](POC_RESULTS.md) - POC 결과 보고서
+- [AGENTS.md](AGENTS.md) - Claude Code 에이전트 가이드
+- [CHANGELOG.md](CHANGELOG.md) - 변경 이력
 - [README_SECURITY.md](README_SECURITY.md) - 보안 가이드
 
 ---
 
-**버전**: 1.1.1
-**최종 업데이트**: 2025-11-07
+**버전**: 1.2.0
+**최종 업데이트**: 2026-01-29
 **상태**: 🟢 활발히 개발 중
 
 ---

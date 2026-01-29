@@ -1,0 +1,97 @@
+---
+title: "발표 제목"
+subtitle: "부제목을 입력하세요"
+author: "작성자 | 소속"
+date: "2026-01-29"
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    # logo: images/logo.png  # 로고 파일이 있으면 주석 해제
+    footer: "Your Organization"
+lang: ko
+---
+
+# 섹션 1 {.section}
+
+## 슬라이드 제목
+
+내용을 입력하세요.
+
+- 첫 번째 항목
+- 두 번째 항목
+- 세 번째 항목
+
+## 2단 레이아웃
+
+:::: {.columns}
+::: {.column width="50%"}
+### 왼쪽
+
+- 항목 1
+- 항목 2
+:::
+
+::: {.column width="50%"}
+### 오른쪽
+
+- 항목 A
+- 항목 B
+:::
+::::
+
+## 이미지 슬라이드
+
+<!-- 이미지를 images/ 폴더에 넣고 경로를 수정하세요 -->
+<!-- ![이미지 설명](images/example.png){width="80%"} -->
+
+이미지 예시 슬라이드입니다.
+
+## 코드 예시
+
+```python
+def hello():
+    print("Hello, Quarto!")
+```
+
+# 섹션 2 {.section}
+
+## 표 예시
+
+| 항목 | 설명 | 상태 |
+|------|------|------|
+| 기능 A | 설명 A | 완료 |
+| 기능 B | 설명 B | 진행중 |
+
+## 진행률 표시
+
+:::: {.columns}
+::: {.column width="70%"}
+**프로젝트 진행률**
+
+::: {.progress-bar}
+::: {.progress-bar-fill style="width: 75%"}
+:::
+:::
+:::
+
+::: {.column width="30%"}
+**75%** 완료
+:::
+::::
+
+## 강조 박스
+
+::: {.callout-note}
+참고 사항을 여기에 작성합니다.
+:::
+
+::: {.callout-warning}
+주의 사항을 여기에 작성합니다.
+:::
+
+## 감사합니다 {.center}
+
+질문이 있으시면 말씀해 주세요.
+
+**연락처**: your-email@example.com

@@ -1,0 +1,31 @@
+project:
+  type: default
+  output-dir: _output
+
+format:
+  revealjs:
+    theme: [default, custom.scss]
+    slide-number: true
+    show-slide-number: all
+    hash: true
+    hash-type: number
+    center: false
+    transition: none
+    background-transition: none
+    width: 1920
+    height: 1080
+    margin: 0.1
+    navigation-mode: linear
+    controls: true
+    progress: true
+    history: true
+    keyboard: true
+    touch: true
+    footer: "Your Organization"
+    # logo: images/logo.png  # 로고 파일이 있으면 주석 해제
+
+lang: ko
+
+execute:
+  echo: false
+  warning: false

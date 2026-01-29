@@ -1,0 +1,7 @@
+# Quarto 캐시/출력
+/.quarto/
+/_output/
+**/*.quarto_ipynb
+
+# 기타
+.~lock.*

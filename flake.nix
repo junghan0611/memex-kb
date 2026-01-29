@@ -40,6 +40,7 @@
             pkgs.git
             pkgs.jq
             pkgs.gitleaks  # 비밀 유출 탐지
+            pkgs.quarto    # 문서/프레젠테이션 도구
           ];
 
           shellHook = ''
@@ -48,6 +49,7 @@
             echo "Python: $(python --version)"
             echo "Pandoc: $(pandoc --version | head -1)"
             echo "Gitleaks: $(gitleaks version)"
+            echo "Quarto: $(quarto --version)"
             echo ""
             echo "명령어:"
             echo "  python scripts/refresh_threads_token.py --help"
@@ -55,6 +57,7 @@
             echo "  scripts/export-threads.sh"
             echo "  gitleaks detect              # git repo 스캔"
             echo "  gitleaks detect --no-git     # 파일 스캔"
+            echo "  quarto preview templates/presentation/  # 프레젠테이션 미리보기"
             echo ""
             export PYTHONPATH="$PWD:$PYTHONPATH"
             export TERM=xterm-256color

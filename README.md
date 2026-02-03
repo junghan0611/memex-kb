@@ -169,6 +169,16 @@ memex-kb/
 │   ├── refresh_threads_token.py # Threads OAuth 토큰 갱신 ✅
 │   ├── denote_namer.py          # Denote 파일명 생성 (공통)
 │   └── categorizer.py           # 문서 자동 분류 (공통)
+├── hwpx2asciidoc/               # HWPX ↔ AsciiDoc 변환 ✅ NEW!
+│   ├── hwpx_to_asciidoc.py      # HWPX → AsciiDoc
+│   ├── asciidoc_to_hwpx.py      # AsciiDoc → HWPX
+│   └── run.sh                   # 통합 CLI
+├── epub2org/                    # EPUB → Org 변환 ✅ NEW!
+│   ├── epub2org.sh              # 변환 스크립트
+│   └── cleanup_epub_org.py      # 정리 스크립트
+├── htmltoepub/                  # HTML → EPUB 변환 ✅ NEW!
+│   ├── clean_html.py            # HTML 정리 (PDF 구조 재현)
+│   └── html2epub.sh             # EPUB 생성
 ├── docs/                        # 변환된 문서
 │   ├── threads-aphorisms.org    # Threads 아포리즘 통합 파일 ✅
 │   ├── images/threads/          # Threads 이미지 (gitignored)
@@ -657,39 +667,97 @@ gitleaks detect --source ./docs
 - ✅ Threads 토큰 갱신 스크립트 (`refresh_threads_token.py`)
 - ✅ direnv 통합 (`.envrc`)
 
-### v1.3 (계획 중)
-- 📋 Dooray Wiki Adapter
-- 📋 Notion Adapter (Airbyte 경험 활용)
-- 📋 CLI 개선
+### v1.3 (2026-02-03, 완료)
+- ✅ HWPX ↔ AsciiDoc 변환기 (`hwpx2asciidoc/`)
+  - HWPX/OWPML → AsciiDoc 변환 (테이블 병합 보존)
+  - AsciiDoc → HWPX 역변환 (왕복 변환 테스트 통과)
+- ✅ EPUB → Org-mode 변환기 (`epub2org/`)
+  - Calibre EPUB을 깔끔한 Org-mode로 변환
+  - Gutenberg 프로젝트 책들 변환 완료
+- ✅ HTML → EPUB → Org 파이프라인 (`htmltoepub/`)
+  - Immersive Translate 번역 HTML → EPUB
+  - PDF 원본 목차 구조 완벽 재현
+  - 책 제본용 PDF 출력 지원
 
-### v2.0 (RAG Pipeline Integration)
 
-**배경**: n8n, Supabase pgvector, Ollama Embedding, Rerank API 서버 등 기술 스택 검증 완료 (2,945개 Org 파일 임베딩 성공)
+### v1.4 (진행 중) - 🚀 **핵심 방향**
 
-**목표**: Legacy → Denote → **RAG-ready** 변환 시스템
+> **"Org-mode를 국가과제 제안서의 메타 포맷으로"**
+>
+> 여러 세부과제를 취합하고, 용어/양식을 통일하여,
+> 한 사람이 작성한 것처럼 일관된 문서를 AI 에이전트와 함께 생성합니다.
 
+**워크플로우**:
 ```
-memex-kb v1.x (Conversion)
-    ↓ Denote Markdown
-memex-kb v2.0 (Embedding Pipeline) ← NEW!
-    ↓ Vector DB
-n8n RAG Orchestration (검증됨)
-    ↓ AI Second Brain
+[여러 세부과제 Org 파일들]
+        ↓ 취합/병합
+[통합 Org 메타 포맷]
+        ↓ AI 에이전트 편집 (용어/양식 통일)
+[정리된 Org 파일]
+        ↓ 변환
+[HWPX] → 정부 시스템 업로드 (매크로 유지)
 ```
 
-**주요 기능**:
-- 💡 Denote Markdown → Vector Embedding
-  - Ollama (mxbai-embed-large, 로컬)
-  - 폴더별 차별화 청킹 (meta 1500, bib 1200, journal 800, notes 1000)
-- 💡 Supabase pgvector 통합 (검증된 파이프라인 재사용)
-- 💡 n8n RAG Workflow (Hybrid Search: 키워드 + 벡터 + 그래프)
-- 💡 지식 계층 구조 반영 (meta → bib → journal → notes)
+**Org 메타 포맷 설계**:
+```org
+#+TITLE: 국가과제 제안서
+#+HWPX_TEMPLATE: 정부양식-2026.hwpx
+#+BODY_FONT: 돋움 12pt
+#+TABLE_FONT: 돋움 8pt
 
-**차별화**:
-- 단순 변환 도구와 다름
-- **Legacy → RAG 파이프라인의 입구**
-- 검증된 기술 스택 통합 (실전 경험 기반)
-- 독창적 접근: Denote + 계층적 지식 구조 + RAG
+* 1. 연구개발과제의 개요
+:PROPERTIES:
+:HWPX_SECTION: section0
+:PAGE_BREAK: before
+:END:
+
+** 1-1. 연구개발 목적 및 필요성
+연구 목적 본문 내용...
+
+** 1-2. 연구개발 내용
+#+BEGIN_SRC asciidoc :edit indirect
+[cols="1,3,2"]
+|===
+|구분|내용|비고
+|핵심기술1|설명...|
+|===
+#+END_SRC
+
+** 1-3. 추진체계
+#+BEGIN_SRC mermaid :file figures/추진체계.png
+graph TD
+    A[총괄] --> B[세부1]
+#+END_SRC
+```
+
+**핵심 장점**:
+| 요소 | Org 처리 방식 | 장점 |
+|------|--------------|------|
+| **구조** | 헤딩 계층 | AI가 섹션 단위로 편집 용이 |
+| **양식 메타** | PROPERTIES | 폰트, 페이지 제한 등 명세 |
+| **표** | AsciiDoc 코드블록 | 병합셀 지원, indirect-edit |
+| **그림** | Mermaid/이미지 | Git 버전 관리 가능 |
+| **용어** | 별도 용어집 | AI가 일괄 치환 |
+
+**구현 과제**:
+- 📋 Org 메타 포맷 스펙 정의
+- 📋 Org → HWPX 템플릿 삽입 변환기
+- 📋 AI 에이전트 편집 가이드라인
+- 📋 용어집 기반 자동 치환
+
+**GitHub Issue**: [#2](https://github.com/junghan0611/memex-kb/issues/2)
+
+
+### v2.0 (추후 검토)
+
+> **참고**: RAG 파이프라인 통합은 v1.4 (Org-mode → HWPX) 완료 후 재검토 예정입니다.
+> 기존 검증된 기술 스택 (Supabase pgvector, Ollama Embedding 등)을 활용할 계획이나,
+> n8n 대신 더 가벼운 방식을 고려 중입니다.
+
+**검토 중인 방향**:
+- 💭 Denote Markdown → Vector Embedding
+- 💭 로컬 우선 임베딩 (Ollama)
+- 💭 경량 RAG 파이프라인
 
 ---
 
@@ -763,8 +831,8 @@ MIT License
 
 ---
 
-**버전**: 1.2.0
-**최종 업데이트**: 2026-01-29
+**버전**: 1.3.0
+**최종 업데이트**: 2026-02-03
 **상태**: 🟢 활발히 개발 중
 
 ---

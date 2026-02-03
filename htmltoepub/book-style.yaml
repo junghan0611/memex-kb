@@ -1,0 +1,50 @@
+---
+# 책 제본용 PDF 스타일
+# Freeman Tilden - Interpreting Our Heritage (우리 유산의 해석)
+
+# 문서 정보
+title: "우리 유산의 해석"
+subtitle: "Interpreting Our Heritage"
+author: "프리만 틸든 (Freeman Tilden)"
+date: "1957"
+lang: ko-KR
+
+# 폰트 설정 (나이드신 분들을 위해 큰 글씨)
+mainfont: "Noto Serif CJK KR"
+monofont: "Noto Sans Mono CJK KR"
+fontsize: 13pt
+
+# 페이지 레이아웃 (책 제본용)
+documentclass: book
+classoption:
+  - twoside        # 양면 인쇄
+  - openright      # 챕터는 홀수 페이지에서 시작
+papersize: a4
+geometry:
+  - left=3cm
+  - right=2.5cm
+  - top=2.5cm
+  - bottom=2.5cm
+  - bindingoffset=0.5cm  # 제본 여백
+
+# 목차 설정
+toc: true
+toc-depth: 2
+toc-title: "목차"
+
+# 챕터 페이지 나누기
+header-includes: |
+  \usepackage{titlesec}
+  \newcommand{\sectionbreak}{\clearpage}
+
+# 링크 색상
+colorlinks: true
+linkcolor: Black
+urlcolor: NavyBlue
+
+# 페이지 번호 및 헤더
+pagestyle: headings
+
+# 줄간격
+linestretch: 1.3
+---

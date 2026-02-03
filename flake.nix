@@ -10,6 +10,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+
         pythonEnv = pkgs.python312.withPackages (ps: with ps; [
           # Google API
           google-api-python-client
@@ -29,6 +30,9 @@
 
           # HTTP (토큰 갱신용)
           requests
+
+          # HWPX 처리 (직접 XML 파싱)
+          lxml
         ]);
       in
       {
@@ -41,6 +45,7 @@
             pkgs.jq
             pkgs.gitleaks  # 비밀 유출 탐지
             pkgs.quarto    # 문서/프레젠테이션 도구
+            # asciidoctor는 nixos-config에서 시스템 전역 설치됨
           ];
 
           shellHook = ''
@@ -49,15 +54,12 @@
             echo "Python: $(python --version)"
             echo "Pandoc: $(pandoc --version | head -1)"
             echo "Gitleaks: $(gitleaks version)"
-            echo "Quarto: $(quarto --version)"
             echo ""
-            echo "명령어:"
-            echo "  python scripts/refresh_threads_token.py --help"
-            echo "  python scripts/threads_exporter.py --help"
-            echo "  scripts/export-threads.sh"
-            echo "  gitleaks detect              # git repo 스캔"
-            echo "  gitleaks detect --no-git     # 파일 스캔"
-            echo "  quarto preview templates/presentation/  # 프레젠테이션 미리보기"
+            echo "HWPX 변환:"
+            echo "  ./hwpx2asciidoc/hwpx2asciidoc.sh input.hwpx   # HWPX → AsciiDoc"
+            echo "  ./hwpx2asciidoc/asciidoc2hwpx.sh input.adoc   # AsciiDoc → HWPX"
+            echo "  asciidoctor input.adoc                        # → HTML (시스템)"
+            echo "  asciidoctor-pdf input.adoc                    # → PDF (시스템)"
             echo ""
             export PYTHONPATH="$PWD:$PYTHONPATH"
             export TERM=xterm-256color

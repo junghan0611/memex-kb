@@ -1,0 +1,23 @@
+# 변환 결과물 (예시 파일이므로 저장소에 포함하지 않음)
+*.html
+*.epub
+*.pdf
+*.md
+*_raw.md
+*_tmp.md
+*_tmp.org
+
+# 변환 결과 org 파일 (README.org는 제외)
+*-ko.org
+tioh-*.org
+
+# README.org는 포함 (문서)
+!README.org
+
+# Python 캐시
+__pycache__/
+*.pyc
+
+# 임시 파일
+*~
+.DS_Store

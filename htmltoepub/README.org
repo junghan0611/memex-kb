@@ -1,0 +1,297 @@
+#+TITLE: HTML → EPUB → Org 변환 도구
+#+AUTHOR: junghanacs
+#+DATE: 2025-01-09
+#+DESCRIPTION: PDF 번역본을 출판 품질 EPUB/Org로 변환하는 재현 가능한 도구 세트
+
+* 개요
+
+PDF를 Immersive Translate로 번역한 HTML 파일을 **PDF 원본 목차 구조**를 유지하면서 EPUB와 Org-mode로 변환하는 도구 세트입니다.
+
+** 핵심 기능
+
+- ✅ Immersive Translate 태그 정리 및 한글 번역 추출
+- ✅ PDF 원본 목차 구조 완벽 재현 (h1/h2 레벨, PART 구분)
+- ✅ 챕터 번호와 제목 자동 병합 (로마 숫자 지원)
+- ✅ 자동 목차 생성 (TOC)
+- ✅ EPUB → Org-mode 변환 (Emacs 친화적)
+- ✅ 재현 가능한 파이프라인
+
+** 파일 구성
+
+| 파일 | 설명 |
+|------+------|
+| clean_html.py | HTML 정리 + PDF 목차 구조 재현 |
+| html2epub.sh | pandoc으로 EPUB 생성 |
+| org2pdf.sh | Org/Markdown → PDF (책 제본용) |
+| metadata-*.yaml | 책별 메타데이터 (제목, 저자, 설명) |
+| book-style.yaml | PDF 제본 스타일 (양면, A4, 목차) |
+| epub2org.sh | EPUB → Org-mode 변환 (상위 폴더) |
+
+* 사용법
+
+** 빠른 시작 (4단계)
+
+#+begin_src bash
+# 1. HTML 정리 (PDF 목차 구조 재현)
+python3 clean_html.py input.html output-clean.html
+
+# 2. EPUB 생성
+./html2epub.sh output-clean.html output.epub metadata.yaml
+
+# 3. Org-mode 변환
+../epub2org/epub2org.sh output.epub output
+
+# 4. PDF 생성 (책 제본용, 선택사항)
+./doc2pdf.sh output.md output.pdf book-style.yaml
+#+end_src
+
+** 전체 예시: Freeman Tilden 책
+
+#+begin_src bash
+# 단계별 실행
+python3 clean_html.py tioh-ko.html tioh-ko-clean.html
+./html2epub.sh tioh-ko-clean.html tioh-ko.epub metadata-tioh.yaml
+../epub2org/epub2org.sh tioh-ko.epub tioh-ko
+./org2pdf.sh tioh-ko.md tioh-ko.pdf book-style.yaml
+
+# 결과물
+# - tioh-ko-clean.html (269KB)
+# - tioh-ko.epub (3.6MB, 이미지 포함)
+# - tioh-ko.org (261KB)
+# - tioh-ko.md (259KB, 자동 생성)
+# - tioh-ko.pdf (471KB, 76페이지, A4 제본용)
+#+end_src
+
+** 옵션
+
+- =--no-images= : 이미지 제외 (HTML 정리 시)
+
+#+begin_src bash
+python3 clean_html.py input.html output.html --no-images
+#+end_src
+
+* 메타데이터 파일 형식
+
+** EPUB 메타데이터 (metadata-*.yaml)
+
+#+begin_src yaml
+---
+title: "책 제목"
+subtitle: "부제목"
+author:
+  - name: "저자명"
+publisher: "출판사"
+date: "연도"
+lang: ko
+description: |
+  책 설명
+subject:
+  - 키워드1
+  - 키워드2
+toc-title: "목차"
+...
+#+end_src
+
+** PDF 제본 스타일 (book-style.yaml)
+
+#+begin_src yaml
+---
+title: "책 제목"
+author: "저자명"
+lang: ko-KR
+
+# 폰트
+mainfont: "Noto Serif CJK KR"
+fontsize: 11pt
+
+# 레이아웃
+documentclass: book
+classoption:
+  - twoside        # 양면 인쇄
+  - openright      # 챕터는 홀수 페이지 시작
+papersize: a4
+geometry:
+  - left=3cm
+  - right=2.5cm
+  - top=2.5cm
+  - bottom=2.5cm
+  - bindingoffset=0.5cm  # 제본 여백
+
+# 목차
+toc: true
+toc-depth: 2
+
+# 줄간격
+linestretch: 1.3
+---
+#+end_src
+
+* 전체 변환 파이프라인
+
+#+begin_example
+PDF (원본)
+    ↓ Immersive Translate (번역)
+HTML (1.1MB)
+    ↓ clean_html.py (태그 정리 + PDF 구조 재현)
+HTML-clean (269KB)
+    ↓ html2epub.sh + pandoc
+EPUB (3.6MB, 이미지 포함)
+    ↓ epub2org.sh + pandoc
+Org (261KB)
+    ↓ (자동 생성)
+Markdown (259KB)
+    ↓ org2pdf.sh + pandoc + xelatex
+PDF (471KB, 76p, A4 제본용) ← 최종 출력물
+#+end_example
+
+* PDF 원본 목차 구조 재현
+
+clean_html.py는 단순히 HTML을 정리하는 것이 아니라, **PDF 원본의 목차 구조를 분석하여 재현**합니다.
+
+** 구조 변환 원리
+
+| PDF 원본 | HTML 원본 | 변환 후 |
+|----------|-----------|---------|
+| Foreword (h1) | h2 | h1 (승격) |
+| PART ONE (h1) | (없음) | h1 (삽입) |
+| I. Chapter Title (h2) | h2 + h2 (분리됨) | h2 (병합) |
+| Index (h1) | h2 | h1 (승격) |
+
+** 자동 처리 기능
+
+1. **챕터 병합**: =CHAPTER I= + =Principles of Interpretation= → =I. Principles of Interpretation=
+2. **로마 숫자 인식**: I, II, III, ... XV
+3. **PART 구분 삽입**: Chapter I 직전, Chapter VIII 직전
+4. **Foreword/Preface/Index 승격**: h2 → h1
+5. **불필요한 헤딩 필터링**: 이미지 캡션, 소제목, 페이지 구분자
+
+** 결과 목차 구조
+
+#+begin_example
+# Foreword to the Third Edition       (h1)
+# Foreword to the Second Edition      (h1)
+# Preface to the Second Edition       (h1)
+
+# PART ONE                             (h1)
+## I. Principles of Interpretation     (h2)
+## II. The Visitor's First Interest    (h2)
+## III. Raw Material and Its Product   (h2)
+## IV. The Story's the Thing           (h2)
+## V. Not Instruction But Provocation  (h2)
+## VI. Toward a Perfect Whole          (h2)
+## VII. For the Younger Mind           (h2)
+
+# PART TWO                             (h1)
+## VIII. The Written Word              (h2)
+## IX. Past and Present                (h2)
+## X. Nothing in Excess                (h2)
+## XI. The Mystery of Beauty           (h2)
+## XII. The Priceless Ingredient       (h2)
+## XIII. Of Gadgetry                   (h2)
+## XIV. The Happy Amateur              (h2)
+## XV. Vistas of Beauty                (h2)
+
+# Index                                (h1)
+#+end_example
+
+* 변환 기록
+
+** [2025-01-09] Interpreting Our Heritage (Freeman Tilden, 1957)
+
+원본: tioh-ko.html (1.1MB, PDF → Immersive Translate 한글 번역)
+
+***  변환 결과
+
+| 파일 | 크기 | 설명 |
+|------+------+------|
+| tioh-ko-clean.html | 269KB | 정리된 HTML (PDF 구조) |
+| tioh-ko.epub | 3.6MB | EPUB (이미지 포함) |
+| tioh-ko.org | 261KB | Org-mode |
+| tioh-ko.md | 259KB | Markdown (자동 생성) |
+| tioh-ko.pdf | 471KB | PDF (A4, 76페이지, 제본용) |
+
+*** 통계
+
+- 헤딩: h1 6개, h2 15개 (PDF 원본과 동일)
+- 본문: 592문단
+- 이미지: 28개
+- 목차 항목: 23개
+
+*** 목차 구조 (PDF 원본 재현)
+
+#+begin_example
+Foreword to the Third Edition (h1)
+Foreword to the Second Edition (h1)
+Preface to the Second Edition (h1)
+PART ONE (h1)
+  I. Principles of Interpretation (h2)
+  II. The Visitor's First Interest (h2)
+  ... (7 chapters)
+PART TWO (h1)
+  VIII. The Written Word (h2)
+  IX. Past and Present (h2)
+  ... (8 chapters)
+Index (h1)
+#+end_example
+
+*** 용도
+
+아버지(김현진) 발표 준비용:
+- 주제: "문화유산의 역사와 가치, 말하기의 의미"
+- 틸든의 6가지 해설 원칙 활용
+
+* 의존성
+
+** 필수
+
+- Python 3.x
+- BeautifulSoup4: =pip install beautifulsoup4=
+- pandoc: =apt install pandoc= 또는 =brew install pandoc=
+- bash
+
+** PDF 생성용 (선택)
+
+- texlive-xetex: =apt install texlive-xetex=
+- texlive-fonts-extra: =apt install texlive-fonts-extra=
+- Noto CJK 폰트: =apt install fonts-noto-cjk=
+- pdfinfo (확인용): =apt install poppler-utils=
+
+NixOS:
+#+begin_src nix
+environment.systemPackages = with pkgs; [
+  pandoc
+  texlive.combined.scheme-full
+  noto-fonts-cjk
+];
+#+end_src
+
+* 확장 및 커스터마이징
+
+** 다른 책에 적용하기
+
+1. =clean_html.py= 수정:
+   - =CHAPTER_TITLES= 딕셔너리: 챕터 ID → 영어 제목 매핑
+   - =H1_ID_PATTERNS=: h1으로 승격할 헤딩 패턴
+   - =SKIP_ID_PATTERNS=: 제외할 헤딩 패턴
+
+2. =metadata.yaml= 생성:
+   - 제목, 저자, 출판사, 설명 등
+
+3. 변환 실행
+
+** 재현 가능성
+
+모든 변환 과정이 코드로 정의되어 있어:
+- 동일한 입력 → 동일한 출력 보장
+- 버전 관리 가능
+- 다른 프로젝트에 재사용 가능
+
+* 라이선스
+
+MIT License
+
+* 크레딧
+
+- 개발: junghanacs (https://notes.junghanacs.com)
+- 첫 적용 사례: Freeman Tilden의 "Interpreting Our Heritage" 한글 번역본
+- 도구: BeautifulSoup4, pandoc, epub2org

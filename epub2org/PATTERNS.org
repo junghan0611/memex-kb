@@ -1,0 +1,461 @@
+#+TITLE: epub2org 변환 패턴 문서
+#+AUTHOR: junghanacs
+#+DATE: 2025-12-06
+
+* 개요
+
+epub → org 변환 시 처리해야 할 패턴들을 카테고리별로 정리.
+각 패턴은 [V] 구현완료, [P] 부분구현, [ ] 미구현으로 표시.
+
+** 협업 방식
+
+이 문서는 *과정의 협업*을 위한 것입니다:
+
+1. 패턴북 파악 → 단계별 적용 → 검토 루프
+2. 각 책마다 적용한 패턴과 순서를 기록
+3. 애드혹 정규식 치환도 문서에 남김
+4. 다음 작업 시 에이전트가 이 문서를 보고 재현
+
+결과물(최종 org)보다 *변환 과정의 기록*이 중요합니다.
+
+* 카테고리별 패턴
+
+** 1. 쓰레기문자열 (Garbage)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| G1 | OceanofPDF 링크 | 해적판 워터마크 | [V] | [V] |
+| G2 | 빈 앵커 []{#...} | pandoc 잔여물 | [V] | N/A |
+| G3 | fenced divs ::: | pandoc div 마커 | [V] | N/A |
+| G4 | aria-label/role | HTML 접근성 속성 | [V] | N/A |
+| G5 | 연속 빈 줄 | 3개 이상 → 2개 | [V] | [V] |
+
+** 2. 헤딩 (Heading)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| H1 | {.class} 속성 제거 | {.h1fm} 등 | [V] | N/A |
+| H2 | [부제목] → : 부제목 | PART 1 [WHY...] | [V] | N/A |
+| H3 | 헤딩 레벨 조정 | ***** → *** | [V] | [V] |
+| H4 | :PROPERTIES: 정리 | CLASS 제거, CUSTOM_ID 유지 | [V] | [V] |
+
+** 3. 이미지 (Image)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| I1 | {.class} 속성 제거 | 이미지 뒤 속성 | [V] | N/A |
+| I2 | HTML figure → MD | <figure> 변환 | [V] | N/A |
+| I3 | 이미지 경로 정규화 | ./output/media/ → ./images/ | [V] | [V] |
+| I4 | 인라인 수식 이미지 | → S1에서 LaTeX 치환 | N/A | [V] |
+| I5 | 블록 수식 이미지 | [[eq005a.jpg]] 유지 | N/A | [V] |
+
+** 4. 링크 (Link)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| L1 | xhtml prefix 제거 | ch08.xhtml_ → | [V] | [ ] |
+| L2 | # 제거 (org) | [[#fig]] → [[fig]] | [V] | [ ] |
+| L3 | 줄바꿈 링크 합침 | 멀티라인 → 한줄 | [V] | [ ] |
+| L4 | 외부 링크 유지 | http:// 보존 | [V] | [V] |
+| L5 | xhtml 앵커 제거 | <<chapter*.xhtml*>> | N/A | [V] |
+
+** 5. 풋노트 (Footnote)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| F1 | 로마자 각주 변환 | [I] → [^001] | [V] | [ ] |
+| F2 | 숫자 각주 변환 | [7] → [^007] | [V] | [ ] |
+| F3 | 각주 정의 정리 | backlink 제거 | [V] | [ ] |
+
+** 6. 인용 (Quote)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| Q1 | #+begin_quote 보존 | pandoc 변환 유지 | [V] | [V] |
+
+** 7. 코드블록 (Code Block)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| C1 | #+begin_src 보존 | 코드 블록 유지 | [V] | N/A |
+
+** 8. 목차 (TOC)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| T1 | Figure/Table 목차 | 앵커 연결 | [V] | N/A |
+| T2 | 페이지 목록 제거 | nav hidden list | [V] | [V] |
+| T3 | 챕터 목차 정리 | 네비게이션 | [ ] | [ ] |
+
+** 9. 문단 (Paragraph)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| P1 | unfill (줄바꿈 제거) | 문단 한 줄로 | [V] | [V] |
+| P2 | :END: 뒤 빈 줄 | 문단 분리 | [V] | [V] |
+
+** 10. 수식 (Symbol/LaTeX)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| S1 | 수식 이미지 → LaTeX | [[pi.png]] → \(\pi\) | N/A | [V] |
+| S2 | 블록 수식 유지 | [[eq005a.jpg]] 그대로 | N/A | [V] |
+
+org-mode LaTeX 규칙:
+- 인라인: =\( \pi \)= (공백 허용, 선호)
+- 블록: =\[ ... \]=
+
+** 11. 메타데이터 (Metadata)
+
+| ID | 패턴 | 설명 | VibeCoding | Susskind |
+|----+------+------+------------+----------|
+| M1 | #+TITLE 추가 | 제목 메타데이터 | [ ] | [ ] |
+| M2 | #+AUTHOR 추가 | 저자 정보 | [ ] | [ ] |
+
+* 책별 적용 순서
+
+** VibeCoding (Gene Kim, 2025)
+1. G1, G2, G3, G4, G5 (쓰레기 제거)
+2. H1, H2 (헤딩 정리)
+3. I1, I2 (이미지 변환)
+4. L1, L2, L3 (링크 정리)
+5. F1, F2, F3 (풋노트)
+6. T1 (목차 앵커)
+7. P1, P2 (문단 정리)
+
+** Susskind Classical Mechanics (2013)
+분석 완료 (2025-12-06):
+- OceanofPDF: 23개
+- 페이지 목록: 218개
+- 챕터 헤딩 (**): 18개
+- 섹션 헤딩 (*****): 72개
+- :PROPERTIES: 블록: 90개
+- Exercise (볼드): 55개
+
+적용 순서:
+1. G1-org (OceanofPDF org 버전) - 23개 제거
+2. T2 (페이지 목록 제거) - 218줄 제거
+3. H3 (헤딩 레벨: ***** → ***) - 72개
+4. H4 (:PROPERTIES: 단순화) - 90개
+5. I3 (이미지 경로 정규화)
+6. G5 (연속 빈 줄 정리)
+7. P1, P2 (문단 정리)
+
+* 신규 패턴 구현 필요
+
+** T2: 페이지 목록 제거
+#+begin_src
+입력:
+1. [[#chapter001.xhtml_pg1][1]]
+2. [[#chapter001.xhtml_pg2][2]]
+...
+
+출력: (제거)
+#+end_src
+
+** H3: 헤딩 레벨 조정
+#+begin_src
+입력: ***** SECTION TITLE
+출력: *** SECTION TITLE
+
+규칙: ** = 챕터, *** = 섹션
+#+end_src
+
+** I3: 이미지 경로 정규화
+#+begin_src
+입력: [[./output/media/images/sigma.png]]
+출력: [[./images/sigma.png]]
+#+end_src
+
+** G1-org: OceanofPDF org 버전
+#+begin_src
+입력: [[https://oceanofpdf.com][/OceanofPDF.com/]]
+출력: (제거)
+#+end_src
+
+* 작업 로그
+
+** [완료] Susskind - Classical Mechanics
+:PROPERTIES:
+:BOOK: Classical Mechanics - Leonard Susskind
+:EPUB: epub2org/gutenberg/LeonardSusskind/clasicalmechanics/
+:OUTPUT: /tmp/susskind_cm/output/
+:DATE: 2025-12-06
+:END:
+
+*** Step 0: pandoc 변환
+#+begin_src bash
+pandoc "book.epub" --extract-media=./output/media -t org -o output/test.org
+#+end_src
+결과: 7872줄, 312KB
+
+*** Step 1: G1-org (OceanofPDF 제거)
+상태: [X] 완료 (2025-12-06)
+대상: 23개 → 23개 처리
+결과: 317,947 → 316,912 chars (-1,035)
+#+begin_src bash
+python cleanup_epub_org.py test.org --pattern G1-org -o step1.org
+#+end_src
+
+*** Step 2: T2 (페이지 목록 제거)
+상태: [X] 완료 (2025-12-06)
+대상: 234개 (숫자+로마숫자 페이지, TOC, nav 블록)
+결과: 316,912 → 308,264 chars (-8,648)
+#+begin_src bash
+python cleanup_epub_org.py step1.org --pattern T2 -o step2.org
+#+end_src
+참고: T2 패턴 확장함 (로마숫자, TOC, brand_page 추가)
+
+*** Step 3: H3 (헤딩 레벨 조정)
+상태: [X] 완료 (2025-12-06)
+대상: 72개 처리
+결과: 308,264 → 308,120 chars (-144)
+#+begin_src bash
+python cleanup_epub_org.py step2.org --pattern H3 -o step3.org
+#+end_src
+
+*** Step 4: H4 (:PROPERTIES: 단순화)
+상태: [X] 완료 (2025-12-06)
+대상: 89개 처리 (CLASS 속성 제거, CUSTOM_ID 유지)
+결과: 308,120 → 306,666 chars (-1,454)
+#+begin_src bash
+python cleanup_epub_org.py step3.org --pattern H4 -o step4.org
+#+end_src
+
+*** Step 5: I3 (이미지 경로 정규화)
+상태: [X] 완료 (2025-12-06)
+대상: 995개 처리
+결과: 306,666 → 293,423 chars (-13,243)
+#+begin_src bash
+python cleanup_epub_org.py step4.org --pattern I3 -o step5.org
+#+end_src
+
+*** Step 6: G5 (연속 빈 줄 정리)
+상태: [X] 완료 (2025-12-06)
+대상: 21개 처리
+결과: 293,423 → 293,394 chars (-29)
+#+begin_src bash
+python cleanup_epub_org.py step5.org --pattern G5 -o step6.org
+#+end_src
+
+*** Step 7: P1 (문단 unfill)
+상태: [X] 완료 (2025-12-06)
+대상: 2752개 처리
+결과: 293,394 → 293,255 chars (-139)
+#+begin_src bash
+python cleanup_epub_org.py step6.org --pattern P1 -o step7.org
+#+end_src
+
+*** Step 8: P2 (:END: 뒤 빈 줄)
+상태: [X] 완료 (2025-12-06)
+대상: 90개 처리
+결과: 293,255 → 293,345 chars (+90)
+#+begin_src bash
+python cleanup_epub_org.py step7.org --pattern P2 -o final.org
+#+end_src
+
+*** Step 9: S1 (수식 이미지 → LaTeX)
+상태: [X] 완료 (2025-12-06)
+대상: 160개 처리 (pi, sigma, theta, omega, delta 등)
+결과: 293,345 → 291,500 chars (-1,845)
+#+begin_src bash
+python cleanup_epub_org.py final.org --pattern S1 -o final_s1.org
+#+end_src
+변환 예시:
+- [[./images/pi.png]] → \(\pi\)
+- [[./images/sigma.png]] → \(\sigma\)
+
+*** Step 10: L5 (xhtml 앵커 제거)
+상태: [X] 완료 (2025-12-06)
+대상: 667개 처리
+결과: 291,500 → 271,050 chars (-20,450)
+참고: 헤딩과 본문에 삽입된 <<*.xhtml*>> 앵커 모두 제거
+
+*** 최종 결과
+- 원본: 7,872줄 / 312KB
+- 최종: 4,827줄 / 265KB
+- 변화: -39% 줄, -15% 크기
+- 수식 이미지 160개 → LaTeX 치환
+
+*** 애드혹 치환 메모
+(이번 작업에서는 필요 없었음)
+
+** [완료] Susskind - Quantum Mechanics
+:PROPERTIES:
+:BOOK: Quantum Mechanics - Leonard Susskind
+:EPUB: LeonardSusskind/Quantum Mechanics (183)/
+:OUTPUT: /tmp/susskind_qm/output/
+:DATE: 2025-12-06
+:END:
+
+*** Step 0: pandoc 변환
+#+begin_src bash
+pandoc "Quantum Mechanics - Leonard Susskind.epub" --extract-media=./output/media -t org -o output/test.org
+#+end_src
+결과: 13,023줄 / 464KB / 이미지 789개
+
+*** Step 1: G1-org (OceanofPDF 제거)
+상태: [X] 완료 (2025-12-06)
+대상: 31개 처리
+결과: 471,616 → 470,221 chars (-1,395)
+
+*** Step 2: T2 (페이지 목록 제거)
+상태: [X] 완료 (2025-12-06)
+대상: 0개 (이 책에는 페이지 목록 없음)
+결과: 변화 없음
+
+*** Step 3: H3 (헤딩 레벨 조정)
+상태: [X] 완료 (2025-12-06)
+대상: 104개 처리
+결과: 470,221 → 470,013 chars (-208)
+
+*** Step 4: H4 (:PROPERTIES: 단순화)
+상태: [X] 완료 (2025-12-06)
+대상: 156개 처리
+결과: 470,013 → 465,417 chars (-4,596)
+
+*** Step 5: I3 (이미지 경로 정규화)
+상태: [X] 완료 (2025-12-06)
+대상: 952개 처리
+결과: 465,417 → 453,041 chars (-12,376)
+
+*** Step 6: G5 (연속 빈 줄 정리)
+상태: [X] 완료 (2025-12-06)
+대상: 30개 처리
+결과: 453,041 → 453,011 chars (-30)
+
+*** Step 7: P1 (문단 unfill)
+상태: [X] 완료 (2025-12-06)
+대상: 4,582개 처리
+결과: 453,011 → 452,387 chars (-624)
+
+*** Step 8: P2 (:END: 뒤 빈 줄)
+상태: [X] 완료 (2025-12-06)
+대상: 156개 처리
+결과: 452,387 → 452,543 chars (+156)
+
+*** Step 9: S1 (수식 이미지 → LaTeX)
+상태: [X] 완료 (2025-12-06)
+대상: 1개 처리 (pi.jpg)
+결과: 452,543 → 452,531 chars (-12)
+참고: QM 책은 벡터 표기 이미지(n.jpg, m.jpg 등)를 사용. 복잡한 수식 이미지는 그대로 유지.
+
+*** Step 10: L5 (xhtml 앵커 제거)
+상태: [X] 완료 (2025-12-06)
+대상: 1,303개 처리 (chapter, prologue, preface, toc 등)
+결과: 452,531 → 414,582 chars (-37,949)
+참고: 헤딩과 본문에 삽입된 <<*.xhtml*>> 앵커 모두 제거
+
+*** 최종 결과
+- 원본: 13,023줄 / 464KB
+- 최종: 8,380줄 / 405KB
+- 변화: -36% 줄, -13% 크기
+
+*** 애드혹 치환 메모
+(이번 작업에서는 필요 없었음)
+
+** [완료] Software Design for Flexibility (MIT Press, 2021)
+:PROPERTIES:
+:BOOK: Software Design for Flexibility - Chris Hanson, Gerald Jay Sussman
+:EPUB: epub2org/sdf/Software_Design_for_Flexibility_Chris_Hanson.epub
+:OUTPUT: epub2org/sdf/Software_Design_for_Flexibility.org
+:DATE: 2026-01-14
+:END:
+
+MIT Press 공식 출판물. CC BY-SA 4.0 라이선스.
+Scheme 코드 블록이 많은 기술서적.
+
+*** 특이사항
+- OceanofPDF 없음 (MIT Press 공식)
+- EM SPACE (U+2003) 특수 문자 포함
+- 챕터 헤딩이 번호와 제목이 분리됨 (~* 1 \\~ + 다음줄 제목)
+- HTML 블록 (~<aside>~, ~<nav>~) 다수 포함
+- P1 unfill 패턴 적용 시 헤딩에 본문이 붙는 문제 발생
+
+*** Step 0: pandoc 변환
+#+begin_src bash
+pandoc "Software_Design_for_Flexibility_Chris_Hanson.epub" --extract-media=./media -t org -o raw.org
+#+end_src
+결과: 25,746줄 / 1MB / 이미지 40개 / 코드블록 718개
+
+*** Step 1: L5 (xhtml 앵커 제거)
+상태: [X] 완료
+대상: 4,678개 처리
+결과: 1,002,016 → 878,712 chars (-123,304)
+참고: L5 정규식이 ~c000a.xhtml~ 패턴을 놓침 → sed로 추가 제거
+
+*** Step 2: HTML 블록 제거
+상태: [X] 완료
+대상: 322개 (~#+begin_html~ ... ~#+end_html~)
+참고: 신규 패턴 필요 - footnote를 감싸는 ~<aside>~, nav 블록 등
+
+*** Step 3: 특수 문자 제거
+상태: [X] 완료
+- EM SPACE (U+2003) → 일반 공백
+- 줄 끝 ~\\~ 제거
+
+*** Step 4: 챕터 헤딩 Join (신규 패턴: H5)
+상태: [X] 완료
+입력:
+#+begin_example
+* 1 \\
+Flexibility in Nature and in Design
+#+end_example
+
+출력:
+#+begin_example
+* 1: Flexibility in Nature and in Design
+#+end_example
+
+참고: 이 패턴은 SDF 책 특화. 다른 책에서도 유사 패턴 확인 필요.
+
+*** Step 5: G5, P2 적용
+상태: [X] 완료
+대상: G5 1,028개, P2 99개 처리
+참고: *P1 unfill 미적용* - 헤딩 다음 줄을 헤딩에 합쳐버리는 버그
+
+*** Step 6: 이미지 경로 정규화
+상태: [X] 완료
+대상: ~./media/images/~ → ~./images/~
+
+*** Step 7: org 메타데이터 추가
+상태: [X] 완료
+#+begin_example
+#+TITLE: Software Design for Flexibility
+#+SUBTITLE: How to Avoid Programming Yourself into a Corner
+#+AUTHOR: Chris Hanson and Gerald Jay Sussman
+#+DATE: 2021
+#+PUBLISHER: MIT Press
+#+ISBN: 9780262045490
+#+LICENSE: CC BY-SA 4.0
+#+end_example
+
+*** 최종 결과
+- 원본: 25,746줄 / 1MB
+- 최종: 22,878줄 / 840KB
+- 변화: -11% 줄, -16% 크기
+- Scheme 코드 블록: 718개 보존
+
+*** 신규 패턴 제안
+
+**** H5: 챕터 헤딩 Join
+#+begin_src python
+# 챕터 번호와 제목이 분리된 경우 join
+content = re.sub(r'^(\* [0-9A-Z]+)\n([A-Z][A-Za-z][^\n]+)$',
+                 r'\1: \2', content, flags=re.MULTILINE)
+#+end_src
+
+**** HTML: HTML 블록 제거
+#+begin_src python
+# #+begin_html ... #+end_html 블록 제거
+content = re.sub(r'#\+begin_html\n.*?\n#\+end_html\n?', '',
+                 content, flags=re.DOTALL)
+#+end_src
+
+**** P1 버그 주의
+P1 unfill 패턴은 헤딩 바로 다음 줄이 빈 줄이 아니면 헤딩에 합쳐버림.
+해결책: 헤딩 뒤에 빈 줄이 없으면 unfill 대상에서 제외
+
+*** 애드혹 치환 메모
+- EM SPACE (U+2003) 제거: ~content.replace('\u2003', ' ')~
+- 이중 별표 수정: ~s/^\* \* /* /~

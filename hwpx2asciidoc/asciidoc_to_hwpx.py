@@ -20,7 +20,7 @@ import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from asciidoc_parser import AsciiDocCell, AsciiDocTable, parse_asciidoc_table
+from asciidoc_parser import AsciiDocCell, AsciiDocTable, parse_asciidoc_table, unescape_asciidoc
 
 logging.basicConfig(
     level=logging.INFO,
@@ -69,7 +69,8 @@ class HwpxGenerator:
                 for line in text.split("\n"):
                     line = line.strip()
                     if line:
-                        self.paragraphs.append(line)
+                        # AsciiDoc 이스케이프 해제
+                        self.paragraphs.append(unescape_asciidoc(line))
             last_end = match.end()
 
         # 마지막 테이블 이후 텍스트
@@ -78,7 +79,8 @@ class HwpxGenerator:
             for line in text.split("\n"):
                 line = line.strip()
                 if line:
-                    self.paragraphs.append(line)
+                    # AsciiDoc 이스케이프 해제
+                    self.paragraphs.append(unescape_asciidoc(line))
 
     def generate(self, output_path: str) -> None:
         """HWPX 파일 생성"""

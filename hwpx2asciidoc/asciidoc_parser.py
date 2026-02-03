@@ -58,17 +58,19 @@ def parse_asciidoc_cell(cell_str: str) -> AsciiDocCell:
         col_span_str, row_span_str, text = match.groups()
         cell.col_span = int(col_span_str) if col_span_str else 1
         cell.row_span = int(row_span_str) if row_span_str else 1
-        cell.text = text.strip()
+        # AsciiDoc 이스케이프 해제
+        cell.text = unescape_asciidoc(text.strip())
         return cell
 
     # 일반 셀: |text
     simple_match = SIMPLE_CELL_PATTERN.match(cell_str)
     if simple_match:
-        cell.text = simple_match.group(1).strip()
+        # AsciiDoc 이스케이프 해제
+        cell.text = unescape_asciidoc(simple_match.group(1).strip())
         return cell
 
-    # 패턴 매칭 실패시 전체를 텍스트로
-    cell.text = cell_str.strip()
+    # 패턴 매칭 실패시 전체를 텍스트로 (이스케이프 해제 포함)
+    cell.text = unescape_asciidoc(cell_str.strip())
     return cell
 
 

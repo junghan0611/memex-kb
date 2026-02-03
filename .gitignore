@@ -66,3 +66,6 @@ dorray-docs/
 .direnv
 /**/samples
 3rd
+
+.agent-shell/
+.beads/.br_history

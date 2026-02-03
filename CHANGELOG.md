@@ -2,6 +2,59 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-02-03
+
+### 🚀 문서 변환 도구 대폭 확장
+
+#### Added: HWPX ↔ AsciiDoc 변환 (`hwpx2asciidoc/`)
+- HWPX/OWPML → AsciiDoc 변환기 (테이블 병합 colspan/rowspan 보존)
+- AsciiDoc → HWPX 역변환기 (정부 양식 호환)
+- 왕복 변환 테스트 통과 (텍스트 무손실, 테이블 구조)
+- `run.sh`: 통합 CLI (to-adoc, to-hwpx, to-html, to-pdf, test)
+- OWPML 지원 (HWPX와 100% 동일 구조 확인)
+
+#### Added: EPUB → Org 변환 (`epub2org/`)
+- Calibre EPUB을 깔끔한 Org-mode로 변환
+- 불필요한 마크업 자동 정리
+- Gutenberg 프로젝트 책들 변환 (~/org/gutenberg)
+
+#### Added: HTML → EPUB → Org 파이프라인 (`htmltoepub/`)
+- Immersive Translate 번역 HTML → EPUB 변환
+- PDF 원본 목차 구조 완벽 재현
+- 책 제본용 PDF 출력 지원 (A4, 양면)
+- Freeman Tilden "Interpreting Our Heritage" 변환 완료
+
+### Fixed
+- `unescape_asciidoc()` 호출 누락 수정 (텍스트 무손실 테스트 통과)
+
+---
+
+## [1.4.0] - 진행 중 🚀 **핵심 방향**
+
+### 🎯 Org-mode 메타 포맷 → HWPX 변환 파이프라인
+
+**비전**: Org-mode를 국가과제 제안서의 메타 포맷으로 활용
+
+```
+[여러 세부과제 Org 파일들]
+        ↓ 취합/병합
+[통합 Org 메타 포맷]
+        ↓ AI 에이전트 편집 (용어/양식 통일)
+[정리된 Org 파일]
+        ↓ 변환
+[HWPX] → 정부 시스템 업로드 (매크로 유지)
+```
+
+### Planned
+- [ ] Org 메타 포맷 스펙 정의 (PROPERTIES, 키워드)
+- [ ] Org → HWPX 템플릿 삽입 변환기
+- [ ] AI 에이전트 편집 가이드라인
+- [ ] 용어집 기반 자동 치환
+
+**GitHub Issue**: [#2](https://github.com/junghan0611/memex-kb/issues/2)
+
+---
+
 ## [1.2.0] - 2026-01-21
 
 ### Changed
@@ -122,22 +175,19 @@ All notable changes to this project will be documented in this file.
 
 ## Roadmap
 
-### v1.2 (Complete)
-- [x] Nix Flake 마이그레이션
-- [x] gitleaks 통합
-- [x] Threads 토큰 갱신 스크립트
-- [x] direnv 통합
+### v1.3 (Complete) ✅
+- [x] HWPX ↔ AsciiDoc 변환기
+- [x] EPUB → Org 변환기
+- [x] HTML → EPUB → Org 파이프라인
 
-### v1.3 (Planned)
-- [ ] Dooray Wiki Adapter
-- [ ] Notion Adapter
-- [ ] CLI 개선
+### v1.4 (In Progress) 🚀 **핵심 방향**
+- [ ] Org-mode 메타 포맷 → HWPX 파이프라인
+- [ ] 국가과제 제안서 AI 협업 워크플로우
+- [ ] 정부 양식 매크로 호환
 
-### v2.0 (RAG Pipeline)
-- [ ] Denote Markdown → Vector Embedding
-- [ ] Supabase pgvector 통합
-- [ ] n8n RAG Workflow
-- [ ] Hybrid Search (키워드 + 벡터 + 그래프)
+### v2.0 (추후 검토)
+- [ ] RAG 파이프라인 (경량화 방향 검토 중)
+- [ ] 로컬 우선 임베딩
 
 ---
 

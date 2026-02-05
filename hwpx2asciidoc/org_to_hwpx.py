@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """
-Org-mode 메타 포맷 → HWPX 변환기
+Org-mode → HWPX 역변환기
 
-Org 파일에서 내용을 추출하여 HWPX 템플릿에 삽입합니다.
+Org 파일에서 헤딩과 AsciiDoc 표를 추출하여 HWPX 템플릿에 삽입합니다.
+hwpx_to_org.py의 역변환입니다.
+
+전략:
+    1. template.hwpx의 모든 파일(header.xml, 스타일 등)을 보존
+    2. section0.xml: 첫 문단(셋업)을 원본 그대로 보존 + 내용 교체
+    3. 모든 문단에 linesegarray 포함 (필수)
+    4. 템플릿에서 추출한 스타일 ID 매핑 사용
 
 사용법:
     python org_to_hwpx.py input.org -t template.hwpx -o output.hwpx
@@ -11,220 +18,627 @@ Org 파일에서 내용을 추출하여 HWPX 템플릿에 삽입합니다.
 import argparse
 import logging
 import re
-import zipfile
+import struct
 import tempfile
-import shutil
-from pathlib import Path
+import zipfile
+import zlib
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
-import xml.etree.ElementTree as ET
+from pathlib import Path
+from typing import List, Optional, Dict, Tuple
+from copy import deepcopy
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# XML 네임스페이스
+# AsciiDoc 파서 임포트
+try:
+    from asciidoc_parser import parse_asciidoc_table, AsciiDocTable, AsciiDocCell
+except ImportError:
+    import sys
+    sys.path.insert(0, str(Path(__file__).parent))
+    from asciidoc_parser import parse_asciidoc_table, AsciiDocTable, AsciiDocCell
+
+
+# ============================================================
+# HWPX XML 네임스페이스 (전체)
+# ============================================================
 NAMESPACES = {
+    'ha': 'http://www.hancom.co.kr/hwpml/2011/app',
     'hp': 'http://www.hancom.co.kr/hwpml/2011/paragraph',
+    'hp10': 'http://www.hancom.co.kr/hwpml/2016/paragraph',
     'hs': 'http://www.hancom.co.kr/hwpml/2011/section',
     'hc': 'http://www.hancom.co.kr/hwpml/2011/core',
+    'hh': 'http://www.hancom.co.kr/hwpml/2011/head',
+    'hhs': 'http://www.hancom.co.kr/hwpml/2011/history',
+    'hm': 'http://www.hancom.co.kr/hwpml/2011/master-page',
+    'hpf': 'http://www.hancom.co.kr/schema/2011/hpf',
+    'dc': 'http://purl.org/dc/elements/1.1/',
+    'opf': 'http://www.idpf.org/2007/opf/',
+    'ooxmlchart': 'http://www.hancom.co.kr/hwpml/2016/ooxmlchart',
+    'epub': 'http://www.idpf.org/2007/ops',
+    'config': 'urn:oasis:names:tc:opendocument:xmlns:config:1.0',
 }
 
+ALL_NS_DECL = ' '.join(f'xmlns:{k}="{v}"' for k, v in NAMESPACES.items())
+
+import xml.etree.ElementTree as ET
 for prefix, uri in NAMESPACES.items():
     ET.register_namespace(prefix, uri)
 
+HP = NAMESPACES['hp']
+HS = NAMESPACES['hs']
+
+
+# ============================================================
+# 스타일 ID 매핑 (template.hwpx 분석 결과)
+# ============================================================
+@dataclass
+class StyleMapping:
+    """HWPX 스타일 ID 조합"""
+    style_id_ref: str
+    para_pr_id_ref: str
+    char_pr_id_ref: str
+
+
+STYLE_MAP = {
+    'H1':          StyleMapping('177', '65', '59'),
+    'H2':          StyleMapping('177', '21', '59'),
+    'H3':          StyleMapping('15',  '39', '29'),
+    'H4':          StyleMapping('15',  '39', '29'),
+    'H5':          StyleMapping('15',  '39', '29'),
+    'H6':          StyleMapping('15',  '73', '29'),
+    'BODY':        StyleMapping('15',  '75', '65'),
+    'TABLE_TITLE': StyleMapping('15',  '12', '2'),
+    'TABLE_BODY':  StyleMapping('15',  '12', '29'),
+}
+
+# paraPrIDRef별 lineseg 기본값 (template.hwpx에서 추출)
+LINESEG_DEFAULTS: Dict[str, Dict[str, str]] = {
+    '65':  {'vertsize': '1300', 'textheight': '1300', 'baseline': '1105', 'spacing': '780'},
+    '21':  {'vertsize': '1300', 'textheight': '1300', 'baseline': '1105', 'spacing': '780'},
+    '39':  {'vertsize': '1300', 'textheight': '1300', 'baseline': '1105', 'spacing': '780'},
+    '73':  {'vertsize': '1200', 'textheight': '1200', 'baseline': '1020', 'spacing': '720'},
+    '75':  {'vertsize': '1200', 'textheight': '1200', 'baseline': '1020', 'spacing': '720'},
+    '12':  {'vertsize': '800',  'textheight': '800',  'baseline': '680',  'spacing': '480'},
+    '24':  {'vertsize': '800',  'textheight': '800',  'baseline': '680',  'spacing': '480'},
+}
+LINESEG_FALLBACK = {'vertsize': '1200', 'textheight': '1200', 'baseline': '1020', 'spacing': '720'}
+
+HEADING_BULLETS = {
+    1: '', 2: '',
+    3: '□ ', 4: 'o ', 5: '- ', 6: '⋅', 7: '',
+}
+
+
+# ============================================================
+# Org 파서
+# ============================================================
+@dataclass
+class OrgElement:
+    pass
 
 @dataclass
-class OrgSection:
-    """Org 섹션 데이터"""
+class OrgHeading(OrgElement):
     level: int
     title: str
-    hwpx_section: Optional[str] = None
-    content: str = ""
-    asciidoc_blocks: List[Dict] = field(default_factory=list)
-    mermaid_blocks: List[Dict] = field(default_factory=list)
-    children: List['OrgSection'] = field(default_factory=list)
 
+@dataclass
+class OrgParagraph(OrgElement):
+    text: str
+
+@dataclass
+class OrgTable(OrgElement):
+    table: AsciiDocTable
+    name: str = ""
 
 @dataclass
 class OrgDocument:
-    """Org 문서 데이터"""
     title: str = ""
-    hwpx_template: str = ""
-    author: str = ""
     date: str = ""
-    sections: List[OrgSection] = field(default_factory=list)
+    elements: List[OrgElement] = field(default_factory=list)
 
 
 def parse_org_file(org_path: Path) -> OrgDocument:
     """Org 파일 파싱"""
     doc = OrgDocument()
-    current_section: Optional[OrgSection] = None
-    in_src_block = False
-    src_block_type = ""
-    src_block_name = ""
-    src_block_content = []
-    properties = {}
-    in_properties = False
-
     with open(org_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
+        content = f.read()
 
+    lines = content.split('\n')
     i = 0
     while i < len(lines):
         line = lines[i]
-        stripped = line.strip()
 
-        # 메타데이터 파싱
-        if stripped.startswith('#+TITLE:'):
-            doc.title = stripped[8:].strip()
-        elif stripped.startswith('#+HWPX_TEMPLATE:'):
-            doc.hwpx_template = stripped[16:].strip()
-        elif stripped.startswith('#+AUTHOR:'):
-            doc.author = stripped[9:].strip()
-        elif stripped.startswith('#+DATE:'):
-            doc.date = stripped[7:].strip()
+        if line.startswith('#+TITLE:'):
+            doc.title = line[8:].strip()
+            i += 1; continue
+        elif line.startswith('#+DATE:'):
+            doc.date = line[7:].strip()
+            i += 1; continue
 
-        # PROPERTIES 블록
-        elif stripped == ':PROPERTIES:':
-            in_properties = True
-            properties = {}
-        elif stripped == ':END:' and in_properties:
-            in_properties = False
-            if current_section and 'HWPX_SECTION' in properties:
-                current_section.hwpx_section = properties['HWPX_SECTION']
-        elif in_properties and stripped.startswith(':') and ':' in stripped[1:]:
-            key, value = stripped[1:].split(':', 1)
-            properties[key.strip()] = value.strip()
+        # AsciiDoc 표 블록
+        if line.strip().startswith('#+BEGIN_SRC asciidoc'):
+            name_match = re.search(r':name\s+(.+)$', line)
+            table_name = name_match.group(1).strip() if name_match else ""
+            block_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith('#+END_SRC'):
+                block_lines.append(lines[i])
+                i += 1
+            block_content = '\n'.join(block_lines)
+            if '|===' in block_content:
+                table = parse_asciidoc_table(block_content)
+                if table.rows:
+                    doc.elements.append(OrgTable(table=table, name=table_name))
+                    logger.debug(f"테이블: {table_name} ({len(table.rows)}행)")
+            i += 1; continue
 
-        # SRC 블록
-        elif stripped.startswith('#+BEGIN_SRC'):
-            in_src_block = True
-            src_block_content = []
-            # #+BEGIN_SRC asciidoc :name 테이블명
-            parts = stripped[11:].strip().split()
-            src_block_type = parts[0] if parts else ""
-            src_block_name = ""
-            for j, p in enumerate(parts):
-                if p == ':name' and j + 1 < len(parts):
-                    src_block_name = parts[j + 1]
-                elif p == ':file' and j + 1 < len(parts):
-                    src_block_name = parts[j + 1]
+        if line.strip().startswith('#+BEGIN_EXAMPLE'):
+            while i < len(lines) and not lines[i].strip().startswith('#+END_EXAMPLE'):
+                i += 1
+            i += 1; continue
 
-        elif stripped == '#+END_SRC' and in_src_block:
-            in_src_block = False
-            if current_section:
-                block_data = {
-                    'name': src_block_name,
-                    'content': '\n'.join(src_block_content)
-                }
-                if src_block_type == 'asciidoc':
-                    current_section.asciidoc_blocks.append(block_data)
-                elif src_block_type == 'mermaid':
-                    current_section.mermaid_blocks.append(block_data)
+        if line.startswith('#+'):
+            i += 1; continue
 
-        elif in_src_block:
-            src_block_content.append(line.rstrip())
+        heading_match = re.match(r'^(\*+)\s+(.+)$', line)
+        if heading_match:
+            level = len(heading_match.group(1))
+            title = heading_match.group(2)
+            doc.elements.append(OrgHeading(level=level, title=title))
+            i += 1; continue
 
-        # 헤딩 파싱
-        elif stripped.startswith('*') and ' ' in stripped:
-            match = re.match(r'^(\*+)\s+(.+)$', stripped)
-            if match:
-                level = len(match.group(1))
-                title = match.group(2)
-
-                new_section = OrgSection(level=level, title=title)
-
-                if level == 1:
-                    doc.sections.append(new_section)
-                    current_section = new_section
-                elif current_section:
-                    # 하위 섹션은 현재 섹션의 content에 포함
-                    pass
-
-                current_section = new_section
-
-        # 일반 텍스트
-        elif current_section and not in_properties:
-            current_section.content += line
-
+        if line.strip():
+            doc.elements.append(OrgParagraph(text=line.strip()))
         i += 1
 
     return doc
 
 
-def create_hwpx_paragraph(text: str, para_id: int = 0) -> ET.Element:
-    """HWPX 문단 요소 생성"""
-    p = ET.Element('{http://www.hancom.co.kr/hwpml/2011/paragraph}p')
+# ============================================================
+# HWPX XML 생성 헬퍼
+# ============================================================
+def hp_tag(name: str) -> str:
+    return f'{{{HP}}}{name}'
+
+def hs_tag(name: str) -> str:
+    return f'{{{HS}}}{name}'
+
+
+def get_style(element_type: str) -> StyleMapping:
+    return STYLE_MAP.get(element_type, STYLE_MAP['BODY'])
+
+
+def heading_to_hwpx_text(heading: OrgHeading) -> str:
+    title = heading.title
+    if re.match(r'^\d+[\.-]', title):
+        return title
+    clean_title = re.sub(r'^[□○o\-⋅·]\s*', '', title)
+    bullet = HEADING_BULLETS.get(heading.level, '')
+    return f"{bullet}{clean_title}"
+
+
+def get_heading_style_key(heading: OrgHeading) -> str:
+    level = min(heading.level, 6)
+    return f'H{level}'
+
+
+def create_linesegarray(para_pr_id: str, page_width: str = '48188') -> ET.Element:
+    """linesegarray 요소 생성 (모든 문단에 필수)"""
+    lsa = ET.Element(hp_tag('linesegarray'))
+    seg = ET.SubElement(lsa, hp_tag('lineseg'))
+
+    defaults = LINESEG_DEFAULTS.get(para_pr_id, LINESEG_FALLBACK)
+    seg.set('textpos', '0')
+    seg.set('vertpos', '0')
+    seg.set('vertsize', defaults['vertsize'])
+    seg.set('textheight', defaults['textheight'])
+    seg.set('baseline', defaults['baseline'])
+    seg.set('spacing', defaults['spacing'])
+    seg.set('horzpos', '0')
+    seg.set('horzsize', page_width)
+    seg.set('flags', '393216')
+
+    return lsa
+
+
+def create_p_element(text: str, style: StyleMapping, para_id: int = 0) -> ET.Element:
+    """HWPX 문단 요소 생성 (linesegarray 포함)"""
+    p = ET.Element(hp_tag('p'))
     p.set('id', str(para_id))
-    p.set('paraPrIDRef', '0')
-    p.set('styleIDRef', '0')
+    p.set('paraPrIDRef', style.para_pr_id_ref)
+    p.set('styleIDRef', style.style_id_ref)
+    p.set('pageBreak', '0')
+    p.set('columnBreak', '0')
+    p.set('merged', '0')
 
-    run = ET.SubElement(p, '{http://www.hancom.co.kr/hwpml/2011/paragraph}run')
-    run.set('charPrIDRef', '0')
+    run = ET.SubElement(p, hp_tag('run'))
+    run.set('charPrIDRef', style.char_pr_id_ref)
 
-    t = ET.SubElement(run, '{http://www.hancom.co.kr/hwpml/2011/paragraph}t')
+    t = ET.SubElement(run, hp_tag('t'))
     t.text = text
+
+    # linesegarray 추가
+    p.append(create_linesegarray(style.para_pr_id_ref))
 
     return p
 
 
+def create_table_p_element(table: AsciiDocTable, table_name: str,
+                           table_id: int, para_id: int,
+                           page_width: int = 48188) -> ET.Element:
+    """테이블 포함 문단 요소 생성
+
+    구조: <hp:p> > <hp:run> > <hp:tbl> > <hp:tr> > <hp:tc>
+    tc 내부: <subList> > <p> > <run> > <t> + cellAddr + cellSpan + cellSz + cellMargin
+    """
+    style = get_style('TABLE_BODY')
+
+    p = ET.Element(hp_tag('p'))
+    p.set('id', str(para_id))
+    p.set('paraPrIDRef', style.para_pr_id_ref)
+    p.set('styleIDRef', style.style_id_ref)
+    p.set('pageBreak', '0')
+    p.set('columnBreak', '0')
+    p.set('merged', '0')
+
+    run = ET.SubElement(p, hp_tag('run'))
+    run.set('charPrIDRef', style.char_pr_id_ref)
+
+    row_count = len(table.rows)
+    col_count = table.col_count or (len(table.rows[0]) if table.rows else 1)
+
+    tbl = ET.SubElement(run, hp_tag('tbl'))
+    tbl.set('id', str(table_id))
+    tbl.set('zOrder', '0')
+    tbl.set('numberingType', 'TABLE')
+    tbl.set('textWrap', 'TOP_AND_BOTTOM')
+    tbl.set('textFlow', 'BOTH_SIDES')
+    tbl.set('lock', '0')
+    tbl.set('dropcapstyle', 'None')
+    tbl.set('pageBreak', 'CELL')
+    tbl.set('repeatHeader', '0')
+    tbl.set('rowCnt', str(row_count))
+    tbl.set('colCnt', str(col_count))
+    tbl.set('cellSpacing', '0')
+    tbl.set('borderFillIDRef', '3')
+    tbl.set('noAdjust', '0')
+
+    col_width = page_width // col_count
+
+    def _create_tc(tr_el, text, col_idx, row_idx, col_span=1, row_span=1, is_header=False):
+        """단일 테이블 셀(tc) 생성"""
+        tc = ET.SubElement(tr_el, hp_tag('tc'))
+        tc.set('name', '')
+        tc.set('header', '1' if is_header else '0')
+        tc.set('hasMargin', '0')
+        tc.set('protect', '0')
+        tc.set('editable', '0')
+        tc.set('dirty', '0')
+        tc.set('borderFillIDRef', '3')
+
+        sub_list = ET.SubElement(tc, hp_tag('subList'))
+        sub_list.set('id', '')
+        sub_list.set('textDirection', 'HORIZONTAL')
+        sub_list.set('lineWrap', 'BREAK')
+        sub_list.set('vertAlign', 'CENTER')
+        sub_list.set('linkListIDRef', '0')
+        sub_list.set('linkListNextIDRef', '0')
+        sub_list.set('textWidth', '0')
+        sub_list.set('textHeight', '0')
+        sub_list.set('hasTextRef', '0')
+        sub_list.set('hasNumRef', '0')
+
+        cell_p = ET.SubElement(sub_list, hp_tag('p'))
+        cell_p.set('id', '0')
+        cell_p.set('paraPrIDRef', '24')
+        cell_p.set('styleIDRef', '0')
+        cell_p.set('pageBreak', '0')
+        cell_p.set('columnBreak', '0')
+        cell_p.set('merged', '0')
+
+        cell_run = ET.SubElement(cell_p, hp_tag('run'))
+        cell_run.set('charPrIDRef', '80')
+
+        cell_t = ET.SubElement(cell_run, hp_tag('t'))
+        cell_t.text = text or ''
+
+        cell_lsa = create_linesegarray('24', str(col_width * col_span - 1020))
+        cell_p.append(cell_lsa)
+
+        cell_addr = ET.SubElement(tc, hp_tag('cellAddr'))
+        cell_addr.set('colAddr', str(col_idx))
+        cell_addr.set('rowAddr', str(row_idx))
+
+        cell_span_el = ET.SubElement(tc, hp_tag('cellSpan'))
+        cell_span_el.set('colSpan', str(col_span))
+        cell_span_el.set('rowSpan', str(row_span))
+
+        cell_sz = ET.SubElement(tc, hp_tag('cellSz'))
+        cell_sz.set('width', str(col_width * col_span))
+        cell_sz.set('height', '282')
+
+        cell_margin = ET.SubElement(tc, hp_tag('cellMargin'))
+        cell_margin.set('left', '510')
+        cell_margin.set('right', '510')
+        cell_margin.set('top', '141')
+        cell_margin.set('bottom', '141')
+
+    for row_idx, row in enumerate(table.rows):
+        tr = ET.SubElement(tbl, hp_tag('tr'))
+
+        col_idx = 0
+        for cell in row:
+            _create_tc(tr, cell.text, col_idx, row_idx,
+                        cell.col_span, cell.row_span, row_idx == 0)
+            col_idx += cell.col_span
+
+        # 행에 셀이 부족하면 빈 셀로 채움 (colCnt 불일치 → segfault 방지)
+        while col_idx < col_count:
+            _create_tc(tr, '', col_idx, row_idx)
+            col_idx += 1
+
+    # run 끝 빈 텍스트
+    t = ET.SubElement(run, hp_tag('t'))
+    t.text = ''
+
+    # 문단 linesegarray
+    p.append(create_linesegarray(style.para_pr_id_ref))
+
+    return p
+
+
+# ============================================================
+# 섹션 빌드
+# ============================================================
+def extract_first_paragraph(section_xml: bytes) -> Optional[ET.Element]:
+    """원본 section0.xml에서 첫 번째 문단(셋업) 그대로 추출
+
+    이 문단은 secPr(페이지 설정), ctrl(colPr, pageNum), linesegarray를 포함합니다.
+    """
+    root = ET.fromstring(section_xml)
+    for child in root:
+        if child.tag.endswith('}p'):
+            return child
+    return None
+
+
+def build_section_xml(org_doc: OrgDocument, setup_p: Optional[ET.Element]) -> ET.Element:
+    """Org 문서로부터 새 section0.xml 루트 생성"""
+    root = ET.Element(hs_tag('sec'))
+
+    # 1. 원본 첫 문단(셋업) 그대로 삽입
+    if setup_p is not None:
+        root.append(deepcopy(setup_p))
+
+    # 2. 내용 문단 추가
+    para_id = 100
+    table_id = 1000000000
+
+    for elem in org_doc.elements:
+        if isinstance(elem, OrgHeading):
+            text = heading_to_hwpx_text(elem)
+            style_key = get_heading_style_key(elem)
+            style = get_style(style_key)
+            p = create_p_element(text, style, para_id)
+            root.append(p)
+            para_id += 1
+
+        elif isinstance(elem, OrgParagraph):
+            style = get_style('BODY')
+            p = create_p_element(elem.text, style, para_id)
+            root.append(p)
+            para_id += 1
+
+        elif isinstance(elem, OrgTable):
+            if elem.name:
+                style = get_style('TABLE_TITLE')
+                title_p = create_p_element(f"<{elem.name}>", style, para_id)
+                root.append(title_p)
+                para_id += 1
+
+            table_p = create_table_p_element(
+                elem.table, elem.name, table_id, para_id
+            )
+            root.append(table_p)
+            para_id += 1
+            table_id += 1
+
+    return root
+
+
+# ============================================================
+# 바이너리 ZIP 패처 (한컴 HWPX 호환)
+# ============================================================
+def _parse_zip_structure(data: bytes) -> Tuple[list, int, int, int]:
+    """ZIP 파일의 Central Directory 구조를 파싱
+
+    Returns:
+        (cd_entries, cd_offset, eocd_offset, num_entries)
+    """
+    eocd_off = data.rfind(b'PK\x05\x06')
+    if eocd_off < 0:
+        raise ValueError("EOCD not found")
+
+    cd_off = struct.unpack_from('<I', data, eocd_off + 16)[0]
+    cd_size = struct.unpack_from('<I', data, eocd_off + 12)[0]
+    num_entries = struct.unpack_from('<H', data, eocd_off + 10)[0]
+
+    cd_entries = []
+    off = cd_off
+    for _ in range(num_entries):
+        nlen = struct.unpack_from('<H', data, off + 28)[0]
+        elen = struct.unpack_from('<H', data, off + 30)[0]
+        clen = struct.unpack_from('<H', data, off + 32)[0]
+        name = data[off + 46:off + 46 + nlen].decode('utf-8')
+        cd_entries.append({
+            'cd_off': off,
+            'cd_size': 46 + nlen + elen + clen,
+            'name': name,
+            'crc32': struct.unpack_from('<I', data, off + 16)[0],
+            'comp_size': struct.unpack_from('<I', data, off + 20)[0],
+            'uncomp_size': struct.unpack_from('<I', data, off + 24)[0],
+            'local_off': struct.unpack_from('<I', data, off + 42)[0],
+        })
+        off += 46 + nlen + elen + clen
+
+    return cd_entries, cd_off, eocd_off, num_entries
+
+
+def patch_hwpx_binary(template_path: Path, new_section_xml: bytes, output_path: Path):
+    """템플릿 HWPX의 바이너리를 수술적으로 수정하여 section0.xml만 교체
+
+    ZIP 헤더(ver_made, flags, dates, ext_attr 등)를 바이트 단위로 완벽 보존.
+    한컴의 독자적 ZIP 구현(flags=0x0004 + 실제값 in 로컬헤더 + DD 없음)을 그대로 유지.
+
+    처리 흐름:
+        1. 템플릿을 raw bytes로 읽기
+        2. section0.xml의 압축 데이터 영역만 교체
+        3. CRC/sizes 업데이트 (로컬 헤더 + Central Directory)
+        4. 후속 엔트리들의 offset 보정
+        5. EOCD의 CD offset 보정
+    """
+    with open(template_path, 'rb') as f:
+        data = f.read()
+
+    cd_entries, cd_off, eocd_off, num_entries = _parse_zip_structure(data)
+
+    # section0.xml 엔트리 찾기
+    target = 'Contents/section0.xml'
+    sec_entry = None
+    for ce in cd_entries:
+        if ce['name'] == target:
+            sec_entry = ce
+            break
+
+    if sec_entry is None:
+        raise ValueError(f'{target} not found in template')
+
+    # 로컬 헤더에서 데이터 시작 위치 계산
+    loc_off = sec_entry['local_off']
+    nlen = struct.unpack_from('<H', data, loc_off + 26)[0]
+    elen = struct.unpack_from('<H', data, loc_off + 28)[0]
+    data_start = loc_off + 30 + nlen + elen
+    old_comp_size = sec_entry['comp_size']
+    data_end = data_start + old_comp_size
+
+    logger.debug(f"section0.xml: loc={loc_off}, data=[{data_start}:{data_end}], "
+                 f"comp={old_comp_size}, uncomp={sec_entry['uncomp_size']}")
+
+    # 새 데이터 압축 (raw deflate, ZIP 호환)
+    new_crc = zlib.crc32(new_section_xml) & 0xFFFFFFFF
+    new_uncomp_size = len(new_section_xml)
+
+    # 한컴 HWPX는 zlib level 2로 압축 (원본과 동일한 deflate 스트림 생성)
+    compressor = zlib.compressobj(2, zlib.DEFLATED, -15)
+    new_compressed = compressor.compress(new_section_xml) + compressor.flush()
+    new_comp_size = len(new_compressed)
+    delta = new_comp_size - old_comp_size
+
+    logger.info(f"section0.xml 압축: {new_uncomp_size} → {new_comp_size} bytes "
+                f"(delta={delta:+d})")
+
+    # 바이너리 조합: [before_data] + [new_compressed] + [after_data..CD] + [CD] + [EOCD]
+    result = bytearray()
+    result.extend(data[:data_start])          # 모든 헤더+데이터 (section0 데이터 직전까지)
+    result.extend(new_compressed)              # 새 압축 데이터
+    result.extend(data[data_end:cd_off])       # section0 이후 엔트리들
+    new_cd_off = len(result)
+    result.extend(data[cd_off:eocd_off])       # Central Directory
+    new_eocd_off = len(result)
+    result.extend(data[eocd_off:])             # EOCD
+
+    # 로컬 헤더 업데이트: section0.xml의 CRC, comp_size, uncomp_size
+    struct.pack_into('<I', result, loc_off + 14, new_crc)
+    struct.pack_into('<I', result, loc_off + 18, new_comp_size)
+    struct.pack_into('<I', result, loc_off + 22, new_uncomp_size)
+
+    # Central Directory 업데이트
+    for ce in cd_entries:
+        ce_new_off = new_cd_off + (ce['cd_off'] - cd_off)
+
+        if ce['name'] == target:
+            # section0: CRC, comp_size, uncomp_size 업데이트
+            struct.pack_into('<I', result, ce_new_off + 16, new_crc)
+            struct.pack_into('<I', result, ce_new_off + 20, new_comp_size)
+            struct.pack_into('<I', result, ce_new_off + 24, new_uncomp_size)
+        elif ce['local_off'] >= data_end:
+            # section0 이후 엔트리: local_header_offset 보정
+            new_local_off = ce['local_off'] + delta
+            struct.pack_into('<I', result, ce_new_off + 42, new_local_off)
+
+    # EOCD 업데이트: CD offset
+    struct.pack_into('<I', result, new_eocd_off + 16, new_cd_off)
+
+    with open(output_path, 'wb') as f:
+        f.write(result)
+
+    logger.info(f"HWPX 바이너리 패치 완료: {output_path} ({len(result)} bytes)")
+
+
+# ============================================================
+# 변환 메인
+# ============================================================
 def convert_org_to_hwpx(org_doc: OrgDocument, template_path: Path, output_path: Path):
-    """Org 문서를 HWPX로 변환"""
+    """Org 문서를 HWPX로 변환 (바이너리 패치 방식)
 
-    # 템플릿 압축 해제
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path(tmpdir)
+    Python zipfile을 사용하지 않고 템플릿의 raw bytes를 수술적으로 수정.
+    한컴 HWPX의 독자적 ZIP 헤더(ver_made, flags, dates, ext_attr)를 완벽 보존.
+    """
+    if not template_path or not template_path.exists():
+        logger.error(f"템플릿 필수: {template_path}")
+        return
 
-        with zipfile.ZipFile(template_path, 'r') as zf:
-            zf.extractall(tmpdir)
+    # 1. 원본 section0.xml에서 첫 문단(셋업) 추출
+    with zipfile.ZipFile(template_path, 'r') as zf:
+        section_data = zf.read('Contents/section0.xml')
 
-        logger.info(f"템플릿 압축 해제: {template_path}")
+    setup_p = extract_first_paragraph(section_data)
+    if setup_p is not None:
+        logger.info("셋업 문단 추출 (secPr + ctrl + linesegarray)")
 
-        # 각 섹션 처리
-        for section in org_doc.sections:
-            if section.hwpx_section:
-                section_file = tmpdir / 'Contents' / f'{section.hwpx_section}.xml'
-                if section_file.exists():
-                    logger.info(f"섹션 처리: {section.hwpx_section} - {section.title}")
+    # 2. 새 section0.xml 생성
+    new_root = build_section_xml(org_doc, setup_p)
 
-                    # XML 파싱
-                    tree = ET.parse(section_file)
-                    root = tree.getroot()
+    # 3. XML 직렬화 (원본과 동일하게 한 줄, 인덴트 없음)
+    xml_bytes = ET.tostring(new_root, encoding='unicode')
 
-                    # 기존 문단들 가져오기
-                    paragraphs = root.findall('.//{http://www.hancom.co.kr/hwpml/2011/paragraph}p')
+    # 4. 후처리: XML 선언 + 전체 네임스페이스
+    xml_str = '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>' + xml_bytes
+    xml_str = re.sub(r'<hs:sec[^>]*>', f'<hs:sec {ALL_NS_DECL}>', xml_str, count=1)
+    new_section_xml = xml_str.encode('utf-8')
 
-                    # 첫 번째 문단 찾기 (텍스트 삽입 위치)
-                    if paragraphs:
-                        # 섹션 제목과 내용을 첫 문단에 추가
-                        first_p = paragraphs[0]
-                        run = first_p.find('{http://www.hancom.co.kr/hwpml/2011/paragraph}run')
-                        if run is not None:
-                            t = run.find('{http://www.hancom.co.kr/hwpml/2011/paragraph}t')
-                            if t is not None:
-                                # 기존 텍스트에 Org 내용 추가
-                                original = t.text or ""
-                                org_content = f"\n\n[Org 삽입: {section.title}]\n{section.content.strip()}"
-                                t.text = original + org_content
+    logger.info(f"section0.xml 생성: {len(org_doc.elements)}개 요소, "
+                f"{len(new_section_xml)} bytes")
 
-                    # XML 저장
-                    tree.write(section_file, encoding='UTF-8', xml_declaration=True)
-                    logger.info(f"섹션 저장: {section_file}")
+    # 5. 바이너리 패치로 HWPX 생성
+    patch_hwpx_binary(template_path, new_section_xml, output_path)
 
-        # HWPX 재압축
-        with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for file_path in tmpdir.rglob('*'):
-                if file_path.is_file():
-                    arcname = file_path.relative_to(tmpdir)
-                    zf.write(file_path, arcname)
-
-        logger.info(f"HWPX 생성 완료: {output_path}")
+    logger.info(f"HWPX 저장: {output_path}")
 
 
+# ============================================================
+# Main
+# ============================================================
 def main():
-    parser = argparse.ArgumentParser(description='Org-mode → HWPX 변환기')
+    parser = argparse.ArgumentParser(
+        description='Org-mode → HWPX 역변환기',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+헤딩 레벨 매핑:
+    * level 1  → "1. " (숫자 - 원본 유지)
+    ** level 2 → "1-1. " (숫자 - 원본 유지)
+    *** level 3 → "□ " (네모)
+    **** level 4 → "o " (동그라미)
+    ***** level 5 → "- " (줄표)
+    ****** level 6 → "⋅" (점)
+
+예시:
+    python org_to_hwpx.py proposal.org -t template.hwpx -o output.hwpx
+"""
+    )
     parser.add_argument('input', help='입력 Org 파일')
-    parser.add_argument('-t', '--template', required=True, help='HWPX 템플릿 파일')
+    parser.add_argument('-t', '--template', required=True, help='HWPX 템플릿 파일 (필수)')
     parser.add_argument('-o', '--output', help='출력 HWPX 파일')
     parser.add_argument('-v', '--verbose', action='store_true', help='상세 로그')
 
@@ -237,20 +651,16 @@ def main():
     template_path = Path(args.template)
     output_path = Path(args.output) if args.output else input_path.with_suffix('.hwpx')
 
-    # Org 파일 파싱
     logger.info(f"Org 파일 파싱: {input_path}")
     org_doc = parse_org_file(input_path)
 
+    headings = sum(1 for e in org_doc.elements if isinstance(e, OrgHeading))
+    tables = sum(1 for e in org_doc.elements if isinstance(e, OrgTable))
+    paragraphs = sum(1 for e in org_doc.elements if isinstance(e, OrgParagraph))
+
     logger.info(f"  제목: {org_doc.title}")
-    logger.info(f"  템플릿: {org_doc.hwpx_template}")
-    logger.info(f"  섹션 수: {len(org_doc.sections)}")
+    logger.info(f"  헤딩: {headings}개, 표: {tables}개, 문단: {paragraphs}개")
 
-    for section in org_doc.sections:
-        logger.info(f"    - {section.title} → {section.hwpx_section or '(미지정)'}")
-        logger.info(f"      AsciiDoc 블록: {len(section.asciidoc_blocks)}")
-        logger.info(f"      Mermaid 블록: {len(section.mermaid_blocks)}")
-
-    # HWPX 변환
     convert_org_to_hwpx(org_doc, template_path, output_path)
 
 

@@ -11,6 +11,19 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
+        # PyPI에만 있는 python-hwpx (nixpkgs에 없음)
+        python-hwpx = pkgs.python312Packages.buildPythonPackage rec {
+          pname = "python-hwpx";
+          version = "1.9";
+          format = "wheel";
+          src = pkgs.fetchurl {
+            url = "https://files.pythonhosted.org/packages/27/08/c757b68fb3d77ff0b2aedee08856cd89ef85cec1b8a62d29f54bd05938a8/python_hwpx-1.9-py3-none-any.whl";
+            sha256 = "0xfy3cycp9708sp568gy6708xpihqrhd7d5n3g9ki8hiqq6g6zq9";
+          };
+          propagatedBuildInputs = [ pkgs.python312Packages.lxml ];
+          doCheck = false;
+        };
+
         pythonEnv = pkgs.python312.withPackages (ps: with ps; [
           # Google API
           google-api-python-client
@@ -31,8 +44,9 @@
           # HTTP (토큰 갱신용)
           requests
 
-          # HWPX 처리 (직접 XML 파싱)
+          # HWPX 처리
           lxml
+          python-hwpx
         ]);
       in
       {

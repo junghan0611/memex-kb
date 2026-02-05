@@ -115,20 +115,20 @@ HEADING_BULLETS = {
 # ============================================================
 @dataclass
 class OrgElement:
-    pass
+    hwpx_idx: Optional[int] = None  # v2: 원본 HWPX 문단 인덱스
 
 @dataclass
 class OrgHeading(OrgElement):
-    level: int
-    title: str
+    level: int = 0
+    title: str = ""
 
 @dataclass
 class OrgParagraph(OrgElement):
-    text: str
+    text: str = ""
 
 @dataclass
 class OrgTable(OrgElement):
-    table: AsciiDocTable
+    table: Optional[AsciiDocTable] = None
     name: str = ""
 
 @dataclass
@@ -139,13 +139,16 @@ class OrgDocument:
 
 
 def parse_org_file(org_path: Path) -> OrgDocument:
-    """Org 파일 파싱"""
+    """Org 파일 파싱 (v2: HWPX_IDX 태그 지원)"""
     doc = OrgDocument()
     with open(org_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
     lines = content.split('\n')
     i = 0
+    # v2: 다음 요소에 적용할 HWPX 인덱스 (#+HWPX: N으로 설정)
+    pending_hwpx_idx: Optional[int] = None
+
     while i < len(lines):
         line = lines[i]
 
@@ -154,6 +157,12 @@ def parse_org_file(org_path: Path) -> OrgDocument:
             i += 1; continue
         elif line.startswith('#+DATE:'):
             doc.date = line[7:].strip()
+            i += 1; continue
+
+        # v2: #+HWPX: N 키워드 → 다음 요소에 인덱스 부여
+        hwpx_match = re.match(r'^#\+HWPX:\s*(\d+)', line)
+        if hwpx_match:
+            pending_hwpx_idx = int(hwpx_match.group(1))
             i += 1; continue
 
         # AsciiDoc 표 블록
@@ -169,13 +178,23 @@ def parse_org_file(org_path: Path) -> OrgDocument:
             if '|===' in block_content:
                 table = parse_asciidoc_table(block_content)
                 if table.rows:
-                    doc.elements.append(OrgTable(table=table, name=table_name))
+                    elem = OrgTable(table=table, name=table_name)
+                    elem.hwpx_idx = pending_hwpx_idx
+                    doc.elements.append(elem)
                     logger.debug(f"테이블: {table_name} ({len(table.rows)}행)")
+            pending_hwpx_idx = None
             i += 1; continue
 
         if line.strip().startswith('#+BEGIN_EXAMPLE'):
+            # 작성요령 블록도 HWPX_IDX 보존
+            example_hwpx_idx = pending_hwpx_idx
+            pending_hwpx_idx = None
+            block_lines = []
+            i += 1
             while i < len(lines) and not lines[i].strip().startswith('#+END_EXAMPLE'):
+                block_lines.append(lines[i])
                 i += 1
+            # EXAMPLE 블록은 현재 v1과 동일하게 skip
             i += 1; continue
 
         if line.startswith('#+'):
@@ -185,11 +204,29 @@ def parse_org_file(org_path: Path) -> OrgDocument:
         if heading_match:
             level = len(heading_match.group(1))
             title = heading_match.group(2)
-            doc.elements.append(OrgHeading(level=level, title=title))
-            i += 1; continue
+            elem = OrgHeading(level=level, title=title)
+
+            # v2: :PROPERTIES: 드로어에서 :HWPX_IDX: 파싱
+            if i + 1 < len(lines) and lines[i + 1].strip() == ':PROPERTIES:':
+                j = i + 2
+                while j < len(lines) and lines[j].strip() != ':END:':
+                    idx_match = re.match(r'\s*:HWPX_IDX:\s*(\d+)', lines[j])
+                    if idx_match:
+                        elem.hwpx_idx = int(idx_match.group(1))
+                    j += 1
+                i = j + 1  # :END: 다음 줄로
+            else:
+                i += 1
+
+            doc.elements.append(elem)
+            pending_hwpx_idx = None
+            continue
 
         if line.strip():
-            doc.elements.append(OrgParagraph(text=line.strip()))
+            elem = OrgParagraph(text=line.strip())
+            elem.hwpx_idx = pending_hwpx_idx
+            doc.elements.append(elem)
+            pending_hwpx_idx = None
         i += 1
 
     return doc
@@ -198,6 +235,20 @@ def parse_org_file(org_path: Path) -> OrgDocument:
 # ============================================================
 # HWPX XML 생성 헬퍼
 # ============================================================
+def _fix_hwpx_xml(xml_str: str) -> str:
+    """ET.tostring() 출력을 한컴 호환 XML로 후처리
+
+    1. self-closing 태그 공백 제거: ' />' → '/>'
+    2. 빈 <hp:t /> → <hp:t></hp:t> 복원 (한컴은 빈 self-closing <hp:t/>도 허용하지만
+       ET가 원본 <hp:t>텍스트</hp:t>를 <hp:t /> 로 바꾸는 것이 문제)
+    """
+    # 빈 hp:t self-closing → 원본 형태 복원
+    xml_str = re.sub(r'<hp:t\s*/>', '<hp:t/>', xml_str)
+    # 나머지 모든 self-closing 태그의 공백 제거
+    xml_str = re.sub(r'\s+/>', '/>', xml_str)
+    return xml_str
+
+
 def hp_tag(name: str) -> str:
     return f'{{{HP}}}{name}'
 
@@ -603,9 +654,10 @@ def convert_org_to_hwpx(org_doc: OrgDocument, template_path: Path, output_path: 
     # 3. XML 직렬화 (원본과 동일하게 한 줄, 인덴트 없음)
     xml_bytes = ET.tostring(new_root, encoding='unicode')
 
-    # 4. 후처리: XML 선언 + 전체 네임스페이스
+    # 4. 후처리: XML 선언 + 전체 네임스페이스 + 한컴 호환
     xml_str = '<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>' + xml_bytes
     xml_str = re.sub(r'<hs:sec[^>]*>', f'<hs:sec {ALL_NS_DECL}>', xml_str, count=1)
+    xml_str = _fix_hwpx_xml(xml_str)
     new_section_xml = xml_str.encode('utf-8')
 
     logger.info(f"section0.xml 생성: {len(org_doc.elements)}개 요소, "
@@ -615,6 +667,275 @@ def convert_org_to_hwpx(org_doc: OrgDocument, template_path: Path, output_path: 
     patch_hwpx_binary(template_path, new_section_xml, output_path)
 
     logger.info(f"HWPX 저장: {output_path}")
+
+
+# ============================================================
+# v2: 문단 매칭 + 텍스트 교체 (서식 100% 보존)
+#
+# 핵심: ET.tostring()을 사용하지 않음.
+# 원본 XML 바이트를 그대로 유지하고 <hp:t> 태그 내용만 문자열 치환.
+# 이렇게 하면 ET roundtrip(\r 정규화, 속성 순서, self-closing 등)을 완전 회피.
+# ============================================================
+def _find_toplevel_p_ranges(xml_str: str) -> List[Tuple[int, int]]:
+    """원본 XML 문자열에서 top-level <hp:p>의 (start, end) 범위 리스트 반환
+
+    중첩된 <hp:p> (테이블 셀 내부)를 구분하기 위해 depth 추적.
+    """
+    # <hs:sec ...> 뒤부터 탐색
+    sec_close = xml_str.index('>', xml_str.index('<hs:sec')) + 1
+    content = xml_str[sec_close:]
+
+    ranges = []
+    i = 0
+    depth = 0
+    block_start = -1
+
+    while i < len(content):
+        if content[i:i+6] == '<hp:p ' or content[i:i+6] == '<hp:p>':
+            if depth == 0:
+                block_start = sec_close + i
+            depth += 1
+            i += 6
+        elif content[i:i+7] == '</hp:p>':
+            depth -= 1
+            if depth == 0 and block_start >= 0:
+                block_end = sec_close + i + 7
+                ranges.append((block_start, block_end))
+                block_start = -1
+            i += 7
+        else:
+            i += 1
+
+    return ranges
+
+
+def _extract_text_from_block(xml_str: str, start: int, end: int) -> str:
+    """XML 블록 문자열에서 top-level run의 <hp:t> 텍스트를 추출
+
+    테이블 셀 내부의 <hp:t>는 제외하고, 직접 자식 run의 텍스트만 추출.
+    """
+    block = xml_str[start:end]
+
+    # <hp:tbl> 이전의 텍스트만 추출 (테이블 셀 텍스트 제외)
+    tbl_pos = block.find('<hp:tbl ')
+    if tbl_pos >= 0:
+        search_area = block[:tbl_pos]
+    else:
+        search_area = block
+
+    texts = []
+    for m in re.finditer(r'<hp:t>(.*?)</hp:t>', search_area, re.DOTALL):
+        texts.append(m.group(1))
+    # self-closing <hp:t/> 는 빈 텍스트
+    return ''.join(texts)
+
+
+def _replace_t_in_block(xml_str: str, start: int, end: int,
+                        new_text: str) -> str:
+    """XML 블록 내 top-level run의 <hp:t> 텍스트를 교체
+
+    <hp:tbl> 이전의 첫 번째 텍스트가 있는 <hp:t>의 순수 텍스트 부분만 교체.
+    <hp:tab/>, <hp:lineBreak/> 등 자식 요소는 보존.
+    나머지 <hp:t>의 순수 텍스트만 비움.
+    <hp:t/> (self-closing)은 건드리지 않음.
+    """
+    block = xml_str[start:end]
+
+    # 테이블 이전 영역만 처리
+    tbl_pos = block.find('<hp:tbl ')
+    if tbl_pos >= 0:
+        before_tbl = block[:tbl_pos]
+        after_tbl = block[tbl_pos:]
+    else:
+        before_tbl = block
+        after_tbl = ''
+
+    # <hp:t>...</hp:t> 패턴 찾기 (self-closing <hp:t/> 제외)
+    # 내부에 자식 요소(<hp:tab/>, <hp:lineBreak/> 등)가 있을 수 있음
+    t_pattern = re.compile(r'<hp:t>(.*?)</hp:t>', re.DOTALL)
+    matches = list(t_pattern.finditer(before_tbl))
+
+    if not matches:
+        return xml_str  # 교체 대상 없음
+
+    # 순수 텍스트만 추출하는 헬퍼 (자식 태그 제거)
+    def _pure_text(inner: str) -> str:
+        return re.sub(r'<[^>]+/?>', '', inner).strip()
+
+    # 텍스트가 있는 첫 번째 <hp:t> 찾기
+    target_idx = 0
+    for i, m in enumerate(matches):
+        if _pure_text(m.group(1)):
+            target_idx = i
+            break
+
+    # 역순으로 치환 (offset 유지)
+    new_before = before_tbl
+    for i in range(len(matches) - 1, -1, -1):
+        m = matches[i]
+        inner = m.group(1)
+
+        # 자식 요소 (<hp:tab/>, <hp:lineBreak/> 등) 추출
+        child_elements = re.findall(r'<hp:\w+[^/]*/>', inner)
+        children_str = ''.join(child_elements)
+
+        if i == target_idx:
+            # 자식 요소 보존 + 새 텍스트
+            replacement = f'<hp:t>{children_str}{_escape_xml(new_text)}</hp:t>'
+        else:
+            # 자식 요소 보존 + 텍스트만 비움
+            replacement = f'<hp:t>{children_str}</hp:t>'
+
+        new_before = new_before[:m.start()] + replacement + new_before[m.end():]
+
+    new_block = new_before + after_tbl
+    return xml_str[:start] + new_block + xml_str[end:]
+
+
+def _replace_table_in_block(xml_str: str, start: int, end: int,
+                            org_table: 'OrgTable') -> str:
+    """XML 블록 내 <hp:tbl>의 셀 텍스트를 교체
+
+    셀별로 (rowAddr, colAddr)를 매칭하여 <hp:t> 텍스트만 교체.
+    """
+    if not org_table.table or not org_table.table.rows:
+        return xml_str
+
+    block = xml_str[start:end]
+
+    # Org 테이블에서 (row, col) → text 매핑
+    org_cell_map: Dict[Tuple[int, int], str] = {}
+    for row_idx, row in enumerate(org_table.table.rows):
+        col_idx = 0
+        for cell in row:
+            org_cell_map[(row_idx, col_idx)] = cell.text or ''
+            col_idx += cell.col_span
+
+    # 각 <hp:tc> 블록을 찾아서 셀 텍스트 교체
+    # tc 블록: <hp:tc ...>...</hp:tc>
+    result = block
+    tc_pattern = re.compile(r'<hp:tc\s[^>]*>.*?</hp:tc>', re.DOTALL)
+
+    # 역순 처리 (offset 변동 방지)
+    tc_matches = list(tc_pattern.finditer(result))
+    for tc_match in reversed(tc_matches):
+        tc_block = tc_match.group()
+
+        # cellAddr 추출
+        addr_m = re.search(r'<hp:cellAddr\s+colAddr="(\d+)"\s+rowAddr="(\d+)"', tc_block)
+        if not addr_m:
+            continue
+        col = int(addr_m.group(1))
+        row = int(addr_m.group(2))
+
+        new_text = org_cell_map.get((row, col))
+        if new_text is None:
+            continue
+
+        # 현재 텍스트 확인
+        t_matches = list(re.finditer(r'<hp:t>(.*?)</hp:t>', tc_block, re.DOTALL))
+        if not t_matches:
+            continue
+        current = ''.join(m.group(1) for m in t_matches)
+        if current.strip() == new_text.strip():
+            continue  # 동일 → skip
+
+        # 셀 내 <hp:t> 교체 (첫 번째에 텍스트, 나머지 비움)
+        new_tc = tc_block
+        for i in range(len(t_matches) - 1, -1, -1):
+            m = t_matches[i]
+            if i == 0:
+                replacement = f'<hp:t>{_escape_xml(new_text)}</hp:t>'
+            else:
+                replacement = '<hp:t></hp:t>'
+            new_tc = new_tc[:m.start()] + replacement + new_tc[m.end():]
+
+        result = result[:tc_match.start()] + new_tc + result[tc_match.end():]
+
+    return xml_str[:start] + result + xml_str[end:]
+
+
+def _escape_xml(text: str) -> str:
+    """XML 텍스트 이스케이프"""
+    text = text.replace('&', '&amp;')
+    text = text.replace('<', '&lt;')
+    text = text.replace('>', '&gt;')
+    text = text.replace('"', '&quot;')
+    return text
+
+
+def convert_org_to_hwpx_v2(org_doc: OrgDocument, template_path: Path, output_path: Path):
+    """v2: 원본 HWPX 문단 매칭 + 텍스트만 교체 (서식 100% 보존)
+
+    ET.tostring()을 사용하지 않고 원본 XML 바이트를 직접 조작.
+    <hp:t> 태그 내용만 문자열 치환하므로 XML 구조가 1바이트도 변형되지 않음.
+    """
+    if not template_path or not template_path.exists():
+        logger.error(f"템플릿 필수: {template_path}")
+        return
+
+    # 1. 원본 section0.xml을 문자열로 읽기
+    with zipfile.ZipFile(template_path, 'r') as zf:
+        section_data = zf.read('Contents/section0.xml')
+    xml_str = section_data.decode('utf-8')
+
+    # 2. top-level <hp:p> 범위 인덱싱 (문자열 탐색)
+    p_ranges = _find_toplevel_p_ranges(xml_str)
+    logger.info(f"원본 top-level <hp:p>: {len(p_ranges)}개")
+
+    # 3. Org 요소를 hwpx_idx로 매핑하여 교체
+    # 역순 처리 (문자열 offset 변동 방지)
+    replacements = []  # [(idx, elem), ...]
+    for elem in org_doc.elements:
+        idx = elem.hwpx_idx
+        if idx is None or idx < 0 or idx >= len(p_ranges):
+            continue
+        replacements.append((idx, elem))
+
+    # idx 역순 정렬
+    replacements.sort(key=lambda x: x[0], reverse=True)
+
+    matched = 0
+    skipped = 0
+    for idx, elem in replacements:
+        start, end = p_ranges[idx]
+        current_text = _extract_text_from_block(xml_str, start, end)
+
+        if isinstance(elem, OrgHeading):
+            new_text = heading_to_hwpx_text(elem)
+            if current_text.strip() == new_text.strip():
+                skipped += 1
+                continue
+            xml_str = _replace_t_in_block(xml_str, start, end, new_text)
+            matched += 1
+            logger.debug(f"[{idx}] 헤딩 교체: {new_text[:40]}")
+
+        elif isinstance(elem, OrgParagraph):
+            if current_text.strip() == elem.text.strip():
+                skipped += 1
+                continue
+            xml_str = _replace_t_in_block(xml_str, start, end, elem.text)
+            matched += 1
+            logger.debug(f"[{idx}] 본문 교체: {elem.text[:40]}")
+
+        elif isinstance(elem, OrgTable):
+            xml_str = _replace_table_in_block(xml_str, start, end, elem)
+            matched += 1
+            logger.debug(f"[{idx}] 테이블 교체: {elem.name}")
+
+        # 범위 재계산 (이 교체로 길이가 바뀌었을 수 있음)
+        # 역순이므로 이전 인덱스의 범위는 영향 없음
+
+    logger.info(f"매칭 결과: {matched}개 교체, {skipped}개 동일(skip)")
+
+    # 4. 수정된 원본 XML을 그대로 패치 (ET.tostring 없음!)
+    new_section_xml = xml_str.encode('utf-8')
+    logger.info(f"v2 section0.xml: {len(new_section_xml)} bytes")
+
+    # 5. 바이너리 패치로 HWPX 생성
+    patch_hwpx_binary(template_path, new_section_xml, output_path)
+
+    logger.info(f"v2 HWPX 저장: {output_path}")
 
 
 # ============================================================
@@ -640,6 +961,8 @@ def main():
     parser.add_argument('input', help='입력 Org 파일')
     parser.add_argument('-t', '--template', required=True, help='HWPX 템플릿 파일 (필수)')
     parser.add_argument('-o', '--output', help='출력 HWPX 파일')
+    parser.add_argument('-m', '--mode', choices=['v1', 'v2'], default='v2',
+                        help='변환 모드: v1=XML 재생성, v2=문단 매칭+텍스트 교체 (기본: v2)')
     parser.add_argument('-v', '--verbose', action='store_true', help='상세 로그')
 
     args = parser.parse_args()
@@ -657,11 +980,22 @@ def main():
     headings = sum(1 for e in org_doc.elements if isinstance(e, OrgHeading))
     tables = sum(1 for e in org_doc.elements if isinstance(e, OrgTable))
     paragraphs = sum(1 for e in org_doc.elements if isinstance(e, OrgParagraph))
+    tagged = sum(1 for e in org_doc.elements if e.hwpx_idx is not None)
 
     logger.info(f"  제목: {org_doc.title}")
     logger.info(f"  헤딩: {headings}개, 표: {tables}개, 문단: {paragraphs}개")
+    logger.info(f"  HWPX_IDX 태그: {tagged}개")
 
-    convert_org_to_hwpx(org_doc, template_path, output_path)
+    if args.mode == 'v2':
+        if tagged == 0:
+            logger.warning("HWPX_IDX 태그가 없습니다. v1 모드로 폴백합니다.")
+            convert_org_to_hwpx(org_doc, template_path, output_path)
+        else:
+            logger.info("v2 모드: 문단 매칭 + 텍스트 교체")
+            convert_org_to_hwpx_v2(org_doc, template_path, output_path)
+    else:
+        logger.info("v1 모드: XML 재생성")
+        convert_org_to_hwpx(org_doc, template_path, output_path)
 
 
 if __name__ == '__main__':

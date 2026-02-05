@@ -60,6 +60,7 @@ class Paragraph:
     is_table: bool = False
     table_data: Optional[Table] = None
     is_guide: bool = False  # 작성요령
+    hwpx_idx: int = -1  # v2: 원본 HWPX top-level <hp:p> 순서 인덱스
 
 
 @dataclass
@@ -296,8 +297,16 @@ def is_excluded_chapter(text: str) -> bool:
     return False
 
 
-def parse_hwpx_section(section_path: Path, include_tables: bool = True) -> Section:
-    """HWPX 섹션 XML 파싱"""
+def parse_hwpx_section(section_path: Path, include_tables: bool = True,
+                       para_idx_start: int = 0) -> Tuple[Section, int]:
+    """HWPX 섹션 XML 파싱
+
+    Args:
+        para_idx_start: 이 섹션의 시작 인덱스 (멀티 섹션 지원)
+
+    Returns:
+        (Section, next_para_idx)
+    """
     section = Section(name=section_path.stem)
 
     tree = ET.parse(section_path)
@@ -306,12 +315,19 @@ def parse_hwpx_section(section_path: Path, include_tables: bool = True) -> Secti
     # 표 제목 추적 (직전 헤딩 참조)
     last_table_title = ""
 
+    # v2: top-level <hp:p> 순서 인덱스
+    para_idx = para_idx_start
+
     # 최상위 요소 순회 (문단과 테이블)
     for elem in root:
         # 문단 처리
         if elem.tag == '{http://www.hancom.co.kr/hwpml/2011/paragraph}p':
+            current_idx = para_idx
+            para_idx += 1
+
             text = extract_text_from_paragraph(elem)
             if not text.strip():
+                # 빈 문단도 인덱스는 증가했으므로 skip만
                 continue
 
             # 너무 긴 텍스트는 건너뛰기
@@ -330,11 +346,12 @@ def parse_hwpx_section(section_path: Path, include_tables: bool = True) -> Secti
                 text=text.strip(),
                 style_id=style_id,
                 is_heading=is_heading,
-                heading_level=level
+                heading_level=level,
+                hwpx_idx=current_idx
             )
             section.paragraphs.append(para)
 
-            # 문단 내 테이블 처리
+            # 문단 내 테이블 처리 (부모 <hp:p>와 같은 인덱스)
             if include_tables:
                 for tbl in elem.findall('.//hp:tbl', NS):
                     table = parse_table(tbl)
@@ -348,11 +365,12 @@ def parse_hwpx_section(section_path: Path, include_tables: bool = True) -> Secti
                             text="",  # AsciiDoc 형식으로 변환
                             is_table=True,
                             table_data=table,
-                            is_guide=table.is_guide
+                            is_guide=table.is_guide,
+                            hwpx_idx=current_idx
                         )
                         section.paragraphs.append(tbl_para)
 
-    return section
+    return section, para_idx
 
 
 def parse_hwpx(hwpx_path: Path, include_tables: bool = True) -> List[Section]:
@@ -382,7 +400,7 @@ def parse_hwpx(hwpx_path: Path, include_tables: bool = True) -> List[Section]:
                 tmp.write(content)
                 tmp_path = Path(tmp.name)
 
-            section = parse_hwpx_section(tmp_path, include_tables=include_tables)
+            section, _ = parse_hwpx_section(tmp_path, include_tables=include_tables)
             section.name = section_name
             sections.append(section)
 
@@ -445,12 +463,16 @@ def convert_to_org(sections: List[Section], title: str = "") -> str:
 
                 if para.is_guide:
                     # 작성요령 → EXAMPLE
+                    if para.hwpx_idx >= 0:
+                        lines.append(f"#+HWPX: {para.hwpx_idx}")
                     lines.append("#+BEGIN_EXAMPLE :name 작성요령")
                     lines.append(asciidoc_table)
                     lines.append("#+END_EXAMPLE")
                 else:
                     # 일반 표 → SRC asciidoc
                     name_attr = f" :name {table.title}" if table.title else ""
+                    if para.hwpx_idx >= 0:
+                        lines.append(f"#+HWPX: {para.hwpx_idx}")
                     lines.append(f"#+BEGIN_SRC asciidoc{name_attr}")
                     lines.append(asciidoc_table)
                     lines.append("#+END_SRC")
@@ -464,9 +486,15 @@ def convert_to_org(sections: List[Section], title: str = "") -> str:
                 # 메모 접두어 제거 후 출력
                 heading_text = strip_memo_prefix(text)
                 lines.append(f"{stars} {heading_text}")
+                if para.hwpx_idx >= 0:
+                    lines.append(":PROPERTIES:")
+                    lines.append(f":HWPX_IDX: {para.hwpx_idx}")
+                    lines.append(":END:")
                 lines.append("")
             else:
                 # 일반 문단
+                if para.hwpx_idx >= 0:
+                    lines.append(f"#+HWPX: {para.hwpx_idx}")
                 lines.append(text)
                 lines.append("")
 

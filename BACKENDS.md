@@ -4,7 +4,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 
 ## History
 
-- **2026-02-08**: Google Docs - 3가지 접근법(MCP/네이티브MD/Pandoc DOCX) 실측 비교, `gdocs_md_processor.py` 추가 (탭 분할 + 이미지 추출)
+- **2026-02-08**: Google Docs - v4 완성: Python 직접 API 호출로 탭별 MD + 이미지 추출 완전 자동화 (`export` 명령). Apps Script 방식 폐기
 - **2026-02-04**: BACKENDS.md 초안 작성 (Google Docs, Threads, Confluence, HWPX)
 - **2026-01-29**: Confluence MIME 파싱 + UTF-8 정규화 파이프라인 완성
 
@@ -14,7 +14,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 
 | Backend | 상태 | 스크립트 | 권장 접근법 |
 |---------|------|----------|-------------|
-| Google Docs | ✅ 구현됨 | `gdocs_md_processor.py` | 브라우저 탭별 MD + 이미지 추출 |
+| Google Docs | ✅ 구현됨 | `gdocs_md_processor.py` | `export` 명령 (완전 자동) |
 | Threads SNS | ✅ 구현됨 | `threads_exporter.py` | API 직접 호출 |
 | Confluence | ✅ 구현됨 | `confluence_to_markdown.py` | MIME 파싱 + Pandoc |
 | HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
@@ -51,71 +51,55 @@ Google Docs는 팀 협업에서 가장 빈번하게 사용되는 소스입니다
 | 네이티브 MD 내보내기 | base64 인라인 (파일 비대), 이스케이프 문자 | `extract-images`로 후처리 |
 | Google Docs API (v1/v2) | 인증 복잡, 이미지 미지원 | MCP 또는 네이티브 활용 |
 
-### 권장 워크플로우
+### 권장 워크플로우 (완전 자동)
 
 ```
-[에이전트]                          [사용자]
-    │                                  │
-    ├─ MCP get_doc_content ───────────►│
-    │  "16개 탭 발견, 핵심 탭 안내"     │
-    │                                  │
-    │◄────── 브라우저에서 탭별 MD ──────┤
-    │        내보내기 (File → Download  │
-    │        → Markdown)               │
-    │                                  │
-    ├─ gdocs_md_processor.py ─────────►│
-    │  extract-images                  │
-    │  "28KB MD + 5개 PNG 생성"        │
-    │                                  │
-    ├─ 후속 변환 (MD → Org 등) ───────►│
-    │  "HWPX 검증/합병 준비 완료"      │
+[에이전트] ── export DOC_ID ──►  Google API 직접 호출
+    │                              │
+    ├─ 1. OAuth 토큰 갱신           │ (~/.google_workspace_mcp_work/credentials/)
+    ├─ 2. Docs API → 탭 목록 조회   │ (documents/{id}?fields=tabs)
+    ├─ 3. 탭별 MD 다운로드           │ (/export?format=markdown&tab={tabId})
+    └─ 4. base64 이미지 → PNG 추출  │
+                                    ▼
+                              output/
+                              ├── 00--탭이름.md
+                              ├── 01--탭이름.md
+                              └── images/
+                                  ├── tab00-image1.png
+                                  └── tab01-image1.png
 ```
 
-**Step 1: 탭 구조 파악** (에이전트가 수행)
+**한 줄 실행** (사용자 개입 불필요):
 
 ```bash
-# MCP get_doc_content 호출 후 탭 분할
-python scripts/gdocs_md_processor.py split-tabs \
-  --input mcp_output.json \
-  --output-dir ./output/tabs
+# 문서 ID만 넣으면 탭별 MD + 이미지 자동 추출
+nix develop --command python scripts/gdocs_md_processor.py export \
+  "DOC_ID" --output-dir ./output
+
+# 특정 Google 계정 지정
+nix develop --command python scripts/gdocs_md_processor.py export \
+  "DOC_ID" --account jhkim2@goqual.com --output-dir ./output
 ```
 
-**Step 2: 탭별 MD 내보내기** (사용자가 브라우저에서 수행)
-
-Google Docs 브라우저에서:
-1. 원하는 탭 선택
-2. File → Download → Markdown (.md)
-3. 탭마다 반복 (또는 핵심 탭만 선택)
-
-**Step 3: 이미지 추출** (에이전트가 수행)
+**레거시 (수동 워크플로우)**:
 
 ```bash
-# base64 인라인 이미지 → 별도 PNG 파일
-python scripts/gdocs_md_processor.py extract-images \
-  --input "1-연구개발과제의필요성.md" \
-  --output-dir ./output
+# MCP 출력에서 탭 분할
+python scripts/gdocs_md_processor.py split-tabs -i mcp_output.json -o ./output
 
-# 결과: 1,463KB → 28KB MD + 1.1MB images/ (98% 텍스트 감소)
-```
-
-**Step 4: 전체 처리** (탭 분할 + 이미지 추출 통합)
-
-```bash
-python scripts/gdocs_md_processor.py full \
-  --mcp-input mcp_output.json \
-  --md-input exported.md \
-  --output-dir ./output
+# 브라우저 다운로드 MD에서 이미지 추출
+python scripts/gdocs_md_processor.py extract-images -i exported.md -o ./output
 ```
 
 ### 에이전트 가이드
 
-Google Docs 협업 시 에이전트가 알아야 할 사항:
+Google Docs 변환 시 에이전트가 알아야 할 사항:
 
-1. **탭 발견은 MCP만 가능**: `get_doc_content`의 `--- TAB: xxx (ID: t.xxx) ---` 마커가 유일한 탭 정보 소스
-2. **이미지 품질은 네이티브 MD가 최고**: PNG 원본 품질, Pandoc DOCX는 BMP로 열화
-3. **26MB 이상 문서는 API 내보내기 불가**: `exportSizeLimitExceeded` 에러 → 수동 다운로드 안내
-4. **이스케이프 문자 주의**: 네이티브 MD 내보내기 시 `\*\*`, `\<`, `\~` 등 불필요한 이스케이프 발생
-5. **표 품질**: 네이티브 MD > Pandoc DOCX >> MCP text (복잡한 병합 셀은 모든 접근법에서 한계)
+1. **`export` 명령 우선 사용**: `gdocs_md_processor.py export DOC_ID`로 완전 자동화. MCP 불필요
+2. **인증**: MCP credentials (`~/.google_workspace_mcp_work/credentials/`)의 refresh_token 재활용
+3. **이미지 처리**: base64 인라인 → PNG 파일 자동 추출 (탭별 prefix로 충돌 방지)
+4. **이스케이프 문자 주의**: Google MD export 시 `\*\*`, `\<`, `\~` 등 불필요한 이스케이프 발생 (bd-207)
+5. **표 품질**: 네이티브 MD가 최고 (복잡한 병합 셀은 모든 접근법에서 한계)
 
 ### 레거시 스크립트
 

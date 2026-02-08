@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """
-Google Docs MD 후처리기 (v3)
+Google Docs MD 후처리기 (v4)
 
-MCP get_doc_content 출력 또는 Google Docs 네이티브 MD 내보내기를 처리:
-  1. 탭별 MD 파일 분할
-  2. base64 인라인 이미지 → 별도 PNG 파일 추출
-  3. 탭별 이미지 매핑
+Google Docs를 탭별 MD 파일로 자동 변환:
+  1. export: Google API 직접 호출 → 탭별 MD 다운로드 + 이미지 추출 (완전 자동)
+  2. split-tabs: MCP get_doc_content 결과 분할 (수동)
+  3. extract-images: base64 인라인 이미지 → 별도 PNG 파일 추출 (수동)
 
 Usage:
+  # 완전 자동화: 문서 ID만 넣으면 탭별 MD + 이미지 추출
+  python gdocs_md_processor.py export DOC_ID --output-dir ./output
+
+  # 특정 이메일 계정 사용
+  python gdocs_md_processor.py export DOC_ID --account jhkim2@goqual.com
+
   # 탭 분할 (MCP get_doc_content 결과)
   python gdocs_md_processor.py split-tabs --input mcp_output.json --output-dir ./output
 
   # 이미지 추출 (Google Docs 네이티브 MD 내보내기)
   python gdocs_md_processor.py extract-images --input exported.md --output-dir ./output
-
-  # 전체 처리 (탭 분할 + 이미지 추출)
-  python gdocs_md_processor.py full --mcp-input mcp_output.json --md-input exported.md --output-dir ./output
 """
 
 import argparse
@@ -25,9 +28,13 @@ import logging
 import os
 import re
 import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,6 +70,165 @@ class ExtractedImage:
     format: str         # png, jpeg
     data: bytes
     filename: str       # output filename
+
+
+# ──────────────────────────────────────────────
+# Google API Client: 직접 API 호출
+# ──────────────────────────────────────────────
+
+MCP_CREDS_DIR = Path.home() / ".google_workspace_mcp_work" / "credentials"
+DOCS_API_BASE = "https://docs.google.com/document/d"
+DOCS_REST_API = "https://docs.googleapis.com/v1/documents"
+
+
+class GoogleDocsClient:
+    """MCP credentials를 재활용하여 Google Docs API 직접 호출"""
+
+    def __init__(self, account: Optional[str] = None):
+        self.creds = self._load_credentials(account)
+        self.access_token = self._refresh_token()
+
+    def _load_credentials(self, account: Optional[str]) -> Dict[str, Any]:
+        if account:
+            creds_path = MCP_CREDS_DIR / f"{account}.json"
+        else:
+            # 첫 번째 credentials 파일 사용
+            creds_files = list(MCP_CREDS_DIR.glob("*.json"))
+            if not creds_files:
+                logger.error(f"MCP credentials 없음: {MCP_CREDS_DIR}")
+                sys.exit(1)
+            creds_path = creds_files[0]
+            logger.info(f"계정: {creds_path.stem}")
+
+        with open(creds_path, 'r') as f:
+            return json.load(f)
+
+    def _refresh_token(self) -> str:
+        data = urllib.parse.urlencode({
+            "client_id": self.creds["client_id"],
+            "client_secret": self.creds["client_secret"],
+            "refresh_token": self.creds["refresh_token"],
+            "grant_type": "refresh_token",
+        }).encode()
+        req = urllib.request.Request(self.creds["token_uri"], data=data)
+        with urllib.request.urlopen(req) as resp:
+            token = json.loads(resp.read())["access_token"]
+        logger.info("Google OAuth 토큰 갱신 완료")
+        return token
+
+    def _api_request(self, url: str) -> bytes:
+        req = urllib.request.Request(
+            url, headers={"Authorization": f"Bearer {self.access_token}"}
+        )
+        with urllib.request.urlopen(req) as resp:
+            return resp.read()
+
+    def get_tabs(self, doc_id: str) -> List[Dict[str, Any]]:
+        """Docs API로 탭 목록 조회 (ID, 제목)"""
+        url = f"{DOCS_REST_API}/{doc_id}?fields=tabs"
+        data = json.loads(self._api_request(url))
+        tabs = []
+        self._collect_tabs(data.get("tabs", []), tabs, depth=0)
+        return tabs
+
+    def _collect_tabs(
+        self, tab_list: List[Dict], result: List[Dict], depth: int
+    ):
+        for tab in tab_list:
+            props = tab.get("tabProperties", {})
+            result.append({
+                "tab_id": props.get("tabId", ""),
+                "title": props.get("title", "Untitled"),
+                "depth": depth,
+            })
+            children = tab.get("childTabs", [])
+            if children:
+                self._collect_tabs(children, result, depth + 1)
+
+    def export_tab_as_md(self, doc_id: str, tab_id: str) -> str:
+        """개별 탭을 Markdown으로 내보내기"""
+        url = f"{DOCS_API_BASE}/{doc_id}/export?format=markdown&tab={tab_id}"
+        return self._api_request(url).decode("utf-8")
+
+
+def extract_images_from_content(
+    content: str, images_dir: Path, prefix: str = ""
+) -> str:
+    """MD 문자열에서 base64 이미지 추출 및 참조 변환 (파일 경로 불필요)"""
+    images_dir.mkdir(parents=True, exist_ok=True)
+    original_size = len(content)
+    extracted: List[ExtractedImage] = []
+
+    for match in IMAGE_DEF_PATTERN.finditer(content):
+        ref_name = match.group('ref')
+        fmt = match.group('fmt')
+        raw_data = match.group('data').replace('\n', '').replace(' ', '')
+        try:
+            img_bytes = base64.b64decode(raw_data)
+        except Exception as e:
+            logger.warning(f"  {prefix}{ref_name} base64 디코딩 실패: {e}")
+            continue
+
+        filename = f"{prefix}{ref_name}.{fmt}" if prefix else f"{ref_name}.{fmt}"
+        (images_dir / filename).write_bytes(img_bytes)
+        extracted.append(ExtractedImage(
+            ref_name=ref_name, format=fmt, data=img_bytes, filename=filename,
+        ))
+        logger.info(f"  {filename}: {len(img_bytes) / 1024:.1f} KB")
+
+    cleaned = IMAGE_DEF_PATTERN.sub('', content)
+
+    def replace_ref(m):
+        alt = m.group('alt') or ''
+        ref = m.group('ref')
+        img = next((e for e in extracted if e.ref_name == ref), None)
+        if img:
+            label = alt if alt else ref
+            return f"![{label}](images/{img.filename})"
+        return m.group(0)
+
+    cleaned = IMAGE_REF_PATTERN.sub(replace_ref, cleaned)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned).strip() + '\n'
+
+    cleaned_size = len(cleaned)
+    if original_size > 0 and original_size != cleaned_size:
+        logger.info(
+            f"  크기: {original_size / 1024:.0f}KB → {cleaned_size / 1024:.0f}KB "
+            f"({(1 - cleaned_size / original_size) * 100:.0f}% 감소)"
+        )
+    return cleaned
+
+
+# ──────────────────────────────────────────────
+# MD Escape Cleaner: Google Docs 불필요 이스케이프 정리
+# ──────────────────────────────────────────────
+
+# Google Docs MD export가 불필요하게 이스케이프하는 문자들
+# 예: \~ \< \> \+ \- \. \) \= \& \_ \* \[ \]
+_GDOCS_UNESCAPE = re.compile(
+    r'\\([~<>+\-.)=&_*\[\]])'
+)
+
+
+def clean_md_escapes(content: str) -> str:
+    r"""Google Docs MD export의 불필요한 이스케이프 문자 정리
+
+    Google Docs는 MD 내보내기 시 특수문자를 과도하게 이스케이프합니다:
+      \~ → ~  (물결표, 날짜 범위)
+      \< → <  (비교 부호)
+      \> → >  (비교 부호)
+      \+ → +  (더하기)
+      \- → -  (하이픈)
+      \. → .  (마침표, 헤딩 번호)
+      \) → )  (닫는 괄호)
+      \= → =  (등호)
+      \& → &  (앰퍼샌드)
+      \_ → _  (밑줄)
+      \* → *  (별표)
+      \[ → [  (대괄호)
+      \] → ]  (대괄호)
+    """
+    return _GDOCS_UNESCAPE.sub(r'\1', content)
 
 
 # ──────────────────────────────────────────────
@@ -167,8 +333,10 @@ IMAGE_DEF_PATTERN = re.compile(
     re.MULTILINE,
 )
 
-# 이미지 참조: ![][imageN]
-IMAGE_REF_PATTERN = re.compile(r'!\[\]\[(?P<ref>image\d+)\]')
+# 이미지 참조: ![][imageN] 또는 ![alt text][imageN] (이스케이프된 \] 포함)
+IMAGE_REF_PATTERN = re.compile(
+    r'!\[(?P<alt>(?:[^\]\\]|\\.)*)\]\[(?P<ref>image\d+)\]'
+)
 
 
 def extract_images(md_path: str, output_dir: str) -> str:
@@ -215,12 +383,14 @@ def extract_images(md_path: str, output_dir: str) -> str:
     # base64 정의 제거
     cleaned = IMAGE_DEF_PATTERN.sub('', content)
 
-    # 참조를 파일 경로로 변환: ![][imageN] → ![imageN](images/imageN.png)
+    # 참조를 파일 경로로 변환: ![alt][imageN] → ![alt](images/imageN.png)
     def replace_ref(m):
+        alt = m.group('alt') or ''
         ref = m.group('ref')
         img = next((e for e in extracted if e.ref_name == ref), None)
         if img:
-            return f"![{ref}](images/{img.filename})"
+            label = alt if alt else ref
+            return f"![{label}](images/{img.filename})"
         return m.group(0)
 
     cleaned = IMAGE_REF_PATTERN.sub(replace_ref, cleaned)
@@ -277,8 +447,95 @@ def cmd_extract_images(args):
     print(f"  이미지: {image_count}개 → {images_dir}/")
 
 
+def cmd_export(args):
+    """완전 자동화: 문서 ID → 탭별 MD + 이미지 추출"""
+    doc_id = args.doc_id
+    max_depth = args.depth  # 0=상위만, 1=1단계 하위, 2=2단계까지, -1=전체
+    out = Path(args.output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    images_dir = out / "images"
+
+    # Step 1: Google API 인증
+    logger.info("=== Step 1: Google API 인증 ===")
+    client = GoogleDocsClient(account=args.account)
+
+    # Step 2: 탭 목록 조회 (하위 탭 포함)
+    logger.info("=== Step 2: 탭 목록 조회 ===")
+    all_tabs = client.get_tabs(doc_id)
+
+    # depth 필터링 (-1은 전체)
+    if max_depth >= 0:
+        tabs = [t for t in all_tabs if t["depth"] <= max_depth]
+    else:
+        tabs = all_tabs
+
+    logger.info(f"전체 탭: {len(all_tabs)}개, 내보내기 대상: {len(tabs)}개 (depth≤{max_depth})")
+    for t in all_tabs:
+        indent = "  " * t["depth"]
+        marker = "→" if t in tabs else "  (skip)"
+        logger.info(f"  {indent}{t['title']} (depth={t['depth']}){marker}")
+
+    # Step 3: 탭별 MD 다운로드 + 이미지 추출
+    logger.info("=== Step 3: 탭별 MD 다운로드 ===")
+    total_images = 0
+    for idx, tab in enumerate(tabs):
+        tab_title = tab["title"]
+        tab_id = tab["tab_id"]
+        depth = tab["depth"]
+        safe_name = re.sub(r'[^\w가-힣\s\-\.]', '', tab_title)
+        safe_name = re.sub(r'\s+', '-', safe_name.strip()) or "untitled"
+        filename = f"{idx:02d}--{safe_name}.md"
+
+        logger.info(f"  [{idx:02d}] {tab_title} (depth={depth}) 다운로드...")
+
+        # Rate limit 대응: 429 시 최대 3회 재시도 (2초, 5초, 10초 대기)
+        md_content = None
+        for attempt, wait in enumerate([0, 2, 5, 10]):
+            if wait > 0:
+                logger.info(f"  [{idx:02d}] {wait}초 대기 후 재시도 ({attempt}/3)...")
+                time.sleep(wait)
+            try:
+                md_content = client.export_tab_as_md(doc_id, tab_id)
+                break
+            except urllib.error.HTTPError as e:
+                if e.code == 429 and attempt < 3:
+                    continue
+                logger.error(f"  [{idx:02d}] HTTP {e.code}: {e.reason}")
+                break
+
+        if md_content is None:
+            continue
+
+        # 탭 간 요청 간격 (rate limit 방지)
+        if idx < len(tabs) - 1:
+            time.sleep(1)
+
+        # 이미지 추출 (탭별 prefix로 충돌 방지)
+        img_prefix = f"tab{idx:02d}-"
+        cleaned = extract_images_from_content(md_content, images_dir, img_prefix)
+
+        # 불필요한 이스케이프 정리 (\~, \<, \., \- 등)
+        cleaned = clean_md_escapes(cleaned)
+
+        # 탭 메타 주석 추가 (depth 정보 포함)
+        header = f"<!-- tab-id: {tab_id} depth: {depth} -->\n\n"
+        filepath = out / filename
+        filepath.write_text(header + cleaned, encoding='utf-8')
+
+        img_count = len(list(images_dir.glob(f"{img_prefix}*"))) if images_dir.exists() else 0
+        total_images += img_count
+        size_kb = len(cleaned) / 1024
+        logger.info(f"  [{idx:02d}] {filename} ({size_kb:.1f}KB, 이미지 {img_count}개)")
+
+    # 요약
+    print(f"\n결과: {len(tabs)}개 탭 → {out}/")
+    print(f"  MD 파일: {len(tabs)}개")
+    if total_images > 0:
+        print(f"  이미지: {total_images}개 → {images_dir}/")
+
+
 def cmd_full(args):
-    """전체 처리 (탭 분할 + 이미지 추출)"""
+    """전체 처리 (탭 분할 + 이미지 추출) - 레거시"""
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -305,7 +562,7 @@ def cmd_full(args):
         logger.info("MD 입력 없음 → 이미지 추출 건너뜀")
 
     # 요약
-    print(f"\n📂 처리 결과:")
+    print(f"\n처리 결과:")
     if tabs:
         print(f"  탭: {len(tabs)}개 → {out / 'tabs'}/")
     images_dir = out / "images"
@@ -316,11 +573,24 @@ def cmd_full(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Google Docs MD 후처리기 (MCP + 이미지 추출)"
+        description="Google Docs MD 변환기 (탭별 자동 내보내기 + 이미지 추출)"
     )
     subparsers = parser.add_subparsers(dest='command', required=True)
 
-    # split-tabs
+    # export (주요 명령)
+    p_export = subparsers.add_parser(
+        'export', help='Google Docs → 탭별 MD 자동 내보내기 (완전 자동화)'
+    )
+    p_export.add_argument('doc_id', help='Google Docs 문서 ID')
+    p_export.add_argument('--output-dir', '-o', default='./output', help='출력 디렉토리')
+    p_export.add_argument('--account', '-a', help='Google 계정 (예: user@gmail.com)')
+    p_export.add_argument(
+        '--depth', '-d', type=int, default=-1,
+        help='탭 깊이 제한 (0=상위만, 1=1단계 하위, -1=전체, 기본: -1)',
+    )
+    p_export.set_defaults(func=cmd_export)
+
+    # split-tabs (레거시)
     p_split = subparsers.add_parser(
         'split-tabs', help='MCP get_doc_content 결과를 탭별로 분할'
     )
@@ -328,7 +598,7 @@ def main():
     p_split.add_argument('--output-dir', '-o', default='./output', help='출력 디렉토리')
     p_split.set_defaults(func=cmd_split_tabs)
 
-    # extract-images
+    # extract-images (레거시)
     p_img = subparsers.add_parser(
         'extract-images', help='Google MD 내보내기에서 base64 이미지 추출'
     )
@@ -336,9 +606,9 @@ def main():
     p_img.add_argument('--output-dir', '-o', default='./output', help='출력 디렉토리')
     p_img.set_defaults(func=cmd_extract_images)
 
-    # full
+    # full (레거시)
     p_full = subparsers.add_parser(
-        'full', help='탭 분할 + 이미지 추출 전체 처리'
+        'full', help='탭 분할 + 이미지 추출 (레거시)'
     )
     p_full.add_argument('--mcp-input', help='MCP 출력 파일 (JSON)')
     p_full.add_argument('--md-input', help='Google MD 파일')

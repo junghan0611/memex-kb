@@ -1,41 +1,132 @@
 # Backend 연동 가이드
 
-Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정 및 사용법을 안내합니다.
+Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 접근법 비교, 한계 및 권장 워크플로우를 안내합니다.
+
+## History
+
+- **2026-02-08**: Google Docs - 3가지 접근법(MCP/네이티브MD/Pandoc DOCX) 실측 비교, `gdocs_md_processor.py` 추가 (탭 분할 + 이미지 추출)
+- **2026-02-04**: BACKENDS.md 초안 작성 (Google Docs, Threads, Confluence, HWPX)
+- **2026-01-29**: Confluence MIME 파싱 + UTF-8 정규화 파이프라인 완성
 
 ---
 
 ## 지원 Backend 현황
 
-| Backend | 상태 | 스크립트 |
-|---------|------|----------|
-| Google Docs | ✅ 구현됨 | `gdocs_to_markdown.py` |
-| Threads SNS | ✅ 구현됨 | `threads_exporter.py` |
-| Confluence | ✅ 구현됨 | `confluence_to_markdown.py` |
-| HWPX | ✅ 구현됨 | `hwpx2asciidoc/` |
-| Dooray Wiki | 🔧 개발 중 | - |
+| Backend | 상태 | 스크립트 | 권장 접근법 |
+|---------|------|----------|-------------|
+| Google Docs | ✅ 구현됨 | `gdocs_md_processor.py` | 브라우저 탭별 MD + 이미지 추출 |
+| Threads SNS | ✅ 구현됨 | `threads_exporter.py` | API 직접 호출 |
+| Confluence | ✅ 구현됨 | `confluence_to_markdown.py` | MIME 파싱 + Pandoc |
+| HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
+| Dooray Wiki | 🔧 개발 중 | - | - |
 
 ---
 
 ## Google Docs 연동
 
-### 설정
+Google Docs는 팀 협업에서 가장 빈번하게 사용되는 소스입니다. 문서를 가져올 때 **이미지, 표, 탭(Tab) 구조**를 보존하는 것이 핵심 과제입니다.
 
-```bash
-# 1. Google Cloud Console에서 프로젝트 생성
-# 2. Google Drive API 활성화
-# 3. Service Account 생성 및 키 다운로드
-# 4. credentials.json을 config/ 디렉토리에 저장
+### 접근법 비교 (2026-02-08 실측)
 
-# 환경변수 설정
-cp config/.env.example config/.env
-# config/.env 파일 편집
+3가지 접근법을 동일 문서(연구개발계획서, 26MB, 15탭, 이미지 5장)에 적용한 결과:
+
+| 항목 | 브라우저 MD 내보내기 | MCP get_doc_content | Pandoc DOCX 변환 |
+|------|---------------------|---------------------|-------------------|
+| **헤딩** | `## 1.1 제목` (보존) | `1.1 제목` (plain text) | `## 1.1 제목` (보존) |
+| **표** | MD 표로 변환 | 셀별 줄 분리 (구조 손실) | 복잡한 표 깨짐 |
+| **볼드/이탤릭** | `**굵게**` (보존) | 포맷팅 없음 | `**굵게**` (보존) |
+| **이미지** | base64 인라인 (5개) | 없음 | BMP 추출 (4개, 1개 누락) |
+| **탭 분리** | 브라우저에서 탭별 개별 내보내기 | `--- TAB: xxx ---` 마커 (유일한 소스) | 탭 구분 없음 (전체 병합) |
+| **크기 제한** | 없음 (수동) | 없음 | 26MB 초과 시 API 거부 |
+| **출력 용량** | 1,463KB (base64 포함) | 196KB (text only) | 781KB + 7.4MB (BMP) |
+| **인증** | 브라우저 세션 | MCP OAuth (자동) | Google API 키 필요 |
+
+### 한계 정리
+
+| 접근법 | 핵심 한계 | 대안 |
+|--------|-----------|------|
+| MCP `get_doc_content` | 이미지/포맷팅 없음 | 탭 발견 전용으로 사용 |
+| MCP `get_drive_file_download_url` | 26MB 초과 시 DOCX 내보내기 불가 | 수동 다운로드 |
+| Pandoc DOCX | 이미지 BMP 출력, 복잡한 표 깨짐, 이미지 누락 가능 | 네이티브 MD 사용 |
+| 네이티브 MD 내보내기 | base64 인라인 (파일 비대), 이스케이프 문자 | `extract-images`로 후처리 |
+| Google Docs API (v1/v2) | 인증 복잡, 이미지 미지원 | MCP 또는 네이티브 활용 |
+
+### 권장 워크플로우
+
+```
+[에이전트]                          [사용자]
+    │                                  │
+    ├─ MCP get_doc_content ───────────►│
+    │  "16개 탭 발견, 핵심 탭 안내"     │
+    │                                  │
+    │◄────── 브라우저에서 탭별 MD ──────┤
+    │        내보내기 (File → Download  │
+    │        → Markdown)               │
+    │                                  │
+    ├─ gdocs_md_processor.py ─────────►│
+    │  extract-images                  │
+    │  "28KB MD + 5개 PNG 생성"        │
+    │                                  │
+    ├─ 후속 변환 (MD → Org 등) ───────►│
+    │  "HWPX 검증/합병 준비 완료"      │
 ```
 
-### 사용법
+**Step 1: 탭 구조 파악** (에이전트가 수행)
 
 ```bash
-# 단일 문서 변환
+# MCP get_doc_content 호출 후 탭 분할
+python scripts/gdocs_md_processor.py split-tabs \
+  --input mcp_output.json \
+  --output-dir ./output/tabs
+```
+
+**Step 2: 탭별 MD 내보내기** (사용자가 브라우저에서 수행)
+
+Google Docs 브라우저에서:
+1. 원하는 탭 선택
+2. File → Download → Markdown (.md)
+3. 탭마다 반복 (또는 핵심 탭만 선택)
+
+**Step 3: 이미지 추출** (에이전트가 수행)
+
+```bash
+# base64 인라인 이미지 → 별도 PNG 파일
+python scripts/gdocs_md_processor.py extract-images \
+  --input "1-연구개발과제의필요성.md" \
+  --output-dir ./output
+
+# 결과: 1,463KB → 28KB MD + 1.1MB images/ (98% 텍스트 감소)
+```
+
+**Step 4: 전체 처리** (탭 분할 + 이미지 추출 통합)
+
+```bash
+python scripts/gdocs_md_processor.py full \
+  --mcp-input mcp_output.json \
+  --md-input exported.md \
+  --output-dir ./output
+```
+
+### 에이전트 가이드
+
+Google Docs 협업 시 에이전트가 알아야 할 사항:
+
+1. **탭 발견은 MCP만 가능**: `get_doc_content`의 `--- TAB: xxx (ID: t.xxx) ---` 마커가 유일한 탭 정보 소스
+2. **이미지 품질은 네이티브 MD가 최고**: PNG 원본 품질, Pandoc DOCX는 BMP로 열화
+3. **26MB 이상 문서는 API 내보내기 불가**: `exportSizeLimitExceeded` 에러 → 수동 다운로드 안내
+4. **이스케이프 문자 주의**: 네이티브 MD 내보내기 시 `\*\*`, `\<`, `\~` 등 불필요한 이스케이프 발생
+5. **표 품질**: 네이티브 MD > Pandoc DOCX >> MCP text (복잡한 병합 셀은 모든 접근법에서 한계)
+
+### 레거시 스크립트
+
+v1/v2는 Google API를 직접 호출하는 방식 (이미지 미지원, 참고용):
+
+```bash
+# v1: Google Docs API 직접 파싱
 nix develop --command python scripts/gdocs_to_markdown.py "DOCUMENT_ID"
+
+# v2: Pandoc 활용 변환
+nix develop --command python scripts/gdocs_to_markdown_v2.py "DOCUMENT_ID"
 ```
 
 ---
@@ -258,7 +349,7 @@ nix develop --command ./hwpx2asciidoc/run.sh
 
 여러 세부과제를 취합하고, 용어/양식을 통일하여, 한 사람이 작성한 것처럼 일관된 문서를 AI 에이전트와 함께 생성합니다.
 
-자세한 내용은 [README.md 로드맵](../README.md#-로드맵) 참조
+자세한 내용은 [README.md 로드맵](README.md#-로드맵) 참조
 
 ---
 
@@ -268,4 +359,4 @@ nix develop --command ./hwpx2asciidoc/run.sh
 
 ---
 
-← [README.md](../README.md)로 돌아가기
+← [README.md](README.md)로 돌아가기

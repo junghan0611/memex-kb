@@ -69,3 +69,8 @@ dorray-docs/
 
 .agent-shell/
 .beads/.br_history
+
+tmp
+
+# 프로젝트별 내보내기 스크립트 (계정/문서ID 포함)
+scripts/export_kiat_*.sh

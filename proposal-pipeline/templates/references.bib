@@ -1,0 +1,878 @@
+% -*- bibtex -*-
+% AI Soft Sensor 제안서 레퍼런스 DB (SSOT)
+%
+% Project:  AI 홈·가전용 다중 IoT 소프트센서 및 데이터처리 플랫폼
+% Sources:  레퍼런스-준비.md + 레퍼런스-리서치-결과.md + 기술-리서치-국제동향.md + 레퍼런스-수치-분류.md
+% Created:  2026-02-11
+% Updated:  2026-02-11
+%
+% Usage in Org-mode:
+%   #+bibliography: references.bib
+%   #+cite_export: csl ieee.csl
+%   본문에서 인용: [cite:@kostat2025aging]
+%
+% 원본 MD 파일들은 deprecated/로 이동됨. 이 bib가 유일한 원본(SSOT).
+
+% ============================================================
+% 클러스터 A: 인구·고령화 통계
+% ============================================================
+
+@report{kostat2025aging,
+  title = {2025 고령자 통계},
+  author = {통계청},
+  date = {2025},
+  url = {https://www.kostat.go.kr/board.es?mid=a10301010000&bid=10820&tag=&act=view&list_no=438832},
+  abstract = {2025년 65세 이상 고령인구 1,051만 4천명, 전체 인구의 20.3\%. 초고령사회 진입.},
+  keywords = {A1, 인구, 고령화, 초고령사회},
+  note = {제안서: 2025년 초고령사회 진입 (65세+ 20\%) — 정확히 일치}
+}
+
+@online{nocutnews2025superaged,
+  title = {올해 초고령사회 첫 진입},
+  author = {노컷뉴스},
+  date = {2025},
+  url = {https://www.nocutnews.co.kr/news/6407362},
+  keywords = {A1, 인구, 고령화},
+  note = {보도: 2000년 고령화사회(7\%) → 2017년 고령사회(14\%) → 2025년 초고령사회(20\%)}
+}
+
+@report{mohw2023elderlysurvey,
+  title = {2023 노인실태조사 결과},
+  author = {보건복지부},
+  date = {2023},
+  url = {https://www.mohw.go.kr/board.es?mid=a10503010100&bid=0027&act=view&list_no=1483352},
+  abstract = {혼자 사는 고령자 가구 213만 8천 가구 (전체 고령자 가구의 37.8\%). 낙상사고 경험 노인 5.6\%.},
+  keywords = {A2, A4, 독거노인, 안전},
+  note = {제안서 150만 가구는 과소 — 2023년 기준 213.8만 가구. 스트림A에서 수정 완료.}
+}
+
+@online{kairnews2025elderly,
+  title = {2025 노인 독거비율 사상 최고},
+  author = {한국AI부동산신문},
+  date = {2025},
+  url = {https://www.kairnews.com/news/391977},
+  keywords = {A2, 독거노인},
+  note = {65세 이상 1인 가구 비율 23.6\% (역대 최고)}
+}
+
+@report{kostat2025singlehh,
+  title = {2025 통계로 보는 1인가구},
+  author = {통계청},
+  date = {2025},
+  url = {https://www.kostat.go.kr/board.es?mid=a10301010000&bid=10820&tag=&act=view&list_no=442130},
+  abstract = {2024년 1인 가구 804만 5천 가구, 전체의 36.1\%.},
+  keywords = {A3, 1인가구},
+  note = {제안서 34\%는 과소 — 2024년 기준 36.1\%. 스트림A에서 수정 완료.}
+}
+
+@report{kostat2024singlehh,
+  title = {2024 통계로 보는 1인가구},
+  author = {통계청},
+  date = {2024},
+  url = {https://www.kostat.go.kr/board.es?mid=a10301010000&bid=10820&tag=&act=view&list_no=434103},
+  abstract = {2023년 1인 가구 782만 9천 가구, 전체의 35.5\%.},
+  keywords = {A3, 1인가구}
+}
+
+% ============================================================
+% 클러스터 B: 응급·안전 통계
+% ============================================================
+
+@report{mohw2023emergency,
+  title = {응급안전안심서비스 현황},
+  author = {보건복지부},
+  date = {2023},
+  url = {https://www.mohw.go.kr/board.es?mid=a10503010100&bid=0027&act=view&list_no=1480948},
+  abstract = {연간 약 15만 5천 건 응급상황 대응 실적.},
+  keywords = {B1, 응급, 독거노인},
+  note = {47분 수치 직접 확인 안 됨 — 제안서에서 '발견 지연'으로 완화 처리 완료}
+}
+
+@online{khan2023heartattack,
+  title = {급성심근경색 골든타임 2시간},
+  author = {경향신문},
+  date = {2023-02-03},
+  url = {https://www.khan.co.kr/article/202302032121015},
+  keywords = {B2, 심근경색, 골든타임},
+  note = {심근경색 골든타임은 2시간 이내 (제안서 20분은 심정지와 혼동 가능)}
+}
+
+@online{kdca-heartattack,
+  title = {급성 심근경색증 건강정보},
+  author = {질병관리청},
+  date = {2023},
+  url = {https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=5243},
+  keywords = {B2, 심근경색}
+}
+
+@online{kdca-fall,
+  title = {낙상 건강정보},
+  author = {질병관리청},
+  date = {2023},
+  url = {https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=1743},
+  keywords = {B3, 낙상},
+  note = {낙상 15분 골든타임은 의학 표준 아님. 고관절 골절 후 1년 내 사망률 33\%.}
+}
+
+@online{kumc-stroke,
+  title = {뇌졸중 골든타임 4시간 30분},
+  author = {고려대학교 의료원},
+  date = {2023},
+  url = {https://www.kumc.or.kr/seasonPress/KUMM_vol19/kumm11.jsp},
+  keywords = {B4, 뇌졸중, 골든타임},
+  note = {공식 4.5시간, 실질 권고 3시간 내 병원 방문. 제안서 3시간은 근사치로 합리적.}
+}
+
+@report{fire2023stats,
+  title = {2023 화재통계 보도자료},
+  author = {소방청},
+  date = {2024},
+  url = {https://www.korea.kr/briefing/pressReleaseView.do?newsId=156611891},
+  abstract = {2023년 총 화재 38,857건, 사망 284명, 부상 2,204명. 부주의 원인 여전히 다수.},
+  keywords = {B5, B7, B8, B11, 화재, 사망자},
+  note = {제안서 800명은 과대 — 2023년 총 화재 사망자 284명. 25만건도 과대 — 실제 38,857건.}
+}
+
+@online{enara-fire,
+  title = {화재 사망자수 (e-나라지표)},
+  author = {e-나라지표},
+  date = {2024},
+  url = {https://www.index.go.kr/unity/potal/indicator/IndexInfo.do?clasCd=8&idxCd=8056},
+  keywords = {B7, 화재, 사망자}
+}
+
+@report{mohw2024lonelydeath,
+  title = {2024 고독사 실태조사 결과},
+  author = {보건복지부},
+  date = {2024},
+  url = {https://www.mohw.go.kr/board.es?mid=a10503000000&bid=0027&act=view&list_no=1483372},
+  abstract = {고독사 사망자 — 2021년 3,378명, 2022년 3,559명, 2023년 3,661명. 60세 이상 약 47.5\%.},
+  keywords = {B9, 고독사, 독거노인},
+  note = {'응급사망'이 아니라 '고독사'가 정확한 용어. 제안서 3,200명은 2020~2021년 범위 근사.}
+}
+
+@online{kca-elderly-accident,
+  title = {노인 안전사고 동향},
+  author = {한국소비자원},
+  date = {2023},
+  url = {https://www.kca.go.kr/home/sub.do?menukey=4002&mode=view&no=1000682049},
+  keywords = {A4, B3, 노인, 안전사고}
+}
+
+% ============================================================
+% 클러스터 C: 만성질환·의료비 통계
+% ============================================================
+
+@online{doctorsnews-diabetes,
+  title = {당뇨+전단계 2000만명 시대},
+  author = {의협신문},
+  date = {2024},
+  url = {https://www.doctorsnews.co.kr/news/articleView.html?idxno=156774},
+  abstract = {대한당뇨병학회 Diabetes Fact Sheet 2024: 30세 이상 당뇨 환자 533만명(2022). 사회경제적 비용 21조원(2019).},
+  keywords = {C1, 당뇨, 의료비},
+  note = {제안서 680만은 과장 가능(공식 533만). 4.2조는 직접 진료비, 전체 사회적 비용 21조.}
+}
+
+@online{medipana-hypertension,
+  title = {2023 고혈압 환자 746만 7천명},
+  author = {메디파나뉴스},
+  date = {2024},
+  url = {https://www.medipana.com/article/view.php?news_idx=326540},
+  abstract = {2023년 고혈압 진료 환자 746만 7천명, 총 진료비 1조 3,127억원.},
+  keywords = {C2, 고혈압, 의료비},
+  note = {제안서 890만은 과대(실제 747만). 3.8조는 대폭 과대(실제 1.3조).}
+}
+
+@report{mohw2023dementia,
+  title = {2023 치매역학조사 결과},
+  author = {보건복지부},
+  date = {2024},
+  url = {https://www.mohw.go.kr/board.es?mid=a10503000000&bid=0027&list_no=1484959},
+  abstract = {2023년 추정 치매환자 86만 7,803명(유병률 9.17\%). 1인당 연간 관리비용 2,639만원. 국가 치매 관리 비용 20조원 돌파.},
+  keywords = {C3, 치매, 의료비},
+  note = {제안서 90만은 근사(87만). 2.1조는 대폭 과소(실제 국가 관리비용 20조+).}
+}
+
+@online{nid2023dementia,
+  title = {치매현황 2023},
+  author = {중앙치매센터},
+  date = {2023},
+  url = {https://ansim.nid.or.kr/community/pds_view.aspx?BID=284},
+  keywords = {C3, 치매}
+}
+
+@online{newsis2024depression,
+  title = {우울증 환자 연간 100만명 돌파},
+  author = {뉴시스},
+  date = {2024-01-10},
+  url = {https://www.newsis.com/view/NISX20240110_0002588041},
+  abstract = {2022년 우울증 환자 100만 32명. 2024년 110만 6,603명(역대 최대).},
+  keywords = {C4, 우울증, 의료비},
+  note = {제안서 120만은 근사(2024년 110만, 증가 추세). 1.5조는 과대(직접 진료비 약 5,400억).}
+}
+
+@report{hira-mental,
+  title = {정신질환 진료 현황},
+  author = {건강보험심사평가원},
+  date = {2023},
+  url = {https://www.hira.or.kr/bbsDummy.do?pgmid=HIRAA020041000100&brdScnBltNo=4&brdBltNo=10627},
+  keywords = {C4, 우울증}
+}
+
+@online{news1-healthinsurance,
+  title = {건보 재정 올해 적자 위기},
+  author = {뉴스1},
+  date = {2025},
+  url = {https://www.news1.kr/amp/bio/welfare-medical/6053657},
+  abstract = {2019~2024년 5년 연속 흑자. 2026년부터 적자 전환 예상. 국회예산정책처: 2025년 -3.2조, 2028년 누적 -5.5조.},
+  keywords = {C9, 건강보험, 재정},
+  note = {제안서 '적자 5조원'은 현재 사실 아님(아직 흑자). 2026년 이후 전망치.}
+}
+
+@online{khan-healthinsurance,
+  title = {건보 재정 2026년 적자 전환},
+  author = {경향신문},
+  date = {2025-08-18},
+  url = {https://www.khan.co.kr/article/202508181700001},
+  keywords = {C9, 건강보험}
+}
+
+% ============================================================
+% 클러스터 D: 기술 벤치마크 (수면분석 등)
+% ============================================================
+
+@article{jcsm2024radar-sleep,
+  title = {레이더 기반 수면 모니터링 검증},
+  author = {{JCSM 연구팀}},
+  date = {2024},
+  url = {https://jcsm.aasm.org/doi/10.5664/jcsm.11136},
+  abstract = {Vayyar/레이더 기반 수면무호흡 감지: PSG-AHI 상관계수 ρ>0.81 (44명 대상).},
+  keywords = {D8, 수면분석, PSG},
+  note = {제안서 'PSG 대비 90\% 일치도'는 목표치로 합리적. 상용 제품 87~93\% 수준.}
+}
+
+@article{sleep2024radiowave,
+  title = {Radio wave sleep monitoring — highly accurate sleep staging model},
+  author = {{SLEEP 저널 연구팀}},
+  date = {2024},
+  url = {https://academic.oup.com/sleep/article/48/1/zsae187/7735723},
+  keywords = {D8, 수면분석}
+}
+
+@article{sleepiz2024validation,
+  title = {Sleepiz 레이더 수면 모니터 검증},
+  author = {{Sleepiz 연구팀}},
+  date = {2024},
+  url = {https://link.springer.com/article/10.1007/s11325-024-03057-6},
+  abstract = {Sleepiz One+ 레이더: PSG-AHI 상관 rp=0.87~0.94 (141명 대상).},
+  keywords = {D8, 수면분석}
+}
+
+% ============================================================
+% 클러스터 E: 센서 비용·경제성
+% (대부분 시장 가격 → 별도 bib 항목 불필요, 자체 산출)
+% ============================================================
+
+% ============================================================
+% 클러스터 F: 시장 규모·사업화
+% ============================================================
+
+@report{mordor2025homeappliances,
+  title = {Global Home Appliances Market},
+  author = {{Mordor Intelligence}},
+  date = {2025},
+  url = {https://www.mordorintelligence.com/industry-reports/global-home-appliances-market-industry},
+  abstract = {2025년 561.6억\$ → 2030년 713.4억\$ (CAGR 4.9\%).},
+  keywords = {F1, 시장, 가전},
+  note = {RFP 수치(5,347억\$)와 10배 차이 — 단위 확인 필요(억 달러 vs billion).}
+}
+
+@report{fmi2025smarthome,
+  title = {Smart Home Market},
+  author = {{Future Market Insights}},
+  date = {2025},
+  url = {https://www.futuremarketinsights.com/reports/smart-home-market},
+  abstract = {2025년 216.3억\$ → 2035년 489.2억\$ (CAGR 8.5\%).},
+  keywords = {F2, 시장, 스마트홈},
+  note = {제안서 수치와 일치 (단위: 억 달러). CAGR 8.8\%는 8.5\%와 근사.}
+}
+
+@report{mordor2025kr-smarthome,
+  title = {한국 스마트홈 시장},
+  author = {{Mordor Intelligence}},
+  date = {2025},
+  url = {https://www.mordorintelligence.kr/industry-reports/south-korea-smart-home-market},
+  abstract = {2024년 5.31억\$(약 7,100억원) → 2030년 13.38억\$(약 1.8조원, CAGR 16.15\%).},
+  keywords = {F3, 시장, 국내},
+  note = {제안서 3조원은 확인된 수치(7,100억원)와 4배 이상 차이. 시장 범위 정의 차이 가능.}
+}
+
+@online{theliving2024housing,
+  title = {2024년 주택 준공 실적},
+  author = {월간THE LIVING},
+  date = {2025},
+  url = {http://www.theliving.co.kr/news/articleView.html?idxno=23515},
+  abstract = {2024년 아파트 준공 40만 7,534호.},
+  keywords = {F7, 주택, 신축},
+  note = {제안서 '연 35만호'는 준공 기준(37~40만) 근사.}
+}
+
+@online{enara-housing,
+  title = {주택건설실적 (e-나라지표)},
+  author = {e-나라지표},
+  date = {2024},
+  url = {https://www.index.go.kr/unity/potal/main/EachDtlPageDetail.do?idx_cd=1224},
+  keywords = {F7, 주택}
+}
+
+@report{insightace2025ai-smarthome,
+  title = {AI in Smart Home Technology Market 2025-2034},
+  author = {{InsightAce Analytic}},
+  date = {2025},
+  url = {https://www.insightaceanalytic.com/report/ai-in-smart-home-technology-market/2704},
+  abstract = {글로벌 AI 스마트홈 기술 시장 CAGR 27.10\%, 2034년 \$1,404.59B 도달.},
+  keywords = {시장, AI, 스마트홈}
+}
+
+@report{mrfr2025smart-sensors,
+  title = {Smart Sensors Market 2035},
+  author = {{Market Research Future}},
+  date = {2025},
+  url = {https://www.marketresearchfuture.com/reports/smart-sensors-market-2768},
+  abstract = {스마트 센서 시장 2024년 \$53.26B → 2035년 \$164.14B (CAGR 10.9\%). IoT 센서 CAGR 15\%.},
+  keywords = {시장, 센서}
+}
+
+@report{idtechex2026sensor,
+  title = {Sensor Market 2026-2036},
+  author = {{IDTechEx}},
+  date = {2026},
+  url = {https://www.idtechex.com/en/research-report/sensor-market/1137},
+  keywords = {시장, 센서}
+}
+
+% ============================================================
+% 국제동향 1: AI 에이전트 + 물리 공간 (Ambient Intelligence)
+% ============================================================
+
+@online{networkworld-homelm,
+  title = {HomeLM: A Foundation Model for Ambient AI},
+  author = {{NetworkWorld}},
+  date = {2025},
+  url = {https://www.networkworld.com/article/4054975/homelm-a-foundation-model-for-ambient-ai.html},
+  abstract = {Google HomeLM — 이종 센서 스트림(RF, 음향, 환경)을 자연어로 변환하여 LLM/에이전트가 추론 가능한 컨텍스트 생성.},
+  keywords = {ambient-ai, google, homelm},
+  note = {과제 '소프트센서 → 컨텍스트 엔진 → 에이전트 판단' 3단계와 정확히 대응}
+}
+
+@online{google-gemini-home,
+  title = {Gemini for Home: Expanding the Platform for a New Era of Smart Home AI},
+  author = {{Google Developers Blog}},
+  date = {2025},
+  url = {https://developers.googleblog.com/en/gemini-for-home-expanding-the-platform-for-a-new-era-of-smart-home-ai/},
+  abstract = {Gemini for Home — 카메라·마이크·센서 데이터를 Gemini 모델이 통합 추론. 클라우드 기반.},
+  keywords = {google, gemini, 스마트홈},
+  note = {클라우드 접근. 본 과제는 동일 비전을 엣지(온디바이스)에서 구현하여 프라이버시 보호.}
+}
+
+@online{techcrunch-gemini-home,
+  title = {Google reveals its Gemini-powered smart home lineup and AI strategy},
+  author = {{TechCrunch}},
+  date = {2025-10-01},
+  url = {https://techcrunch.com/2025/10/01/google-reveals-its-gemini-powered-smart-home-lineup-and-ai-strategy/},
+  keywords = {google, gemini, 스마트홈}
+}
+
+@online{ctse-ces2026,
+  title = {CES 2026: From AI Features to AI Coordination},
+  author = {{CTSE/AEI}},
+  date = {2026},
+  url = {https://ctse.aei.org/ces-2026-marks-the-shift-from-ai-features-to-ai-coordination/},
+  abstract = {CES 2026 핵심: AI가 개별 기능에서 생태계 조율로 진화. 벤더 간 파편화 심화.},
+  keywords = {CES, AI, 스마트홈},
+  note = {벤더 종속 파편화 = 본 과제 배경의 '셋째 한계'. Matter 기반 오픈 플랫폼이 해법.}
+}
+
+@online{gearbrain-ces2026,
+  title = {CES 2026 AI Smart Home Future},
+  author = {{Gearbrain}},
+  date = {2026},
+  url = {https://www.gearbrain.com/ces-2026-ai-smart-home-future-2674405597.html},
+  keywords = {CES, AI, 스마트홈}
+}
+
+% ============================================================
+% 국제동향 2: 소프트센서 / 가상 센서
+% ============================================================
+
+@online{ellipticlabs,
+  title = {Elliptic Labs — AI Virtual Smart Sensor Platform},
+  author = {{Elliptic Labs}},
+  date = {2025},
+  url = {https://ellipticlabs.com/home/},
+  abstract = {노르웨이 기업. 약 10억 대 탑재(2025). 초음파·동작 데이터를 딥뉴럴넷으로 분석하여 물리 센서 없이 근접 센서/존재 감지 구현.},
+  keywords = {소프트센서, 가상센서},
+  note = {'물리센서 없이 소프트웨어만으로 센싱 기능 구현'의 가장 성공적인 상용 사례}
+}
+
+@online{businesswire-elliptic,
+  title = {Elliptic Labs Announces Smartphone Product Launches for January 2025},
+  author = {{BusinessWire}},
+  date = {2025-02},
+  url = {https://www.businesswire.com/news/home/20250202312753/en/Elliptic-Labs-Announces-Smartphone-Product-Launches-for-January-2025},
+  keywords = {소프트센서}
+}
+
+@article{ieee2021softsensor-survey,
+  title = {Survey on Deep Learning for Data-Driven Soft Sensors},
+  author = {{IEEE 연구팀}},
+  date = {2021},
+  url = {https://ieeexplore.ieee.org/abstract/document/9329169},
+  abstract = {딥러닝 기반 소프트센서의 산업 공정 적용 종합 리뷰. 공정 모니터링, 품질 예측 등.},
+  keywords = {소프트센서, 딥러닝, 서베이},
+  note = {제안서 '소프트센서는 산업 공정 분야에서 1990년대부터 사용'의 학술적 기반}
+}
+
+@article{mit2025softsensor,
+  title = {Comprehensive Analysis of Soft Sensors},
+  author = {{MIT Braatz Group}},
+  date = {2025},
+  url = {http://web.mit.edu/brAAtzgroup/Cao_IEEEInstrumMeas_2025.pdf},
+  keywords = {소프트센서, 분석}
+}
+
+% ============================================================
+% 국제동향 3: 크로스모달 센서 퓨전
+% ============================================================
+
+@inproceedings{apple2025sensorfusion,
+  title = {Using LLMs for Late Multimodal Sensor Fusion for Activity Recognition},
+  author = {{Apple ML Research}},
+  date = {2025},
+  url = {https://machinelearning.apple.com/research/multimodal-sensor-fusion},
+  abstract = {NeurIPS 2025 Workshop. 오디오+IMU → 텍스트 프롬프트 → LLM이 활동 분류. 제로샷/원샷 12-class 분류 유의미한 성과.},
+  keywords = {크로스모달, 센서퓨전, LLM, Apple},
+  note = {이종 센서 데이터를 융합하여 직접 측정 불가능한 정보 생성 — 크로스모달 추론의 최신 사례}
+}
+
+@online{arxiv-sensorfusion,
+  title = {Multimodal Sensor Fusion for Activity Recognition (arXiv)},
+  author = {{Apple Research}},
+  date = {2025},
+  url = {https://arxiv.org/html/2509.10729v1},
+  keywords = {크로스모달, 센서퓨전}
+}
+
+@article{scidir2023sensorfusion,
+  title = {Comparative Review on Multi-modal Sensor Fusion},
+  author = {{ScienceDirect 연구팀}},
+  date = {2023},
+  url = {https://www.sciencedirect.com/science/article/abs/pii/S0165168423002396},
+  abstract = {5가지 추론 메커니즘: adaptive, deep generative, deep discriminative, algorithm unrolling, transformer.},
+  keywords = {센서퓨전, 멀티모달, 서베이}
+}
+
+@article{nature2022multimodal,
+  title = {Multimodal sensor fusion in latent representation space},
+  author = {{Nature Scientific Reports}},
+  date = {2022},
+  url = {https://www.nature.com/articles/s41598-022-24754-w},
+  keywords = {센서퓨전, 멀티모달}
+}
+
+@article{pmc2024occupancy,
+  title = {Occupancy Prediction in IoT Smart Buildings},
+  author = {{PMC 연구팀}},
+  date = {2024},
+  url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC11174554/},
+  abstract = {멀티센서 퓨전 재실 감지. PIR·CO2·조도·음향 센서 데이터 융합.},
+  keywords = {재실감지, 센서퓨전, IoT}
+}
+
+@article{scidir2024dwfl,
+  title = {DWFL multi-sensor fusion for occupancy detection},
+  author = {{ScienceDirect 연구팀}},
+  date = {2024},
+  url = {https://www.sciencedirect.com/science/article/pii/S2666546824000454},
+  abstract = {Deep Weighted Fusion Learning 기반 재실 감지. 30\% 성능 개선.},
+  keywords = {재실감지, 센서퓨전}
+}
+
+@article{mdpi2024occupancy,
+  title = {Occupancy Detection Fundamentals},
+  author = {{MDPI Sensors}},
+  date = {2024},
+  url = {https://www.mdpi.com/1424-8220/24/7/2123},
+  keywords = {재실감지}
+}
+
+% ============================================================
+% 국제동향 4: 온디바이스 AI / TinyML
+% ============================================================
+
+@article{pmc2025tinyml,
+  title = {TinyML Survey 2025},
+  author = {{PMC 연구팀}},
+  date = {2025},
+  url = {https://pmc.ncbi.nlm.nih.gov/articles/PMC12115890/},
+  abstract = {8-bit 양자화로 3-4배 스토리지 감소. 온디바이스 추론 지연 3.47-14.98 ms/프레임. 에너지 10.6-22.1 μJ.},
+  keywords = {TinyML, 온디바이스, 벤치마크},
+  note = {제안서 목표 ≤50ms는 현재 TinyML 벤치마크(3-15ms) 대비 달성 가능}
+}
+
+@article{mdpi2025tinyml,
+  title = {TinyML and On-Device Inference},
+  author = {{MDPI Sensors}},
+  date = {2025},
+  url = {https://www.mdpi.com/1424-8220/25/10/3191},
+  keywords = {TinyML, 온디바이스}
+}
+
+@online{homeassistant2025ai,
+  title = {AI in Home Assistant — Local AI Strategy},
+  author = {{Home Assistant}},
+  date = {2025-09-11},
+  url = {https://www.home-assistant.io/blog/2025/09/11/ai-in-home-assistant},
+  abstract = {오픈소스 스마트홈 플랫폼의 로컬 AI 전략. 클라우드 의존 없이 온디바이스 자연어 이해·자동화.},
+  keywords = {스마트홈, 온디바이스, 오픈소스},
+  note = {본 과제의 '엣지에서 완결' 철학과 동일. 온디바이스 AI 수요 증명.}
+}
+
+% ============================================================
+% 국제동향 5: Matter 프로토콜
+% ============================================================
+
+@online{csa2025matter15,
+  title = {Matter 1.5 Release},
+  author = {{CSA-IOT}},
+  date = {2025-11},
+  url = {https://csa-iot.org/newsroom/matter-1-5-introduces-cameras-closures-and-enhanced-energy-management-capabilities/},
+  abstract = {Matter 1.5: 카메라, 토양수분 센서, 에너지 관리 확장. CSA 회원사 794개, 총 인증 10,400+.},
+  keywords = {Matter, CSA, 표준},
+  note = {제안서 '소프트센서 출력을 Matter 표준 클러스터로 노출' → 10,400+ 인증 제품 생태계와 즉시 연동}
+}
+
+@online{matter-smarthome2026,
+  title = {The Matter Standard in 2026: A Status Review},
+  author = {{matter-smarthome.de}},
+  date = {2026},
+  url = {https://matter-smarthome.de/en/development/the-matter-standard-in-2026-a-status-review/},
+  keywords = {Matter, 현황}
+}
+
+@online{csa2024matter14,
+  title = {Matter 1.4 enables more capable smart homes},
+  author = {{CSA-IOT}},
+  date = {2024},
+  url = {https://csa-iot.org/newsroom/matter-1-4-enables-more-capable-smart-homes/},
+  keywords = {Matter}
+}
+
+@online{qorvo-matter-thread,
+  title = {Simplifying Smart Homes: Matter, Thread and Wi-Fi Revolutionizing IoT},
+  author = {{Qorvo}},
+  date = {2025},
+  url = {https://www.qorvo.com/design-hub/blog/simplifying-smart-homes-learn-how-matter-thread-and-wi-fi-are-revolutionizing-iot-connectivity},
+  keywords = {Matter, Thread, Wi-Fi}
+}
+
+@online{matter-smarthome-thread,
+  title = {What is a Thread Border Router?},
+  author = {{matter-smarthome.de}},
+  date = {2025},
+  url = {https://matter-smarthome.de/en/know-how/what-is-a-thread-border-router/},
+  abstract = {Thread 1.4: 2026년 1월부터 Thread 1.3 기반 신규 인증 불가. Thread 1.4 필수화.},
+  keywords = {Thread, Border Router},
+  note = {월패드를 Matter Controller + OTBR로 구현하는 본 과제 아키텍처의 기반}
+}
+
+% ============================================================
+% 국제동향 6: 연합학습
+% ============================================================
+
+@article{mdpi2025fl-iot,
+  title = {Federated Learning for IoT Survey},
+  author = {{MDPI Sensors}},
+  date = {2025-01},
+  url = {https://www.mdpi.com/2224-2708/14/1/9},
+  abstract = {FL은 데이터 프라이버시, 대역폭 제약, 디바이스 이질성이 핵심인 IoT 환경에서 분산 ML의 핵심 접근법.},
+  keywords = {연합학습, IoT, 서베이}
+}
+
+@article{mdpi2025blockchain-fl,
+  title = {Blockchain-Enabled FL for Smart Home Intrusion Detection},
+  author = {{MDPI Smart Cities}},
+  date = {2025-02},
+  url = {https://www.mdpi.com/2624-6511/8/1/35},
+  keywords = {연합학습, 블록체인, 스마트홈}
+}
+
+% ============================================================
+% 국제동향 7: Constitutional AI / Agentic AI
+% ============================================================
+
+@article{anthropic2022cai,
+  title = {Constitutional AI: Harmlessness from AI Feedback},
+  author = {{Anthropic}},
+  date = {2022},
+  url = {https://www.anthropic.com/research/constitutional-ai-harmlessness-from-ai-feedback},
+  abstract = {AI 시스템에 헌법(Constitution) = 원칙 집합을 부여하여 스스로 출력을 평가·수정.},
+  keywords = {Constitutional AI, 에이전트},
+  note = {힣 개요 아키텍처의 'Context Engine ← Constitution → Agent 판단' 구조}
+}
+
+@online{cio2026agentic-constitution,
+  title = {Why Your 2026 IT Strategy Needs an Agentic Constitution},
+  author = {{CIO}},
+  date = {2026},
+  url = {https://www.cio.com/article/4118138/why-your-2026-it-strategy-needs-an-agentic-constitution.html},
+  abstract = {자율 에이전트의 윤리적 경계를 정의하는 기계 판독 가능 원칙 체계.},
+  keywords = {Constitutional AI, 에이전트, IT전략}
+}
+
+% ============================================================
+% 국제동향 8: A2A 프로토콜
+% ============================================================
+
+@online{google2025a2a,
+  title = {A2A: A New Era of Agent Interoperability},
+  author = {{Google Developers Blog}},
+  date = {2025-04},
+  url = {https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/},
+  abstract = {에이전트 간 통신 오픈 프로토콜. 50개+ 기술 파트너(Atlassian, Salesforce, SAP 등). Linux Foundation 산하 오픈소스.},
+  keywords = {A2A, 에이전트, 프로토콜},
+  note = {힣 개요 아키텍처 클라우드 레이어 A2A — 외부 에이전트(의료, 보안)와 연동}
+}
+
+@online{ibm-a2a,
+  title = {What Is A2A Protocol},
+  author = {{IBM Think}},
+  date = {2025},
+  url = {https://www.ibm.com/think/topics/agent2agent-protocol},
+  keywords = {A2A, 에이전트}
+}
+
+% ============================================================
+% 국제동향 9: ONNX Runtime
+% ============================================================
+
+@software{onnxruntime,
+  title = {ONNX Runtime},
+  author = {{Microsoft}},
+  date = {2025},
+  url = {https://onnxruntime.ai/},
+  abstract = {오픈소스 AI 추론 엔진. CPU/GPU/NPU 최적화. squeezenet-int8: 538+ inferences/sec.},
+  keywords = {ONNX, 추론엔진, 엣지AI},
+  note = {에너자이 Optimium이 'ONNX 대비 1.5-2배 속도' 주장의 기준선}
+}
+
+@online{nimbleedge-onnx,
+  title = {NimbleEdge × ONNX Runtime — 70억 추론, 평균 지연 15ms},
+  author = {{NimbleEdge}},
+  date = {2023},
+  url = {https://onnxruntime.ai/blogs/nimbleedge-x-onnxruntime},
+  keywords = {ONNX, 엣지AI}
+}
+
+% ============================================================
+% 국제동향 11: AI 화재 감지
+% ============================================================
+
+@article{nature2025fire-detection,
+  title = {Multi-object fire detection with AIGC},
+  author = {{Nature Scientific Reports}},
+  date = {2025},
+  url = {https://www.nature.com/articles/s41598-025-02865-4},
+  keywords = {화재감지, 딥러닝}
+}
+
+@article{springer2025fire,
+  title = {Automatic Flame Detection with DL},
+  author = {{Springer Fire Technology}},
+  date = {2025},
+  url = {https://link.springer.com/article/10.1007/s10694-025-01810-1},
+  abstract = {33개 딥러닝 모델 실내 화재 비교 평가. 정확도 79.66~98.72\%, 오경보율 0.61\%.},
+  keywords = {화재감지, 딥러닝, 벤치마크}
+}
+
+@article{mdpi2025fire-review,
+  title = {Early Fire and Smoke Detection Review},
+  author = {{MDPI Applied Sciences}},
+  date = {2025},
+  url = {https://www.mdpi.com/2076-3417/15/18/10255},
+  keywords = {화재감지, 연기감지}
+}
+
+% ============================================================
+% 국제동향 13-14: 사상적 기반 (Kevin Kelly, Minsky)
+% ============================================================
+
+@book{kelly2016inevitable,
+  title = {The Inevitable: Understanding the 12 Technological Forces That Will Shape Our Future},
+  author = {Kelly, Kevin},
+  date = {2016},
+  url = {https://kk.org/books/the-inevitable},
+  abstract = {12가지 기술 힘. Cognifying = 모든 것에 인지를 부여. 소프트센서 = 기존 센서에 인지를 부여하는 기술.},
+  keywords = {미래학, AI, Cognifying}
+}
+
+@online{freethink-kelly2025,
+  title = {The Great Progression — Kevin Kelly's Vision for 2025-2050},
+  author = {{Freethink}},
+  date = {2025},
+  url = {https://www.freethink.com/artificial-intelligence/the-great-progression-kevin-kelly},
+  keywords = {미래학, AI}
+}
+
+@book{minsky1986societyofmind,
+  title = {Society of Mind},
+  author = {Minsky, Marvin},
+  date = {1986},
+  url = {https://en.wikipedia.org/wiki/Society_of_Mind},
+  abstract = {인간의 마음 = 단순한 에이전트들의 방대한 사회. 상호작용에서 지능이 창발.},
+  keywords = {인지과학, 에이전트, 창발},
+  note = {소프트센서 = 각각 단순한 '감각기관 에이전트'. 컨텍스트 엔진이 통합 → 공간의 지능 창발.}
+}
+
+% ============================================================
+% 국제동향 15: sLLM (Small Language Model)
+% ============================================================
+
+@online{google-slm,
+  title = {On-device SLM with multimodality, RAG, function calling},
+  author = {{Google Developers Blog}},
+  date = {2025},
+  url = {https://developers.googleblog.com/google-ai-edge-small-language-models-multimodality-rag-function-calling/},
+  abstract = {Gemma 3n: 최초의 멀티모달 온디바이스 sLLM. 1B 모델 529MB로 모바일 GPU에서 2,585 tokens/sec.},
+  keywords = {sLLM, 온디바이스, Gemma},
+  note = {월패드에 sLLM 탑재 가능성. 컨텍스트 엔진의 자연어 이해 기반.}
+}
+
+@online{huggingface-slm,
+  title = {Small Language Model Overview},
+  author = {{HuggingFace}},
+  date = {2025},
+  url = {https://huggingface.co/blog/jjokah/small-language-model},
+  keywords = {sLLM}
+}
+
+@online{deepsense-slm-rag,
+  title = {Implementing SLMs with RAG on Embedded Devices},
+  author = {{DeepSense.ai}},
+  date = {2025},
+  url = {https://deepsense.ai/blog/implementing-small-language-models-slms-with-rag-on-embedded-devices-leading-to-cost-reduction-data-privacy-and-offline-use/},
+  keywords = {sLLM, RAG, 엣지AI}
+}
+
+% ============================================================
+% 국제동향 16: Embodied AI
+% ============================================================
+
+@article{acm2025embodied,
+  title = {Embodied Intelligence: Morphology, Action, Perception, Learning},
+  author = {{ACM Computing Surveys}},
+  date = {2025},
+  url = {https://dl.acm.org/doi/10.1145/3717059},
+  abstract = {지능 = 뇌-몸-환경의 결합. 능동적 지각 → 체화된 인지 → 동적 상호작용 폐루프.},
+  keywords = {Embodied AI, 체화인지},
+  note = {과제 '소프트센서→컨텍스트 엔진→에이전트' = 지각→인지→행동 폐루프}
+}
+
+@article{frontiers2025embodied,
+  title = {Three-Layer Embodied Intelligence Framework},
+  author = {{Frontiers in Robotics and AI}},
+  date = {2025},
+  url = {https://www.frontiersin.org/journals/robotics-and-ai/articles/10.3389/frobt.2025.1668910/full},
+  keywords = {Embodied AI}
+}
+
+% ============================================================
+% 국제동향 17: AI와 초고령사회 돌봄
+% ============================================================
+
+@report{insightace2024elderly,
+  title = {AI in Aging and Elderly Care Market 2024-2034},
+  author = {{InsightAce Analytic}},
+  date = {2024},
+  url = {https://www.insightaceanalytic.com/report/ai-in-aging-and-elderly-care-market/2696},
+  abstract = {2024년 \$47.4B → 2034년 \$322.4B (CAGR ~21\%).},
+  keywords = {고령자, AI, 돌봄, 시장}
+}
+
+@online{arxiv2025elderly-agentic,
+  title = {Redefining Elderly Care with Agentic AI},
+  author = {{arXiv}},
+  date = {2025},
+  url = {https://arxiv.org/html/2507.14912v1},
+  abstract = {에이전틱 AI로 노인 돌봄 재정의. IoT 센서 + 스마트홈으로 원격 안전 모니터링.},
+  keywords = {고령자, 에이전트, 스마트홈}
+}
+
+@online{ageinplace-ai-homecare,
+  title = {Future of AI in Home Care},
+  author = {{Aging and Health Technology Watch}},
+  date = {2025},
+  url = {https://www.ageinplacetech.com/blog/future-ai-home-care-new-report-published-today},
+  keywords = {고령자, AI, 재가돌봄}
+}
+
+@report{grandview-elderrobot,
+  title = {Elder Care Assistive Robots Market},
+  author = {{Grand View Research}},
+  date = {2024},
+  url = {https://www.grandviewresearch.com/industry-analysis/elder-care-assistive-robots-market-report},
+  abstract = {돌봄 로봇 시장 2024년 \$2.93B → 2033년 \$9.85B.},
+  keywords = {고령자, 로봇, 시장}
+}
+
+% ============================================================
+% RFP 인용 (RFP에 명시된 시장 데이터)
+% ============================================================
+
+@report{rfp2026softsensor,
+  title = {2026 산업융합 RFP — AI 홈·가전용 다중 IoT 소프트센서 및 데이터처리 플랫폼 기술 개발},
+  author = {{산업통상자원부}},
+  date = {2026},
+  abstract = {품목번호 2026-산업융합-품목-일반-18. 글로벌 가전 시장 5,347억\$ (Mordor), 스마트홈 시장 2,163억\$ (FMI).},
+  keywords = {RFP, 시장, 정부과제},
+  note = {RFP 자체를 시장 데이터 출처로 인용 가능}
+}
+
+% ============================================================
+% 추가 출처 (2026-02-11 제출전 검토에서 보강)
+% ============================================================
+
+@report{nabo2025healthinsurance,
+  title = {의료개혁과 비상진료대책을 반영한 건강보험 재정전망},
+  author = {국회예산정책처},
+  date = {2025},
+  number = {나보포커스 제84호},
+  url = {https://www.nabo.go.kr/Sub/01Report/01_01_Board.jsp},
+  abstract = {의료개혁 1차 실행방안 반영 시 2025년 적자 전환(현행 유지 시 2026년), 2028년 누적준비금 소진(현행 유지 시 2030년). 향후 10년 누적적자 32.2조원 증가.},
+  keywords = {건강보험, 재정, 적자},
+  note = {제안서 L779 "2028년 누적 적자 5.5조" — news1-healthinsurance와 교차 확인. 나보포커스가 1차 출처.}
+}
+
+@report{kdca2025injuryfactbook,
+  title = {2025 손상 팩트북 (Injury Factbook)},
+  author = {질병관리청},
+  date = {2025},
+  url = {https://www.kdca.go.kr/injury/biz/injury/recsroom/statsSmMain.do},
+  abstract = {연간 약 355만 명 사고·중독 손상. 입원환자 중 추락·낙상 51.6\%(최다). 75세 이상 낙상 입원 72.5\%.},
+  keywords = {손상, 낙상, 통계},
+  note = {제안서 L1085 "약 42만 건(입원)" — 355만×입원비율(약 15.6\%)≈55만, 낙상 비율 51.6\% 적용 시 ~28만. 42만은 별도 퇴원손상통계(2022) 기준으로 추정. 검토 권고.}
+}
+
+@report{keei2023energy,
+  title = {2023 에너지통계연보},
+  author = {에너지경제연구원},
+  date = {2023},
+  url = {https://www.keei.re.kr/keei/download/YES2023.pdf},
+  abstract = {국내 최종에너지 소비 중 가정부문 비중, 세대별 에너지 소비 현황 등 포함.},
+  keywords = {에너지, 가정, 통계},
+  note = {제안서 L629 "가정 부문 18\%, 세대당 72만원" — 에너지통계연보 PDF에서 확인 필요. KEPCO 전력통계도 교차 확인 대상.}
+}
+
+% ============================================================
+% END
+% ============================================================

@@ -401,6 +401,39 @@ nix develop --command python scripts/refresh_threads_token.py --test
 
 **Unique Feature**: "어쏠리즘(Assholism)" - 아포리즘을 단일 Org 파일로 통합, 시간순 정렬, 주제별 자동 분류
 
+### 7. Proposal Pipeline
+
+**디렉토리**: `proposal-pipeline/` (최상위, hwpx2org/ 등과 동일 패턴)
+
+**파이프라인**: Google Docs → MD → Org-mode → ODT → DOC → HWP
+
+**디렉토리 구조**:
+```
+proposal-pipeline/
+├── build_proposal.sh       # 오케스트레이터
+├── md_to_org.py            # MD → Org (HWPX 레벨 호환)
+├── merge_chapters.py       # 장별 Org → 통합 Org
+├── merge_to_template.py    # 템플릿 + 콘텐츠 병합
+├── build_master_md.py      # 5개 MD → 통합 MD
+├── cleanup_md.py           # MD 전처리 (불릿, 캡션 정규화)
+├── org_merge_levels.py     # Level 6→5 후처리
+├── odt_postprocess.py      # ODT 테이블 헤더/테두리 보정
+├── templates/              # ODT 스타일, CSL, BibTeX
+└── docs/                   # HWP 서식 사양, 유니코드 가이드
+```
+
+**run.sh 명령**:
+- `proposal-build`: 전체 파이프라인 (GDocs→MD→Org→통합)
+- `proposal-convert`: 개별 MD→Org 변환
+- `proposal-merge`: Org 통합 + L6→L5 후처리
+- `proposal-odt-fix`: ODT 후처리 (테이블 스타일)
+
+**핵심 주의사항**:
+- Python stdlib만 사용 → `flake.nix` 수정 불필요
+- `reference.odt` (7.9M)는 git-tracked (변경 빈도 극히 낮음)
+- 한글 볼드 + NBSP 문제 → `docs/unicode-bullet-guide.md` 참조
+- HWP 양식은 최대 5단계 → L6은 반드시 `org_merge_levels.py`로 통합
+
 ---
 
 ## 🔧 Environment Variables

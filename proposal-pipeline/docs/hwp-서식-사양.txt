@@ -1,0 +1,72 @@
+KIAT 제안서 HWP 서식 사양
+========================
+최종 수정: 2026-02-12 (HWP 양식 실측 기반 보정)
+
+기본 규정
+- 본문: 돋움체 12pt, 줄간격 120%
+- 표 내용: 돋움 8pt, 줄간격 100%
+- 용지: A4 세로 (21cm x 29.7cm)
+- 여백: 상2cm 하2cm 좌2cm 우2cm
+
+헤딩 레벨별 서식 (HWP 양식 실측)
+---------------------------------
+레벨 1 (장)   | 번호: 1. 2.     | 16pt Bold | 들여쓰기 0cm    | 상 0.5cm  하 0.25cm | 예: 1. 연구개발과제의 필요성
+레벨 2 (절)   | 번호: 1-1. 2-1. | 13pt Bold | 들여쓰기 0cm    | 상 0.35cm 하 0.15cm | 예: 1-1. 국내외 기술동향
+레벨 3 (소절) | 기호: □          | 12pt Bold | 들여쓰기 0cm    | 상 0.25cm 하 0.1cm  | 예: □ AI 소프트센서 기술 현황
+레벨 4 (항목) | 기호: ○          | 12pt Bold | 들여쓰기 0.75cm | 상 0.2cm  하 0.1cm  | 예: ○ 주요 센서 유형
+레벨 5 (세부) | 기호: -          | 12pt Bold | 들여쓰기 1.5cm  | 상 0.15cm 하 0.05cm | 예: - 온도 센서 기반 추론
+레벨 6 (상세) | 기호: ·          | 12pt Bold | 들여쓰기 2.0cm  | 상 0.1cm  하 0.05cm | 예: · 정확도 95% 이상
+
+참고: 기존 사양서 대비 변경점
+- 레벨 2: 14pt → 13pt (HWP 양식 실측)
+- 레벨 3: 13pt → 12pt (HWP 양식 실측)
+- 레벨 5~6: 11pt → 12pt (HWP 양식 실측, 계층은 들여쓰기로 구분)
+- 레벨 4~6: 들여쓰기 추가 (0.75cm → 1.5cm → 2.0cm)
+
+본문/기타 서식
+--------------
+본문 (Text body)  : 돋움 12pt, 줄간격 120%
+리스트            : 돋움 12pt (불릿/번호)
+캡션              : 돋움 10pt Italic
+코드/출처         : Courier New 9pt 모노스페이스
+참고문헌          : 돋움 8pt, 줄간격 100%, hanging indent 0.5cm
+
+표(Table) 서식
+--------------
+표 헤더 (첫 행)   : 돋움 8pt Bold, 가운데 정렬, 배경 연회색(#d9d9d9)
+표 본문 (데이터)  : 돋움 8pt Normal, 왼쪽 정렬, 배경 없음(흰색)
+셀 줄간격         : 100% (단줄)
+셀 여백           : margin-top 0cm, margin-bottom 0cm
+캡션              : 10pt Italic, 표 위에 배치
+컬럼 폭           : <N> 쿠키로 상대 비율 지정 (183개 테이블 적용 완료)
+
+글머리표 체계 (HWPX 원본 기준)
+------------------------------
+Level 1: 장 번호     1., 2.
+Level 2: 절 번호     1-1., 2-1.
+Level 3: □ 소절      (번호 없음)
+Level 4: ○ 항목      (번호 없음)
+Level 5: - 세부      (번호 없음)
+Level 6: · 상세      (U+00B7 MIDDLE DOT)
+Level 7: 테이블 캡션 (별도)
+
+ODT 스타일 매핑 (reference.odt)
+-------------------------------
+Heading_20_1 → 레벨 1 (16pt Bold, indent 0cm)
+Heading_20_2 → 레벨 2 (13pt Bold, indent 0cm)
+Heading_20_3 → 레벨 3 (12pt Bold, indent 0cm)
+Heading_20_4 → 레벨 4 (12pt Bold, indent 0.75cm)
+Heading_20_5 → 레벨 5 (12pt Bold, indent 1.5cm)
+Heading_20_6 → 레벨 6 (12pt Bold, indent 2.0cm)
+Text_20_body → 본문 (12pt, line-height 120%)
+OrgTableContents → 표 본문 (8pt, line-height 100%, margin 0cm)
+OrgTableHeading  → 표 헤더 (8pt Bold, #d9d9d9, line-height 100%)
+Bibliography_20_1 → 참고문헌 (8pt, line-height 100%, hanging 0.5cm)
+Quotations → 이미지 범례 (10pt Italic, 좌우 0.5cm 여백)
+
+작성 방식
+---------
+- 개조식: - 불릿 + 명사형 종결
+- 파란색 주석 및 작성요령 표는 삭제 후 제출
+- 기술 용어는 영문 그대로 유지 (Matter, Thread, OTBR 등)
+- 유니코드 기호: unicode-bullet-guide.md 참조

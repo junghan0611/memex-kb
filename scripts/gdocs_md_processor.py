@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 """
-Google Docs MD 후처리기 (v4)
+Google Docs 다중포맷 내보내기 (v5)
 
-Google Docs를 탭별 MD 파일로 자동 변환:
-  1. export: Google API 직접 호출 → 탭별 MD 다운로드 + 이미지 추출 (완전 자동)
+Google Docs를 탭별 파일로 자동 변환 (MD, DOCX, PDF, HTML, TXT):
+  1. export: Google API 직접 호출 → 탭별 파일 다운로드 (완전 자동)
   2. split-tabs: MCP get_doc_content 결과 분할 (수동)
   3. extract-images: base64 인라인 이미지 → 별도 PNG 파일 추출 (수동)
 
 Usage:
-  # 완전 자동화: 문서 ID만 넣으면 탭별 MD + 이미지 추출
+  # MD 내보내기 (기본, 이미지 추출 + 이스케이프 정리 포함)
   python gdocs_md_processor.py export DOC_ID --output-dir ./output
+
+  # DOCX 내보내기
+  python gdocs_md_processor.py export DOC_ID --format docx
+
+  # 특정 상위 탭 하위만 내보내기 (부분 매칭)
+  python gdocs_md_processor.py export DOC_ID --parent-tab "D-0 스프린트"
+
+  # 조합: 특정 탭 + DOCX + 깊이 제한
+  python gdocs_md_processor.py export DOC_ID --parent-tab "D-0" --format docx --depth 2
 
   # 특정 이메일 계정 사용
   python gdocs_md_processor.py export DOC_ID --account jhkim2@goqual.com
@@ -34,7 +43,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 logging.basicConfig(
     level=logging.INFO,
@@ -79,6 +88,22 @@ class ExtractedImage:
 MCP_CREDS_DIR = Path.home() / ".google_workspace_mcp_work" / "credentials"
 DOCS_API_BASE = "https://docs.google.com/document/d"
 DOCS_REST_API = "https://docs.googleapis.com/v1/documents"
+
+
+# CLI format → Google export URL format 파라미터 매핑
+FORMAT_MAP = {
+    "md": "markdown",
+    "docx": "docx",
+    "pdf": "pdf",
+    "html": "zip",  # html은 zip으로 내보내짐 (이미지 포함)
+    "txt": "txt",
+}
+
+# 텍스트 포맷 vs 바이너리 포맷
+TEXT_FORMATS = {"md", "html", "txt"}
+BINARY_FORMATS = {"docx", "pdf"}
+
+SUPPORTED_FORMATS = list(FORMAT_MAP.keys())
 
 
 class GoogleDocsClient:
@@ -145,10 +170,29 @@ class GoogleDocsClient:
             if children:
                 self._collect_tabs(children, result, depth + 1)
 
+    def export_tab(
+        self, doc_id: str, tab_id: str, fmt: str = "md"
+    ) -> Union[str, bytes]:
+        """개별 탭을 지정 포맷으로 내보내기
+
+        Args:
+            fmt: 'md', 'docx', 'pdf', 'html', 'txt'
+
+        Returns:
+            텍스트 포맷(md/html/txt) → str, 바이너리 포맷(docx/pdf) → bytes
+        """
+        export_fmt = FORMAT_MAP.get(fmt, "markdown")
+        url = f"{DOCS_API_BASE}/{doc_id}/export?format={export_fmt}&tab={tab_id}"
+        raw = self._api_request(url)
+        if fmt in TEXT_FORMATS:
+            return raw.decode("utf-8")
+        return raw
+
     def export_tab_as_md(self, doc_id: str, tab_id: str) -> str:
-        """개별 탭을 Markdown으로 내보내기"""
-        url = f"{DOCS_API_BASE}/{doc_id}/export?format=markdown&tab={tab_id}"
-        return self._api_request(url).decode("utf-8")
+        """개별 탭을 Markdown으로 내보내기 (하위호환)"""
+        result = self.export_tab(doc_id, tab_id, fmt="md")
+        assert isinstance(result, str)
+        return result
 
 
 def extract_images_from_content(
@@ -447,13 +491,50 @@ def cmd_extract_images(args):
     print(f"  이미지: {image_count}개 → {images_dir}/")
 
 
+def filter_tabs_by_parent(
+    tabs: List[Dict[str, Any]], parent_pattern: str
+) -> List[Dict[str, Any]]:
+    """상위 탭 제목의 부분 매칭으로 하위 트리 추출
+
+    parent_pattern과 매칭되는 탭을 찾고, 해당 탭 + 모든 하위 탭을 반환.
+    다음 동일/상위 depth 탭이 나오면 중단.
+    """
+    parent_idx = None
+    parent_depth = None
+    for i, tab in enumerate(tabs):
+        if parent_pattern.lower() in tab["title"].lower():
+            parent_idx = i
+            parent_depth = tab["depth"]
+            break
+
+    if parent_idx is None:
+        logger.error(f"'{parent_pattern}' 매칭되는 탭 없음")
+        logger.info("전체 탭 목록:")
+        for t in tabs:
+            indent = "  " * t["depth"]
+            logger.info(f"  {indent}{t['title']}")
+        sys.exit(1)
+
+    # parent 탭부터, 다음 동일/상위 depth 탭까지 수집
+    result = [tabs[parent_idx]]
+    for tab in tabs[parent_idx + 1:]:
+        if tab["depth"] <= parent_depth:
+            break
+        result.append(tab)
+
+    return result
+
+
 def cmd_export(args):
-    """완전 자동화: 문서 ID → 탭별 MD + 이미지 추출"""
+    """완전 자동화: 문서 ID → 탭별 파일 자동 내보내기"""
     doc_id = args.doc_id
+    fmt = args.format
     max_depth = args.depth  # 0=상위만, 1=1단계 하위, 2=2단계까지, -1=전체
+    parent_tab = getattr(args, 'parent_tab', None)
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     images_dir = out / "images"
+    ext = fmt  # 파일 확장자
 
     # Step 1: Google API 인증
     logger.info("=== Step 1: Google API 인증 ===")
@@ -462,6 +543,11 @@ def cmd_export(args):
     # Step 2: 탭 목록 조회 (하위 탭 포함)
     logger.info("=== Step 2: 탭 목록 조회 ===")
     all_tabs = client.get_tabs(doc_id)
+
+    # parent-tab 필터링 (depth 필터링보다 먼저)
+    if parent_tab:
+        all_tabs = filter_tabs_by_parent(all_tabs, parent_tab)
+        logger.info(f"parent-tab '{parent_tab}' 필터: {len(all_tabs)}개 탭 선택")
 
     # depth 필터링 (-1은 전체)
     if max_depth >= 0:
@@ -475,8 +561,8 @@ def cmd_export(args):
         marker = "→" if t in tabs else "  (skip)"
         logger.info(f"  {indent}{t['title']} (depth={t['depth']}){marker}")
 
-    # Step 3: 탭별 MD 다운로드 + 이미지 추출
-    logger.info("=== Step 3: 탭별 MD 다운로드 ===")
+    # Step 3: 탭별 다운로드
+    logger.info(f"=== Step 3: 탭별 {fmt.upper()} 다운로드 ===")
     total_images = 0
     for idx, tab in enumerate(tabs):
         tab_title = tab["title"]
@@ -484,18 +570,18 @@ def cmd_export(args):
         depth = tab["depth"]
         safe_name = re.sub(r'[^\w가-힣\s\-\.]', '', tab_title)
         safe_name = re.sub(r'\s+', '-', safe_name.strip()) or "untitled"
-        filename = f"{idx:02d}--{safe_name}.md"
+        filename = f"{idx:02d}--{safe_name}.{ext}"
 
         logger.info(f"  [{idx:02d}] {tab_title} (depth={depth}) 다운로드...")
 
         # Rate limit 대응: 429 시 최대 3회 재시도 (2초, 5초, 10초 대기)
-        md_content = None
+        content = None
         for attempt, wait in enumerate([0, 2, 5, 10]):
             if wait > 0:
                 logger.info(f"  [{idx:02d}] {wait}초 대기 후 재시도 ({attempt}/3)...")
                 time.sleep(wait)
             try:
-                md_content = client.export_tab_as_md(doc_id, tab_id)
+                content = client.export_tab(doc_id, tab_id, fmt=fmt)
                 break
             except urllib.error.HTTPError as e:
                 if e.code == 429 and attempt < 3:
@@ -503,33 +589,45 @@ def cmd_export(args):
                 logger.error(f"  [{idx:02d}] HTTP {e.code}: {e.reason}")
                 break
 
-        if md_content is None:
+        if content is None:
             continue
 
         # 탭 간 요청 간격 (rate limit 방지)
         if idx < len(tabs) - 1:
             time.sleep(1)
 
-        # 이미지 추출 (탭별 prefix로 충돌 방지)
-        img_prefix = f"tab{idx:02d}-"
-        cleaned = extract_images_from_content(md_content, images_dir, img_prefix)
-
-        # 불필요한 이스케이프 정리 (\~, \<, \., \- 등)
-        cleaned = clean_md_escapes(cleaned)
-
-        # 탭 메타 주석 추가 (depth 정보 포함)
-        header = f"<!-- tab-id: {tab_id} depth: {depth} -->\n\n"
         filepath = out / filename
-        filepath.write_text(header + cleaned, encoding='utf-8')
 
-        img_count = len(list(images_dir.glob(f"{img_prefix}*"))) if images_dir.exists() else 0
-        total_images += img_count
-        size_kb = len(cleaned) / 1024
-        logger.info(f"  [{idx:02d}] {filename} ({size_kb:.1f}KB, 이미지 {img_count}개)")
+        if fmt in BINARY_FORMATS:
+            # 바이너리 포맷: raw bytes 직접 저장
+            assert isinstance(content, bytes)
+            filepath.write_bytes(content)
+            size_kb = len(content) / 1024
+            logger.info(f"  [{idx:02d}] {filename} ({size_kb:.1f}KB)")
+        else:
+            # 텍스트 포맷
+            assert isinstance(content, str)
+            cleaned = content
+
+            if fmt == "md":
+                # MD만: 이미지 추출 + 이스케이프 정리
+                img_prefix = f"tab{idx:02d}-"
+                cleaned = extract_images_from_content(cleaned, images_dir, img_prefix)
+                cleaned = clean_md_escapes(cleaned)
+
+                img_count = len(list(images_dir.glob(f"{img_prefix}*"))) if images_dir.exists() else 0
+                total_images += img_count
+
+            # 탭 메타 주석 (텍스트 포맷 공통)
+            header = f"<!-- tab-id: {tab_id} depth: {depth} -->\n\n"
+            filepath.write_text(header + cleaned, encoding='utf-8')
+            size_kb = len(cleaned) / 1024
+            img_info = f", 이미지 {img_count}개" if fmt == "md" and img_count > 0 else ""
+            logger.info(f"  [{idx:02d}] {filename} ({size_kb:.1f}KB{img_info})")
 
     # 요약
     print(f"\n결과: {len(tabs)}개 탭 → {out}/")
-    print(f"  MD 파일: {len(tabs)}개")
+    print(f"  {fmt.upper()} 파일: {len(tabs)}개")
     if total_images > 0:
         print(f"  이미지: {total_images}개 → {images_dir}/")
 
@@ -573,20 +671,28 @@ def cmd_full(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Google Docs MD 변환기 (탭별 자동 내보내기 + 이미지 추출)"
+        description="Google Docs 다중포맷 변환기 (탭별 자동 내보내기 + 이미지 추출)"
     )
     subparsers = parser.add_subparsers(dest='command', required=True)
 
     # export (주요 명령)
     p_export = subparsers.add_parser(
-        'export', help='Google Docs → 탭별 MD 자동 내보내기 (완전 자동화)'
+        'export', help='Google Docs → 탭별 파일 자동 내보내기 (완전 자동화)'
     )
     p_export.add_argument('doc_id', help='Google Docs 문서 ID')
     p_export.add_argument('--output-dir', '-o', default='./output', help='출력 디렉토리')
     p_export.add_argument('--account', '-a', help='Google 계정 (예: user@gmail.com)')
     p_export.add_argument(
+        '--format', '-f', choices=SUPPORTED_FORMATS, default='md',
+        help='출력 포맷 (md, docx, pdf, html, txt, 기본: md)',
+    )
+    p_export.add_argument(
         '--depth', '-d', type=int, default=-1,
         help='탭 깊이 제한 (0=상위만, 1=1단계 하위, -1=전체, 기본: -1)',
+    )
+    p_export.add_argument(
+        '--parent-tab', '-p',
+        help='상위 탭 제목 (부분 매칭, 해당 탭 + 하위 탭만 내보내기)',
     )
     p_export.set_defaults(func=cmd_export)
 

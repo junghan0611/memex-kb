@@ -322,7 +322,62 @@ ORG_SPECIAL_CHARS = {
 
 **Implementation**: See `scripts/threads_exporter.py:escape_org_special_chars()`
 
-### 5. Threads API Integration
+### 5. Google Docs 연동
+
+**핵심 스크립트**: `scripts/gdocs_md_processor.py` (v5)
+
+**작동 원리**:
+1. MCP google-workspace의 credentials 파일에서 `refresh_token` 획득
+   - 경로: `~/.google_workspace_mcp_work/credentials/{email}.json`
+2. `refresh_token` → `access_token` 갱신 (OAuth2 token endpoint)
+3. Google Docs REST API로 탭 목록 조회
+4. 각 탭을 지정 포맷(MD/DOCX/PDF/HTML/TXT)으로 내보내기
+5. MD 포맷일 때: base64 이미지 추출 → PNG + 이스케이프 정리
+
+**지원 포맷**:
+| CLI format | Google export | 후처리 |
+|------------|---------------|--------|
+| `md`       | `markdown`    | 이미지 추출 + 이스케이프 정리 |
+| `docx`     | `docx`        | raw bytes 저장 |
+| `pdf`      | `pdf`         | raw bytes 저장 |
+| `html`     | `zip`         | 텍스트 저장 |
+| `txt`      | `txt`         | 텍스트 저장 |
+
+**사용법**:
+```bash
+# 범용 래퍼 스크립트
+./scripts/export_gdoc.sh DOC_ID [ACCOUNT]
+
+# KIAT 연구개발계획서 (D-0 세션 하위만)
+./scripts/export_kiat_proposal.sh
+
+# Python 직접 호출
+nix develop --command python scripts/gdocs_md_processor.py export DOC_ID \
+    --format md \
+    --parent-tab "D-0 스프린트 세션" \
+    --depth -1 \
+    --account jhkim2@goqual.com \
+    --output-dir ./output
+```
+
+**주요 옵션**:
+- `--format`, `-f`: 출력 포맷 (md, docx, pdf, html, txt, 기본: md)
+- `--parent-tab`, `-p`: 상위 탭 필터 (부분 매칭, 해당 탭 + 하위 탭만)
+- `--depth`, `-d`: 탭 깊이 제한 (0=상위만, -1=전체, 기본: -1)
+- `--account`, `-a`: Google 계정 지정
+
+**인증 전제조건**:
+- MCP google-workspace 서버가 한 번이라도 인증된 상태여야 함
+- `~/.google_workspace_mcp_work/credentials/`에 JSON 파일 존재 필요
+- `refresh_token`은 revoke하지 않는 한 만료 없음 (영구 사용)
+
+**래퍼 스크립트 환경변수**:
+- `OUTPUT_DIR`: 출력 디렉토리 (기본: ./output)
+- `DEPTH`: 탭 깊이 제한
+- `FORMAT`: 출력 포맷
+- `PARENT_TAB`: 상위 탭 필터
+
+### 6. Threads API Integration
 
 **Token Refresh (60일마다 필요)**:
 ```bash

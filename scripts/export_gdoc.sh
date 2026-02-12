@@ -146,6 +146,8 @@ DOC_ID="${1:-}"
 ACCOUNT="${2:-}"
 OUTPUT_DIR="${OUTPUT_DIR:-./output}"
 DEPTH="${DEPTH:--1}"  # 기본값: -1 (전체 하위 탭 포함)
+FORMAT="${FORMAT:-md}"  # 기본값: md (md, docx, pdf, html, txt)
+PARENT_TAB="${PARENT_TAB:-}"  # 상위 탭 필터 (부분 매칭)
 
 if [ -z "$DOC_ID" ]; then
     echo -e "${RED}사용법: $0 DOC_ID [ACCOUNT]${NC}"
@@ -154,14 +156,17 @@ if [ -z "$DOC_ID" ]; then
     echo "  ACCOUNT  : Google 계정 (예: jhkim2@goqual.com) [선택]"
     echo ""
     echo "환경변수:"
-    echo "  OUTPUT_DIR : 출력 디렉토리 (기본: ./output)"
-    echo "  DEPTH      : 탭 깊이 제한 (0=상위만, 1=1단계, -1=전체, 기본: -1)"
+    echo "  OUTPUT_DIR  : 출력 디렉토리 (기본: ./output)"
+    echo "  DEPTH       : 탭 깊이 제한 (0=상위만, 1=1단계, -1=전체, 기본: -1)"
+    echo "  FORMAT      : 출력 포맷 (md, docx, pdf, html, txt, 기본: md)"
+    echo "  PARENT_TAB  : 상위 탭 필터 (부분 매칭, 해당 탭 + 하위 탭만)"
     echo ""
     echo "예시:"
     echo "  $0 1SEJWIbO-kA6Kzriun_iQ5QZuxlAzJzTYg6TtJcI1EGM"
     echo "  $0 1SEJWIbO-kA6Kzriun_iQ5QZuxlAzJzTYg6TtJcI1EGM jhkim2@goqual.com"
     echo "  DEPTH=0 $0 DOC_ID  # 상위 탭만"
-    echo "  DEPTH=1 $0 DOC_ID  # 1단계 하위까지"
+    echo "  FORMAT=docx $0 DOC_ID  # DOCX 내보내기"
+    echo "  PARENT_TAB='D-0 스프린트' $0 DOC_ID  # 특정 탭 하위만"
     exit 1
 fi
 
@@ -174,22 +179,30 @@ if [ ! -f "$PROCESSOR" ]; then
     exit 1
 fi
 
-echo -e "${GREEN}Google Docs → MD 변환 시작${NC}"
+echo -e "${GREEN}Google Docs → ${FORMAT^^} 변환 시작${NC}"
 echo "  문서 ID: ${DOC_ID}"
+echo "  포맷: ${FORMAT}"
 echo "  출력: ${OUTPUT_DIR}/"
+if [ -n "$PARENT_TAB" ]; then
+    echo "  상위 탭: ${PARENT_TAB}"
+fi
 echo ""
 
 # nix develop 환경에서 실행 (의존성 보장)
-ACCOUNT_ARG=""
+EXTRA_ARGS=""
 if [ -n "$ACCOUNT" ]; then
-    ACCOUNT_ARG="--account ${ACCOUNT}"
+    EXTRA_ARGS="${EXTRA_ARGS} --account ${ACCOUNT}"
+fi
+if [ -n "$PARENT_TAB" ]; then
+    EXTRA_ARGS="${EXTRA_ARGS} --parent-tab ${PARENT_TAB}"
 fi
 
 nix develop --command python "$PROCESSOR" export \
     "$DOC_ID" \
     --output-dir "$OUTPUT_DIR" \
     --depth "$DEPTH" \
-    ${ACCOUNT_ARG}
+    --format "$FORMAT" \
+    ${EXTRA_ARGS}
 
 echo ""
 echo -e "${GREEN}변환 완료!${NC}"

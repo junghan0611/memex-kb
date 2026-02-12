@@ -2,7 +2,7 @@
 """Org Level 6→5 통합 후처리
 
 Org 파일의 Level 6 헤딩을 Level 5로 변환합니다.
-md_to_org.py → merge_all_chapters.py 이후 실행하는 파이프라인 단계.
+md_to_org.py → merge_chapters.py 이후 실행하는 파이프라인 단계.
 
 변환 패턴:
   1a. L5 부모(이름에 ':' 없음, 본문 없음) → 이름 합치기, 부모 제거

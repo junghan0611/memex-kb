@@ -422,7 +422,7 @@ def main():
 
     output = []
     output.append("<!-- 제안서-통합-5장.md - 자동 생성 (build_master_md.py) -->\n")
-    output.append("<!-- 소스: scripts/hwpx2org/md-source/ 5개 파일 -->\n\n")
+    output.append("<!-- 소스: output/kiat-proposal/ 5개 파일 -->\n\n")
 
     output.append(build_ch1(src, used))
     output.append(SEP)

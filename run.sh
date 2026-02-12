@@ -151,12 +151,13 @@ cmd_confluence_batch() {
 # ── Proposal Pipeline ────────────────────────────────────────────────
 
 cmd_proposal_build() {
-    # DESC: 제안서 전체 빌드 (GDocs→MD→Org→통합)
-    # USAGE: proposal-build [--no-sync] [--export-md] [-o DIR]
+    # DESC: 제안서 전체 빌드 (GDocs→MD→Org→통합→ODT)
+    # USAGE: proposal-build [--no-sync] [--export-md] [--export-odt] [-o DIR]
     # EXAMPLE: proposal-build
-    # EXAMPLE: proposal-build --export-md
+    # EXAMPLE: proposal-build --export-md --export-odt
     ensure_project_dir
-    run_cmd "${PROJECT_DIR}/proposal-pipeline/build_proposal.sh $*"
+    info "실행: build_proposal.sh $*"
+    "${PROJECT_DIR}/proposal-pipeline/build_proposal.sh" "$@"
 }
 
 cmd_proposal_convert() {
@@ -166,7 +167,8 @@ cmd_proposal_convert() {
     local input="${1:?입력 MD 파일이 필요합니다}"
     shift
     ensure_project_dir
-    run_cmd "nix develop --command python ${PROJECT_DIR}/proposal-pipeline/md_to_org.py '${input}' $*"
+    info "실행: md_to_org.py ${input}"
+    nix develop --command python "${PROJECT_DIR}/proposal-pipeline/md_to_org.py" "${input}" "$@"
 }
 
 cmd_proposal_merge() {
@@ -176,8 +178,10 @@ cmd_proposal_merge() {
     ensure_project_dir
     local org_dir="${PROJECT_DIR}/output/proposal-org"
     local output="${org_dir}/제안서-전체.org"
-    run_cmd "nix develop --command python ${PROJECT_DIR}/proposal-pipeline/merge_chapters.py --org-dir '${org_dir}' --org-tables $* -o '${output}'"
-    run_cmd "nix develop --command python ${PROJECT_DIR}/proposal-pipeline/org_merge_levels.py '${output}'"
+    info "실행: merge_chapters.py + org_merge_levels.py"
+    nix develop --command python "${PROJECT_DIR}/proposal-pipeline/merge_chapters.py" \
+        --org-dir "${org_dir}" --org-tables "$@" -o "${output}"
+    nix develop --command python "${PROJECT_DIR}/proposal-pipeline/org_merge_levels.py" "${output}"
 }
 
 cmd_proposal_odt_fix() {
@@ -187,7 +191,31 @@ cmd_proposal_odt_fix() {
     local input="${1:?ODT 파일이 필요합니다}"
     shift
     ensure_project_dir
-    run_cmd "nix develop --command python ${PROJECT_DIR}/proposal-pipeline/odt_postprocess.py '${input}' $*"
+    info "실행: odt_postprocess.py ${input}"
+    nix develop --command python "${PROJECT_DIR}/proposal-pipeline/odt_postprocess.py" "${input}" "$@"
+}
+
+cmd_proposal_export_odt() {
+    # DESC: Org→ODT 내보내기 (Emacs batch + 후처리)
+    # USAGE: proposal-export-odt [ORG_FILE]
+    # EXAMPLE: proposal-export-odt output/proposal-org/제안서-전체.org
+    local input="${1:-${PROJECT_DIR}/output/proposal-org/제안서-전체.org}"
+    ensure_project_dir
+    if [[ ! -f "${input}" ]]; then
+        error "파일 없음: ${input}"
+        return 1
+    fi
+    info "실행: emacs --batch proposal-export.el -- export ${input}"
+    emacs --batch -l "${PROJECT_DIR}/proposal-pipeline/proposal-export.el" -- export "${input}"
+    local odt_output="${input%.org}.odt"
+    if [[ -f "${odt_output}" ]]; then
+        info "ODT 후처리: ${odt_output}"
+        nix develop --command python "${PROJECT_DIR}/proposal-pipeline/odt_postprocess.py" "${odt_output}"
+        success "완료: ${odt_output}"
+    else
+        error "ODT 생성 실패"
+        return 1
+    fi
 }
 
 # ── Utility ──────────────────────────────────────────────────────────
@@ -307,6 +335,7 @@ COMMANDS=(
     "proposal-convert:cmd_proposal_convert"
     "proposal-merge:cmd_proposal_merge"
     "proposal-odt-fix:cmd_proposal_odt_fix"
+    "proposal-export-odt:cmd_proposal_export_odt"
     "--- Utility"
     "env-check:cmd_env_check"
     "secret-scan:cmd_secret_scan"

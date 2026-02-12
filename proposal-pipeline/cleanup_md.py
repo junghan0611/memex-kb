@@ -21,6 +21,9 @@ def extract_caption(s):
     return m.group(1).strip() if m else None
 
 def main():
+    if len(sys.argv) < 2:
+        print(f"사용법: {sys.argv[0]} input.md [output.md]")
+        sys.exit(1)
     input_path = sys.argv[1]
     output_path = sys.argv[2] if len(sys.argv) > 2 else input_path
 

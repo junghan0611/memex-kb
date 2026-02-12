@@ -113,7 +113,7 @@ for ch in ch1 ch2 ch3 ch4 ch5; do
         continue
     fi
 
-    python "$SCRIPT_DIR/md_to_org.py" "$md_file" -o "$org_file" 2>&1 | grep -E '제목|헤딩|저장'
+    python "$SCRIPT_DIR/md_to_org.py" "$md_file" -o "$org_file" 2>&1 | { grep -E '제목|헤딩|저장' || true; }
 done
 
 # Step 3: 통합 Org 생성
@@ -151,8 +151,8 @@ echo ""
 echo "  검토용:  $ORG_OUTPUT/제안서-전체-검토용.org"
 echo "  전체:    $ORG_OUTPUT/제안서-전체.org"
 echo ""
-echo "  이미지:  $(grep -c '\[\[file:' "$ORG_OUTPUT/제안서-전체-검토용.org") 개"
-echo "  테이블:  $(grep -c '^|[^-]' "$ORG_OUTPUT/제안서-전체-검토용.org") 행"
-echo "  MD잔여:  $(grep -c '!\[' "$ORG_OUTPUT/제안서-전체-검토용.org" 2>/dev/null || echo 0) 개"
+echo "  이미지:  $(grep -c '\[\[file:' "$ORG_OUTPUT/제안서-전체-검토용.org" || echo 0) 개"
+echo "  테이블:  $(grep -c '^|[^-]' "$ORG_OUTPUT/제안서-전체-검토용.org" || echo 0) 행"
+echo "  MD잔여:  $(grep -c '!\[' "$ORG_OUTPUT/제안서-전체-검토용.org" || echo 0) 개"
 echo ""
 echo "  Emacs: emacsclient $ORG_OUTPUT/제안서-전체-검토용.org"

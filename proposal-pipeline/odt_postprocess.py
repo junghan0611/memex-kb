@@ -73,6 +73,9 @@ def process_content(content_xml_path):
 
     # 1) 기존 셀 스타일 수집 (automatic-styles)
     auto_styles = root.find(f".//{qn('office', 'automatic-styles')}")
+    if auto_styles is None:
+        print("WARNING: content.xml에 automatic-styles가 없습니다 — 스타일 수정 건너뜀")
+        return 0, 0, 0
     cell_styles = {}
     for style in auto_styles.findall(f"{qn('style', 'style')}"):
         name = style.get(f"{qn('style', 'name')}")

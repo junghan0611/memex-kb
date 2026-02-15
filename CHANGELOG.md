@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2026-02-15
+
+### Added: GitHub Stars → BibTeX 백엔드 (`scripts/gh_starred_to_bib.sh`)
+- GitHub starred repos → `@software{}` BibTeX 엔트리 변환 (Citar 호환)
+- `gh api --paginate` + `jq`로 전체 star 자동 수집 (2,140개 테스트 완료)
+- 3가지 시간축 보존: starred_at, pushed_at, updated_at
+- `run.sh`: `github-starred-export` 명령 + `env-check`에 gh CLI 상태 추가
+- doomemacs-config/bin/에서 이관
+
+### Added: Backend 확장 시 문서 업데이트 체크리스트 (AGENTS.md)
+- 새 Backend 추가 시 필수 업데이트 파일 4개 + 9개 체크항목
+- 루트 MD 파일만 관리하는 전략 명문화
+
+---
+
 ## [1.3.0] - 2026-02-03
 
 ### 🚀 문서 변환 도구 대폭 확장

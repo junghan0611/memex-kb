@@ -29,6 +29,7 @@ Legacy 문서(Google Docs, Threads, Confluence, HWPX...)를 **AI 협업 가능�
 | Threads SNS | ✅ | 아포리즘 → Org 통합 |
 | Confluence | ✅ | MIME 파싱, UTF-8 정규화 |
 | HWPX | ✅ | AsciiDoc 양방향 변환 |
+| GitHub Stars | ✅ | Starred repos → BibTeX (Citar 호환) |
 | Dooray Wiki | 🔧 | 개발 중 |
 
 → 상세: [docs/BACKENDS.md](docs/BACKENDS.md)
@@ -50,6 +51,9 @@ nix develop --command python scripts/threads_exporter.py --download-images
 
 # 예시: Confluence 변환
 nix develop --command python scripts/confluence_to_markdown.py document.doc
+
+# 예시: GitHub Stars → BibTeX
+./run.sh github-starred-export
 ```
 
 → Backend별 상세 가이드: [docs/BACKENDS.md](docs/BACKENDS.md)
@@ -112,4 +116,4 @@ nix develop --command python scripts/confluence_to_markdown.py document.doc
 
 ---
 
-**버전**: 1.3.0 | **라이선스**: MIT | **상태**: 🟢 활발히 개발 중
+**버전**: 1.3.1 | **라이선스**: MIT | **상태**: 🟢 활발히 개발 중

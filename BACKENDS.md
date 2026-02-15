@@ -5,6 +5,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 ## History
 
 - **2026-02-08**: Google Docs - v4 완성: Python 직접 API 호출로 탭별 MD + 이미지 추출 완전 자동화 (`export` 명령). Apps Script 방식 폐기
+- **2026-02-15**: GitHub Stars → BibTeX 백엔드 추가 (doomemacs-config에서 이관)
 - **2026-02-04**: BACKENDS.md 초안 작성 (Google Docs, Threads, Confluence, HWPX)
 - **2026-01-29**: Confluence MIME 파싱 + UTF-8 정규화 파이프라인 완성
 
@@ -18,6 +19,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | Threads SNS | ✅ 구현됨 | `threads_exporter.py` | API 직접 호출 |
 | Confluence | ✅ 구현됨 | `confluence_to_markdown.py` | MIME 파싱 + Pandoc |
 | HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
+| GitHub Stars | ✅ 구현됨 | `gh_starred_to_bib.sh` | gh CLI + jq → BibTeX |
 | Dooray Wiki | 🔧 개발 중 | - | - |
 
 ---
@@ -334,6 +336,63 @@ nix develop --command ./hwpx2asciidoc/run.sh
 여러 세부과제를 취합하고, 용어/양식을 통일하여, 한 사람이 작성한 것처럼 일관된 문서를 AI 에이전트와 함께 생성합니다.
 
 자세한 내용은 [README.md 로드맵](README.md#-로드맵) 참조
+
+---
+
+## GitHub Stars 연동
+
+**개발자의 관심사를 지식으로**: GitHub Starred repos를 BibTeX로 변환하여 Citar/Denote 생태계와 연결
+
+### 왜 BibTeX인가?
+
+GitHub Stars는 개발자의 **관심사 타임라인**입니다. 하지만 웹 UI에서는:
+- 검색/필터링이 빈약
+- starred_at(별 찍은 시점) 메타데이터 활용 불가
+- Emacs/Org-mode 워크플로우와 단절
+
+BibTeX `@software{}` 엔트리로 변환하면:
+- **Citar**에서 즉시 검색/인용 가능
+- **3가지 시간축** 보존: starred_at, pushed_at, updated_at
+- **topics → keywords** 매핑으로 주제별 탐색
+
+### 사용법
+
+```bash
+# 기본 출력 (~/org/resources/github-starred.bib)
+./run.sh github-starred-export
+
+# 출력 경로 지정
+./run.sh github-starred-export ~/custom/path.bib
+```
+
+### 의존성
+
+- `gh` CLI (시스템 설치, NixOS 전역)
+- `jq` (flake.nix에 포함)
+- `gh auth login` 사전 인증 필요
+
+### BibTeX 필드 매핑
+
+| BibTeX 필드 | GitHub API 소스 | Citar 템플릿 |
+|-------------|-----------------|--------------|
+| `title` | `full_name` (owner/repo) | `${title:49}` |
+| `author` | `owner.login` | `${author editor:19}` |
+| `date` | `updated_at` | `${date year issued:4}` |
+| `origdate` | `created_at` | - |
+| `url` | `html_url` | `${url:19}` |
+| `urldate` | `starred_at` (날짜만) | - |
+| `abstract` | `description` | `${abstract}` |
+| `keywords` | `topics` (콤마 구분) | `${keywords:*}` |
+| `note` | stars, language, license | - |
+| `datemodified` | `pushed_at` | `${datemodified:10}` |
+| `dateadded` | `starred_at` | `${dateadded:10}` |
+
+### 에이전트 가이드
+
+1. **gh 인증 확인**: `gh auth status`로 사전 체크
+2. **API Rate Limit**: paginate 사용 → star 수천 개도 자동 처리
+3. **출력 위치**: `~/org/resources/github-starred.bib` (Citar 자동 감지 경로)
+4. **갱신 주기**: 수동 실행 (star 추가 시 재실행)
 
 ---
 

@@ -126,6 +126,18 @@ cmd_threads_token_refresh() {
     run_cmd "nix develop --command python ${SCRIPTS_DIR}/refresh_threads_token.py"
 }
 
+# ── GitHub Stars ────────────────────────────────────────────────────
+
+cmd_github_starred_export() {
+    # DESC: GitHub starred repos → BibTeX 내보내기 (Citar 호환)
+    # USAGE: github-starred-export [output.bib]
+    # EXAMPLE: github-starred-export
+    # EXAMPLE: github-starred-export ~/org/resources/github-starred.bib
+    # NOTE: gh CLI 인증 필요 (gh auth login)
+    ensure_project_dir
+    run_cmd "${SCRIPTS_DIR}/gh_starred_to_bib.sh ${*:-}"
+}
+
 # ── Confluence ───────────────────────────────────────────────────────
 
 cmd_confluence_convert() {
@@ -275,6 +287,18 @@ cmd_env_check() {
         warn "MCP credentials 디렉토리 없음: ${cred_dir}"
     fi
 
+    echo -e "\n${BOLD}[GitHub CLI]${NC}"
+    if command -v gh &>/dev/null; then
+        success "gh: $(gh --version | head -1)"
+        if gh auth status &>/dev/null 2>&1; then
+            success "gh auth: 인증됨"
+        else
+            warn "gh auth: 미인증 (gh auth login 필요)"
+        fi
+    else
+        error "gh: 설치되지 않음"
+    fi
+
     echo -e "\n${BOLD}[Threads API]${NC}"
     if [[ -f "${CONFIG_DIR}/.env" ]] && grep -q "THREADS_ACCESS_TOKEN=." "${CONFIG_DIR}/.env" 2>/dev/null; then
         success "THREADS_ACCESS_TOKEN: 설정됨"
@@ -327,6 +351,8 @@ COMMANDS=(
     "threads-token-exchange:cmd_threads_token_exchange"
     "threads-token-test:cmd_threads_token_test"
     "threads-token-refresh:cmd_threads_token_refresh"
+    "--- GitHub Stars"
+    "github-starred-export:cmd_github_starred_export"
     "--- Confluence"
     "confluence-convert:cmd_confluence_convert"
     "confluence-batch:cmd_confluence_batch"

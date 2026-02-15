@@ -70,8 +70,10 @@ direnv allow
 [Backend Sources]
     ├── Google Docs (✅)
     ├── Threads SNS (✅)
-    ├── Dooray Wiki (🔧 WIP)
-    └── Confluence (📋 Planned)
+    ├── GitHub Stars (✅)
+    ├── Confluence (✅)
+    ├── HWPX (✅)
+    └── Dooray Wiki (🔧 WIP)
          ↓
 [Backend Adapter] ← Adapter Pattern (scripts/adapters/)
          ↓
@@ -98,6 +100,7 @@ memex-kb/
 │   ├── gdocs_to_markdown.py      # Google Docs converter
 │   ├── threads_exporter.py       # Threads exporter (posts + replies → single Org file)
 │   ├── refresh_threads_token.py  # Threads API token refresh (OAuth)
+│   ├── gh_starred_to_bib.sh      # GitHub Stars → BibTeX (Citar 호환)
 │   ├── denote_namer.py           # Denote filename generator (common)
 │   ├── categorizer.py            # Auto categorizer (common)
 │   └── sync_pipeline.sh          # Automation pipeline
@@ -434,6 +437,28 @@ proposal-pipeline/
 - 한글 볼드 + NBSP 문제 → `docs/unicode-bullet-guide.md` 참조
 - HWP 양식은 최대 5단계 → L6은 반드시 `org_merge_levels.py`로 통합
 
+### 8. GitHub Stars → BibTeX
+
+**스크립트**: `scripts/gh_starred_to_bib.sh`
+
+**작동 원리**:
+1. `gh api --paginate user/starred` + `Accept: application/vnd.github.star+json` 헤더
+2. `jq`로 `@software{}` BibTeX 엔트리 생성
+3. 3가지 시간축 보존: `starred_at`, `pushed_at`, `updated_at`
+
+**사용법**:
+```bash
+# run.sh 경유
+./run.sh github-starred-export
+
+# 직접 실행
+./scripts/gh_starred_to_bib.sh [output.bib]
+```
+
+**의존성**: `gh` (시스템 전역), `jq` (flake.nix)
+
+**출력**: `~/org/resources/github-starred.bib` (Citar 자동 감지 경로)
+
 ---
 
 ## 🔧 Environment Variables
@@ -505,6 +530,43 @@ THREADS_IMAGES_DIR=docs/images/threads   # Image directory (default)
 
 ---
 
+## 📦 Backend 확장 시 문서 업데이트 체크리스트
+
+새 Backend를 추가하거나 기존 Backend를 변경할 때, **커밋 전에** 아래 파일을 반드시 업데이트하세요.
+이 체크리스트를 무시하면 문서와 코드가 괴리되어 에이전트/사람 모두 혼란에 빠집니다.
+
+### 필수 업데이트 파일 (4개)
+
+| 순서 | 파일 | 업데이트 내용 |
+|------|------|--------------|
+| 1 | `scripts/` 또는 해당 디렉토리 | 스크립트 추가/수정 |
+| 2 | `run.sh` | cmd 함수 + COMMANDS 배열 등록 |
+| 3 | `BACKENDS.md` | 현황 테이블 + 전용 섹션 (사용법, 에이전트 가이드) |
+| 4 | `AGENTS.md` | Architecture 다이어그램 + Directory Structure + Key Technical Details 섹션 |
+
+### 체크리스트
+
+```
+□ run.sh: cmd_xxx() 함수에 DESC/USAGE/EXAMPLE 주석 작성
+□ run.sh: COMMANDS 배열에 "--- 섹션명" + "명령어:함수" 등록
+□ run.sh: env-check에 인증/의존성 상태 체크 추가 (해당 시)
+□ BACKENDS.md: "지원 Backend 현황" 테이블에 행 추가
+□ BACKENDS.md: History에 날짜 + 한 줄 요약 추가
+□ BACKENDS.md: 전용 섹션 작성 (사용법, 에이전트 가이드, 기술 세부)
+□ AGENTS.md: Architecture 다이어그램 업데이트
+□ AGENTS.md: Directory Structure에 스크립트 경로 추가
+□ AGENTS.md: Key Technical Details에 번호 섹션 추가
+```
+
+### 원칙
+
+- **BACKENDS.md가 진실의 원천(Source of Truth)**: 각 Backend의 상세 문서는 여기에
+- **AGENTS.md는 에이전트 요약**: Architecture 개요 + 빠른 참조용
+- **run.sh는 실행 인터페이스**: 사람/에이전트 모두가 쓰는 단일 진입점
+- **docs/ 디렉토리 문서는 레거시화 빠름** → 루트 MD 파일만 관리
+
+---
+
 ## 🚨 Common Pitfalls
 
 1. **NixOS Environment** (user runs NixOS on storage server):
@@ -539,9 +601,14 @@ THREADS_IMAGES_DIR=docs/images/threads   # Image directory (default)
 
 ---
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-21
+**Version**: 1.3.0
+**Last Updated**: 2026-02-15
 **Status**: 🟢 Actively developing
+
+**Changelog (1.3.0)**:
+- Added GitHub Stars → BibTeX backend (`gh_starred_to_bib.sh`)
+- Added "Backend 확장 시 문서 업데이트 체크리스트" section
+- Updated Architecture diagram (6 backends)
 
 **Changelog (1.2.0)**:
 - Migrated from `shell.nix` to `flake.nix` for faster builds

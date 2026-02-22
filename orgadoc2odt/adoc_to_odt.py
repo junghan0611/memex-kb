@@ -95,8 +95,9 @@ def preprocess_org(org_content: str) -> str:
     return result
 
 
-def org_to_odt(org_path: str, odt_path: str, reference_odt: str = None) -> bool:
-    """Org + AsciiDoc → ODT 변환 (2단계: org→html→odt)"""
+def org_to_odt(org_path: str, odt_path: str, reference_odt: str = None,
+               no_style: bool = False) -> bool:
+    """Org + AsciiDoc → ODT 변환 (2단계: org→html→odt + 스타일 후처리)"""
     org_content = Path(org_path).read_text(encoding='utf-8')
 
     # Step 1: AsciiDoc 블록 전처리
@@ -127,6 +128,12 @@ def org_to_odt(org_path: str, odt_path: str, reference_odt: str = None) -> bool:
         return False
 
     log.info(f"ODT 생성 완료: {odt_path}")
+
+    # Step 4: 테이블 스타일 후처리
+    if not no_style:
+        from odt_table_style import postprocess_odt
+        postprocess_odt(odt_path)
+
     return True
 
 

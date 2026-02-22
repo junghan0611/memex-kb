@@ -1,0 +1,870 @@
+#+TITLE: template
+#+DATE: [2026-02-05 Thu 14:43]
+#+STARTUP: overview
+
+* 1. 연구개발과제의 필요성
+:PROPERTIES:
+:HWPX_IDX: 1
+:END:
+
+** 1-1. 개발 대상 기술·제품의 개요
+:PROPERTIES:
+:HWPX_IDX: 3
+:END:
+
+*** □ 연구개발기술(제품)의 정의 및 범위
+:PROPERTIES:
+:HWPX_IDX: 5
+:END:
+
+**** o 기술의 정의
+:PROPERTIES:
+:HWPX_IDX: 7
+:END:
+
+***** - 소프트센서 (Soft Sensor)
+:PROPERTIES:
+:HWPX_IDX: 9
+:END:
+
+****** ⋅개념 정의
+:PROPERTIES:
+:HWPX_IDX: 10
+:END:
+
+#+HWPX: 11
+하드웨어 센서 없이 소프트웨어(AI 알고리즘)만으로 센싱 기능을 구현한다는 의미에서 유래함.
+
+#+HWPX: 12
+소프트센서는 산업 공정 분야에서 1990년대부터 사용되어 온 개념으로, 측정이 어렵거나 비용이 높은 공정 변수를 다른 측정 가능한 변수들로부터 추정하는 데 활용되어 왔음. 본 과제는 이 개념을 스마트홈 환경에 적용하여, 가정 내 다양한 환경 정보를 물리센서 없이도 파악할 수 있도록 함.
+
+****** ⋅소프트센서 유형 분류
+:PROPERTIES:
+:HWPX_IDX: 13
+:END:
+
+******* <소프트센서 유형 분류>
+:PROPERTIES:
+:HWPX_IDX: 16
+:END:
+
+#+HWPX: 18
+구분Type A: 물리센서 대체형Type B: 가상 추론형정의물리센서가 측정할 수 있는 값을 AI로 추론물리센서로 직접 측정 불가능한 복합 지표 생성출력 예시온도(°C), 습도(%RH), CO2(ppm), 조도(lux)쾌적도 지수, 환기 필요도, 에너지 소비 예측Ground Truth존재함 (물리센서 측정값과 비교 가능)존재하지 않음 (객관적 검증 어려움)Matter 표준Cluster로 정의됨 (인증 가능)표준 Cluster 미정의 (인증 불가)본 과제 범위포함제외
+
+#+HWPX: 18
+#+BEGIN_SRC asciidoc :name 소프트센서 유형 분류
+[cols="1,1,1"]
+|===
+|구분
+|Type A: 물리센서 대체형
+|Type B: 가상 추론형
+
+|정의
+|물리센서가 측정할 수 있는 값을 AI로 추론
+|물리센서로 직접 측정 불가능한 복합 지표 생성
+
+|출력 예시
+|온도(°C), 습도(%RH), CO2(ppm), 조도(lux)
+|쾌적도 지수, 환기 필요도, 에너지 소비 예측
+
+|Ground Truth
+|존재함 (물리센서 측정값과 비교 가능)
+|존재하지 않음 (객관적 검증 어려움)
+
+|Matter 표준
+|Cluster로 정의됨 (인증 가능)
+|표준 Cluster 미정의 (인증 불가)
+
+|본 과제 범위
+|포함
+|제외
+
+|===
+#+END_SRC
+
+****** ⋅소프트센서 동작 원리
+:PROPERTIES:
+:HWPX_IDX: 20
+:END:
+
+#+HWPX: 22
+<소프트센서 동작 원리 (입력 데이터 > AI 추론 > 출력)>
+
+#+HWPX: 23
+1차 입력은 동일 공간에 설치된 다른 물리센서의 실시간 측정값으로, 예를 들어 온도 데이터로 습도를 추론하거나 전력 패턴으로 재실 여부를 추론함. 2차 입력은 기상청 날씨, 일출/일몰 시간 등 외부 API 데이터로, 외부 기온 정보를 활용해 실내 온도 추론을 보정함. 3차 입력은 과거 센서 데이터의 시계열 패턴으로, 출퇴근 시간대 재실 패턴이나 계절별 온도 변화를 학습함. 4차 입력은 방 크기, 창문 방향, 단열 등급 등 공간 메타데이터로, 체적 정보를 활용해 CO2 농도 추론 정확도를 향상시킴. 최종 출력은 Matter 표준 Cluster 규격에 맞는 센서 값(단위, 범위, 정밀도 준수)으로 생성됨.
+
+****** ⋅핵심 가치
+:PROPERTIES:
+:HWPX_IDX: 24
+:END:
+
+#+HWPX: 25
+비용 절감으로 물리센서 구매·설치·유지보수 비용(센서당 2~5만원)을 절감할 수 있음. 둘째, 서비스 확장성으로 기존 센서만으로 새로운 센싱 기능을 추가하여 센싱 종류를 2~3배 확장할 수 있음. 셋째, 센서 자가치유로 물리센서 고장 시 소프트센서가 대체값을 생성하여 서비스 가용성 99% 이상을 유지함. 넷째, 프라이버시 보호로 온디바이스 추론을 통해 데이터 외부 전송 없이 클라우드 유출 위험을 원천 차단함. 다섯째, 저지연 응답으로 네트워크 왕복 없이 50ms 이하의 실시간 응답이 가능함.
+
+***** - 데이터처리 플랫폼
+:PROPERTIES:
+:HWPX_IDX: 27
+:END:
+
+****** ⋅개념 정의
+:PROPERTIES:
+:HWPX_IDX: 28
+:END:
+
+#+HWPX: 29
+데이터처리 플랫폼은 소프트센서 생성을 위한 전체 파이프라인을 통합 제공하는 소프트웨어 플랫폼임. 물리센서 데이터 수집부터 AI 추론, Matter 표준 노출까지의 전 과정을 온디바이스 환경에서 처리함.
+
+****** ⋅플랫폼 아키텍쳐
+:PROPERTIES:
+:HWPX_IDX: 30
+:END:
+
+#+HWPX: 31
+데이터처리 플랫폼은 4개 계층으로 구성됨.
+
+#+HWPX: 32
+L1(데이터 수집 계층)은 Matter Controller가 Matter 디바이스와 통신하여 센서 값을 수신하고, Zigbee Bridge가 1차년도 Zigbee 센서 데이터를 수집하며(Zigbee2MQTT 활용), External API Client가 기상청·일출/일몰 등 외부 데이터를 수집함.
+
+#+HWPX: 33
+L2(데이터 처리 계층)은 Time Synchronizer가 이기종 센서 데이터의 시간을 정렬하고(NTP 기반), Data Normalizer가 센서 값 정규화·단위 변환·이상값 필터링을 수행하며, Feature Extractor가 AI 입력용 특징 벡터를 생성함.
+
+#+HWPX: 34
+L3(AI 추론 계층)은 sLLM Engine이 소형언어모델 기반 추론을 수행하고(Optimium SDK, NPU 가속), Model Manager가 모델 로딩·버전 관리·업데이트를 담당하며(ONNX Runtime, TFLite), Inference Scheduler가 추론 주기와 배치 처리를 관리함.
+
+#+HWPX: 35
+L4(출력 계층)은 Matter Bridge가 소프트센서를 Matter Cluster로 노출하고, Local Dashboard가 웹 기반 모니터링 UI를 제공하며, Cloud Connector가 선택적 클라우드 연동(백업, 원격 모니터링)을 지원함.
+
+******* <데이터처리 플랫폼 계층 구조>
+:PROPERTIES:
+:HWPX_IDX: 37
+:END:
+
+#+HWPX: 38
+계층구성 요소기능기술 스택L1: Matter ControllerMatter 디바이스와 통신, 센서 값 수신Matter SDK, Thread, Wi-FiZigbee Bridge1차년도 Zigbee 센서 데이터 수집Zigbee2MQTT, MQTTExternal API Client기상청, 일출/일몰 등 외부 데이터 수집REST API, HTTP ClientL2: Time Synchronizer이기종 센서 데이터 시간 정렬NTP, 타임스탬프 보정 알고리즘Data Normalizer센서 값 정규화, 단위 변환, 이상값 필터링Min-Max Scaling, Z-scoreFeature ExtractorAI 입력용 특징 벡터 생성시계열 윈도우, 통계량 추출L3: sLLM Engine소형언어모델 기반 추론 엔진Optimium SDK, NPU 가속Model Manager모델 로딩, 버전 관리, 업데이트ONNX Runtime, TFLiteInference Scheduler추론 주기 관리, 배치 처리이벤트 드리븐, 주기적 폴링L4: Matter Bridge소프트센서를 Matter Cluster로 노출Matter SDK, mDNSLocal Dashboard로컬 웹 기반 모니터링 UIReact, WebSocketCloud Connector선택적 클라우드 연동 (백업, 원격 모니터링)MQTT, REST API
+
+#+HWPX: 38
+#+BEGIN_SRC asciidoc :name 데이터처리 플랫폼 계층 구조
+[cols="1,1,1,1"]
+|===
+|계층
+|구성 요소
+|기능
+|기술 스택
+
+.3+|L1: 
+|Matter Controller
+|Matter 디바이스와 통신, 센서 값 수신
+|Matter SDK, Thread, Wi-Fi
+
+|Zigbee Bridge
+|1차년도 Zigbee 센서 데이터 수집
+|Zigbee2MQTT, MQTT
+
+|External API Client
+|기상청, 일출/일몰 등 외부 데이터 수집
+|REST API, HTTP Client
+
+.3+|L2: 
+|Time Synchronizer
+|이기종 센서 데이터 시간 정렬
+|NTP, 타임스탬프 보정 알고리즘
+
+|Data Normalizer
+|센서 값 정규화, 단위 변환, 이상값 필터링
+|Min-Max Scaling, Z-score
+
+|Feature Extractor
+|AI 입력용 특징 벡터 생성
+|시계열 윈도우, 통계량 추출
+
+.3+|L3: 
+|sLLM Engine
+|소형언어모델 기반 추론 엔진
+|Optimium SDK, NPU 가속
+
+|Model Manager
+|모델 로딩, 버전 관리, 업데이트
+|ONNX Runtime, TFLite
+
+|Inference Scheduler
+|추론 주기 관리, 배치 처리
+|이벤트 드리븐, 주기적 폴링
+
+.3+|L4: 
+|Matter Bridge
+|소프트센서를 Matter Cluster로 노출
+|Matter SDK, mDNS
+
+|Local Dashboard
+|로컬 웹 기반 모니터링 UI
+|React, WebSocket
+
+|Cloud Connector
+|선택적 클라우드 연동 (백업, 원격 모니터링)
+|MQTT, REST API
+
+|===
+#+END_SRC
+
+****** ⋅주요 기능
+:PROPERTIES:
+:HWPX_IDX: 39
+:END:
+
+***** - 온디바이스 AI (On-Device AI)
+:PROPERTIES:
+:HWPX_IDX: 42
+:END:
+
+****** ⋅개념 정의
+:PROPERTIES:
+:HWPX_IDX: 43
+:END:
+
+#+HWPX: 44
+온디바이스 AI는 클라우드 서버가 아닌 사용자의 로컬 디바이스(엣지 디바이스)에서 AI 모델을 직접 구동하여 추론을 수행하는 기술임. 엣지 AI(Edge AI), 타이니 AI(Tiny AI)라고도 불림.
+
+****** ⋅클라우드 AI vs 온디바이스 AI 비교
+:PROPERTIES:
+:HWPX_IDX: 45
+:END:
+
+#+HWPX: 46
+온디바이스 AI는 클라우드 서버가 아닌 사용자의 로컬 디바이스(엣지 디바이스)에서 AI 모델을 직접 구동하여 추론을 수행하는 기술임. 엣지 AI(Edge AI), 타이니 AI(Tiny AI)라고도 불림.
+
+******* <클라우드 AI와 온디바이스 AI 비교>
+:PROPERTIES:
+:HWPX_IDX: 48
+:END:
+
+#+HWPX: 49
+비교 항목클라우드 AI온디바이스 AI본 과제 선택추론 위치원격 서버로컬 디바이스온디바이스지연시간100ms~2초 (네트워크 왕복)15~50ms50ms 이하 목표프라이버시데이터 외부 전송 필요데이터 로컬 유지로컬 처리오프라인 동작불가능가능오프라인 지원모델 크기제한 없음 (수십~수백 GB)제한적 (수백 MB 이하)sLLM 경량 모델컴퓨팅 비용클라우드 사용료 발생초기 하드웨어 비용만온디바이스확장성서버 증설로 무한 확장디바이스 성능에 종속디바이스 최적화
+
+#+HWPX: 49
+#+BEGIN_SRC asciidoc :name 클라우드 AI와 온디바이스 AI 비교
+[cols="1,1,1,1"]
+|===
+|비교 항목
+|클라우드 AI
+|온디바이스 AI
+|본 과제 선택
+
+|추론 위치
+|원격 서버
+|로컬 디바이스
+|온디바이스
+
+|지연시간
+|100ms~2초  (네트워크 왕복)
+|15~50ms
+|50ms 이하 목표
+
+|프라이버시
+|데이터 외부 전송 필요
+|데이터 로컬 유지
+|로컬 처리
+
+|오프라인 동작
+|불가능
+|가능
+|오프라인 지원
+
+|모델 크기
+|제한 없음  (수십~수백 GB)
+|제한적  (수백 MB 이하)
+|sLLM 경량 모델
+
+|컴퓨팅 비용
+|클라우드 사용료 발생
+|초기 하드웨어 비용만
+|온디바이스
+
+|확장성
+|서버 증설로 무한 확장
+|디바이스 성능에 종속
+|디바이스 최적화
+
+|===
+#+END_SRC
+
+****** ⋅온디바이스 AI 구현을 위한 핵심 기술
+:PROPERTIES:
+:HWPX_IDX: 50
+:END:
+
+#+HWPX: 51
+온디바이스 AI 구현을 위해 다음 기술들을 적용함. 모델 경량화는 Pruning, Quantization, Distillation 기법으로 모델 크기를 축소하며, 본 과제에서는 INT8 양자화와 Knowledge Distillation을 적용함. NPU 가속은 신경망 전용 프로세서를 활용하여 추론 속도를 높이며, Optimium SDK로 NPU 최적화를 수행함. 모델 최적화는 타겟 하드웨어에 맞춘 연산 최적화로 ONNX Runtime과 TensorRT를 적용함. 메모리 관리는 제한된 RAM에서 효율적 추론을 위해 메모리 풀링과 동적 할당을 최적화함. 전력 효율은 배터리/상시 전원 환경에 대응하여 저전력 추론 모드를 지원함.
+
+***** - Matter 표준
+:PROPERTIES:
+:HWPX_IDX: 53
+:END:
+
+****** ⋅개념 정의
+:PROPERTIES:
+:HWPX_IDX: 54
+:END:
+
+****** ⋅Matter 표준 구조
+:PROPERTIES:
+:HWPX_IDX: 56
+:END:
+
+#+HWPX: 57
+Application Layer는 Device Types와 Clusters로 디바이스 기능(센서, 조명 등)을 정의하며, 본 과제에서는 소프트센서를 Sensor Device Type으로 정의함. Data Model은 Attributes, Commands, Events로 데이터 구조 및 제어 명령을 정의하며, TemperatureMeasurement, OccupancySensing 등 Cluster를 사용함. Interaction Model은 Read, Write, Subscribe, Invoke로 디바이스 간 상호작용 방식을 정의하며, Subscribe로 실시간 센서 값을 전달함. Security는 CASE, PASE, ACL로 인증·암호화·접근 제어를 담당하며, Matter 인증 보안 요구사항을 준수함. Transport Layer는 IPv6, TCP/UDP로 네트워크 통신을 담당하며, Thread와 Wi-Fi 기반 통신을 사용함.
+
+****** ⋅본 과제 활용 Matter Cluster
+:PROPERTIES:
+:HWPX_IDX: 58
+:END:
+
+******* <소프트센서 출력용 Matter Cluster 정의>
+:PROPERTIES:
+:HWPX_IDX: 59
+:END:
+
+#+HWPX: 60
+소프트센서Matter ClusterCluster ID주요 Attribute단위/범위가상 온도 센서Temperature Measurement0x0402MeasuredValue0.01°C, -273.15~327.67°C가상 습도 센서Relative Humidity Measurement0x0405MeasuredValue0.01%, 0~100%가상 재실 센서Occupancy Sensing0x0406OccupancyBitmap (재실/부재)가상 조도 센서Illuminance Measurement0x0400MeasuredValue1 lux, 1~65534 lux가상 CO2 센서Carbon Dioxide Concentration0x040DMeasuredValue1 ppm, 0~65534 ppm
+
+#+HWPX: 60
+#+BEGIN_SRC asciidoc :name 소프트센서 출력용 Matter Cluster 정의
+[cols="1,1,1,1,1"]
+|===
+|소프트센서
+|Matter Cluster
+|Cluster ID
+|주요 Attribute
+|단위/범위
+
+|가상 온도 센서
+|Temperature Measurement
+|0x0402
+|MeasuredValue
+|0.01°C, -273.15~327.67°C
+
+|가상 습도 센서
+|Relative Humidity Measurement
+|0x0405
+|MeasuredValue
+|0.01%, 0~100%
+
+|가상 재실 센서
+|Occupancy Sensing
+|0x0406
+|Occupancy
+|Bitmap (재실/부재)
+
+|가상 조도 센서
+|Illuminance Measurement
+|0x0400
+|MeasuredValue
+|1 lux, 1~65534 lux
+
+|가상 CO2 센서
+|Carbon Dioxide Concentration
+|0x040D
+|MeasuredValue
+|1 ppm, 0~65534 ppm
+
+|===
+#+END_SRC
+
+#+HWPX: 62
+Matter는 5개 계층으로 구성됨. Application Layer는 Device Types와 Clusters로 디바이스 기능(센서, 조명 등)을 정의하며, 본 과제에서는 소프트센서를 Sensor Device Type으로 정의함. Data Model은 Attributes, Commands, Events로 데이터 구조 및 제어 명령을 정의하며, TemperatureMeasurement, OccupancySensing 등 Cluster를 사용함. Interaction Model은 Read, Write, Subscribe, Invoke로 디바이스 간 상호작용 방식을 정의하며, Subscribe로 실시간 센서 값을 전달함. Security는 CASE, PASE, ACL로 인증·암호화·접근 제어를 담당하며, Matter 인증 보안 요구사항을 준수함. Transport Layer는 IPv6, TCP/UDP로 네트워크 통신을 담당하며, Thread와 Wi-Fi 기반 통신을 사용함.
+
+**** o 기술의 범위
+:PROPERTIES:
+:HWPX_IDX: 64
+:END:
+
+***** - 개발 범위
+:PROPERTIES:
+:HWPX_IDX: 66
+:END:
+
+#+HWPX: 67
+⋅
+
+** 1-2. 연구개발과제의 배경 및 필요성
+:PROPERTIES:
+:HWPX_IDX: 69
+:END:
+
+*** □ 배경
+:PROPERTIES:
+:HWPX_IDX: 71
+:END:
+
+**** o 클라우드 AI의 구조적 프라이버시 취약점
+:PROPERTIES:
+:HWPX_IDX: 73
+:END:
+
+***** - 2024년 Stanford AI Index Report에 따르면, AI 관련 보안 사고가 전년 대비 56% 증가하여 233건이 보고되었으며, 이 중 상당수가 개인정보 부적절 처리와 관련됨. 특히 2023년 삼성전자 직원들이 사내 소스코드와 회의록을 ChatGPT에 입력하여 기밀이 유출된 사건은 클라우드 AI의 본질적 위험을 보여주는 사례임. 이후 삼성은 외부 AI 도구 사용을 전면 금지하였으며, IBM 조사에 따르면 전 세계 기업의 20%가 지난 1년간 '섀도우 AI(Shadow AI)'로 인한 데이터 유출을 경험함.
+:PROPERTIES:
+:HWPX_IDX: 75
+:END:
+
+******* <클라우드 AI vs 온디바이스 AI 데이터 흐름 비교>
+:PROPERTIES:
+:HWPX_IDX: 78
+:END:
+
+***** - 이러한 위험은 스마트홈 환경에서 더욱 심각함. 2021년 국내 638개 아파트 단지 40만 가구의 월패드 해킹 사건은 중앙집중식 클라우드 아키텍처의 취약점을 여실히 드러냄. 가정 내 카메라 영상, 음성 데이터, 생활 패턴 등 민감한 정보가 클라우드로 전송되는 구조에서는 단일 서버 침해로 대규모 프라이버시 침해가 발생할 수 있음.
+:PROPERTIES:
+:HWPX_IDX: 80
+:END:
+
+***** - 영국 소비자의 58%가 자신의 데이터가 AI 학습에 사용되는 것에 우려를 표명하고 있으며, 2026년을 기점으로 기업의 95%가 "고객 데이터가 적절히 보호되지 않으면 제품을 구매하지 않을 것"이라는 시장 압력을 체감하고 있음. 90%의 기업은 강력한 프라이버시 법제가 오히려 AI 서비스 신뢰도를 높인다고 응답함.
+:PROPERTIES:
+:HWPX_IDX: 81
+:END:
+
+**** o 스마트홈 프로토콜 파편화 문제
+:PROPERTIES:
+:HWPX_IDX: 82
+:END:
+
+***** - 기존 스마트홈 시장은 삼성 SmartThings, LG ThinQ, Apple HomeKit, Google Home, Amazon Alexa 등 각 제조사별 독자 프로토콜이 난립하여 상호 호환이 되지 않는 파편화 문제가 심각하였음. 소비자는 특정 생태계에 종속되어 기기 선택의 폭이 제한되고, 개발자는 여러 플랫폼에 맞춰 개발해야 하는 비효율이 발생함.
+:PROPERTIES:
+:HWPX_IDX: 84
+:END:
+
+***** - 2022년 Apple, Google, Amazon, Samsung 등 글로벌 기업들이 참여하는 CSA(Connectivity Standards Alliance)에서 Matter 표준을 발표하여, 스마트홈 기기 간 상호 운용성을 보장하는 단일 표준이 등장함. Matter는 2024년 기준 전 세계 1,500개 이상의 인증 제품이 출시되어 빠르게 확산 중임.
+:PROPERTIES:
+:HWPX_IDX: 85
+:END:
+
+******* <Matter 표준으로 연결되는 스마트홈 플랫폼>
+:PROPERTIES:
+:HWPX_IDX: 87
+:END:
+
+**** o 스마트홈 센서 설치 비용 및 유지보수 부담
+:PROPERTIES:
+:HWPX_IDX: 88
+:END:
+
+***** - 스마트홈 서비스 확대의 가장 큰 걸림돌은 센서 설치 비용임. 온습도 센서, 공기질 센서, 재실 센서 등 다양한 물리센서를 설치해야 하며, 센서당 2~5만원의 구매 비용과 설치·유지보수 비용이 추가됨. 100세대 아파트 단지에 세대당 5종 센서를 설치할 경우, 센서 비용만 최소 1억원 이상이 소요됨.
+:PROPERTIES:
+:HWPX_IDX: 90
+:END:
+
+***** - 또한 물리센서는 배터리 교체, 센서 오작동, 통신 장애 등 지속적인 유지보수가 필요하며, 센서 고장 시 해당 서비스가 중단되는 문제가 있음. 이러한 비용 부담은 스마트홈 서비스의 대중화를 저해하는 주요 요인임.
+:PROPERTIES:
+:HWPX_IDX: 91
+:END:
+
+*** □ 필요성
+:PROPERTIES:
+:HWPX_IDX: 94
+:END:
+
+**** o 온디바이스 AI를 통한 프라이버시 보호
+:PROPERTIES:
+:HWPX_IDX: 95
+:END:
+
+***** - 앞서 언급한 클라우드 AI의 프라이버시 문제를 해결하기 위해 온디바이스 AI가 차세대 스마트홈의 핵심 기술로 부상함. 온디바이스 AI는 데이터가 기기 내부에서만 처리되어 외부 전송이 원천 차단되므로, 클라우드 AI의 프라이버시 문제를 구조적으로 해결함.
+:PROPERTIES:
+:HWPX_IDX: 97
+:END:
+
+***** - EU AI Act(2025년 시행)는 AI 서비스 제공자에게 온디바이스 처리(on-device processing), 사용자 제어 설정, 실시간 감사 로그 등을 요구하고 있으며, 2026년 상반기까지 미국 텍사스, 캘리포니아, 일리노이, 콜로라도 등 20개 주에서도 AI 데이터 프라이버시 관련 법규가 시행될 예정임.
+:PROPERTIES:
+:HWPX_IDX: 98
+:END:
+
+***** - 퀄컴, 애플, 삼성 등 글로벌 기업들이 온디바이스 AI 전략을 본격화하고 있으며, 최근 스마트폰의 실시간 통역 기능도 개인 대화 보호를 위해 온디바이스로 구현됨. Deloitte는 2026년 AI 트렌드로 '신뢰할 수 있는 AI 프레임워크'를 제시하며, 투명성·공정성·개인정보 보호·안전성·책임성을 핵심 원칙으로 강조함. 본 과제의 온디바이스 AI 접근법은 이러한 글로벌 규제 동향과 시장 요구에 정확히 부합함.
+:PROPERTIES:
+:HWPX_IDX: 99
+:END:
+
+**** o AI 소프트센서를 통한 센서 비용 절감 및 서비스 연속성 확보
+:PROPERTIES:
+:HWPX_IDX: 100
+:END:
+
+***** - 본 과제의 소프트센서 기술은 기존에 설치된 최소한의 물리센서 데이터를 AI로 분석하여 추가 센싱 값을 생성함으로써, 물리센서 설치 비용을 절감하고 서비스 확장성을 확보함. 또한 물리센서 고장 시에도 소프트센서가 대체값을 생성하는 센서 자가치유(Self-Healing) 기능을 통해 서비스 연속성을 보장함.
+:PROPERTIES:
+:HWPX_IDX: 102
+:END:
+
+**** o Matter 표준 기반 상호운용성 확보
+:PROPERTIES:
+:HWPX_IDX: 103
+:END:
+
+***** - 본 과제는 Matter 표준을 채택하여 개발된 소프트센서가 다양한 스마트홈 생태계에서 동작할 수 있도록 함. 이는 특정 플랫폼에 종속되지 않는 범용성과 글로벌 시장 진출 가능성을 확보하는 핵심 전략임.
+:PROPERTIES:
+:HWPX_IDX: 105
+:END:
+
+#+HWPX: 106
+작성 요령 연구개발계획서 작성 후 작성 요령 표는 삭제◦ 개발 대상 기술  - 개발 대상 기술  - 개발 대상 기술◦ 연구개발과제와 관련되는 연구개발과제의 배경 및 필요성, 정부 정책 및 RFP/품목요약서의 부합성 등을 종합적으로 기재
+
+#+HWPX: 106
+#+BEGIN_EXAMPLE :name 작성요령
+[cols="1,1"]
+|===
+|작성 요령
+.2+| 연구개발계획서 작성 후 작성 요령 표는 삭제
+
+2+|◦ 개발 대상 기술   - 개발 대상 기술   - 개발 대상 기술 ◦ 연구개발과제와 관련되는 연구개발과제의 배경 및 필요성, 정부 정책 및 RFP/품목요약서의 부합성 등을 종합적으로 기재
+
+|===
+#+END_EXAMPLE
+
+* 2. 연구개발과제의 목표 및 내용
+:PROPERTIES:
+:HWPX_IDX: 107
+:END:
+
+** 2-1. 최종목표
+:PROPERTIES:
+:HWPX_IDX: 109
+:END:
+
+#+HWPX: 110
+※ 단계로 구분될 경우 최종목표 및 각 단계별 목표를 분리 작성하며, 표준연계과제의 경우 표준화 목표 및 연차별 표준화 개발 내용 수립 필요
+
+**** (1) 최종목표   ※ 전체 목표를 표 또는 그림 등을 통해 요약하여 작성
+:PROPERTIES:
+:HWPX_IDX: 112
+:END:
+
+*** □ 템플릿
+:PROPERTIES:
+:HWPX_IDX: 114
+:END:
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 116
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 118
+:END:
+
+#+HWPX: 121
+(1)-1 연구개발과제의 단계별 목표 ※ 연구개발기간이 단계로 구분되는 경우 작성
+
+#+HWPX: 122
+[1단계(20xx~20xx) 목표]
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 124
+:END:
+
+#+HWPX: 126
+[2단계(20xx~20xx) 목표]
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 128
+:END:
+
+**** (2) 정량적 목표 항목의 평가방법 및 평가환경
+:PROPERTIES:
+:HWPX_IDX: 134
+:END:
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 136
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 137
+:END:
+
+** 2-2. 연구개발 목표 및 내용
+:PROPERTIES:
+:HWPX_IDX: 141
+:END:
+
+#+HWPX: 142
+[1단계]  ※ 최종목표를 달성하기 위한 연차별 개발 목표 및 수준을 기재하며 연구개발기간이 단계가 구분되는 경우 단계별/연차별로 작성하며  경우 구분되지 않는 경우 연차별로 기술
+
+**** (1) 1차년도
+:PROPERTIES:
+:HWPX_IDX: 143
+:END:
+
+#+HWPX: 145
+① 개발 목표
+
+#+HWPX: 146
+[주관연구개발기관(고퀄)]
+
+#+HWPX: 147
+o
+
+#+HWPX: 149
+[공동연구개발기관1(에너자이)]
+
+#+HWPX: 150
+o
+
+#+HWPX: 152
+[공동연구개발기관2(현대HT)]
+
+#+HWPX: 154
+o
+
+#+HWPX: 155
+[공동연구개발기관3(TTA)]
+
+#+HWPX: 157
+o
+
+#+HWPX: 160
+② 개발 내용 및 범위   ※ 시스템 구성도, 구조 등을 그림으로 구체적 표현
+
+#+HWPX: 162
+[주관연구개발기관(고퀄)]
+
+#+HWPX: 163
+o
+
+#+HWPX: 165
+[공동연구개발기관1(에너자이)]
+
+#+HWPX: 166
+o
+
+#+HWPX: 168
+[공동연구개발기관2(현대HT)]
+
+#+HWPX: 170
+o
+
+#+HWPX: 171
+[공동연구개발기관3(TTA)]
+
+#+HWPX: 173
+o
+
+#+HWPX: 178
+각 기관 내용 작성  (2) 2차년도
+
+#+HWPX: 180
+① 개발 목표
+
+#+HWPX: 182
+[주관연구개발기관(고퀄)]
+
+#+HWPX: 183
+o
+
+#+HWPX: 185
+[공동연구개발기관1(에너자이)]
+
+#+HWPX: 186
+o
+
+#+HWPX: 188
+[공동연구개발기관2(현대HT)]
+
+#+HWPX: 190
+o
+
+#+HWPX: 191
+[공동연구개발기관3(TTA)]
+
+#+HWPX: 193
+o
+
+#+HWPX: 195
+② 개발 내용 및 범위
+
+**** (3) 3차년도
+:PROPERTIES:
+:HWPX_IDX: 199
+:END:
+
+** 2-3. 연구개발과제 수행일정 및 주요 결과물
+:PROPERTIES:
+:HWPX_IDX: 204
+:END:
+
+* 3. 연구개발과제의 추진전략·방법 및 추진체계
+:PROPERTIES:
+:HWPX_IDX: 210
+:END:
+
+** 3-1. 기술개발 추진방법·전략
+:PROPERTIES:
+:HWPX_IDX: 212
+:END:
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 214
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 215
+:END:
+
+#+HWPX: 218
+작성 요령 연구개발계획서 작성 후 작성 요령 표는 삭제◦ 기 보유 기술 활용 및 외부기술 도입 등을 통한 목표달성 기간 단축과 연구개발비 절감 방안을 포함하여 작성 ※ AI 관련 R&D 과제의 경우 아래의 사항을 고려하여 작성 요망 ① 연구개발 과정에서 AI가 기여하는 역할과 단계별 절차 등(연구개발 성과물에만 AI가 활용되는 경우는 제외) ② AI 활용 기대효과(기간 단축, 비용 절감, 연구인력 운용 효율화 등)
+
+#+HWPX: 218
+#+BEGIN_EXAMPLE :name 작성요령
+[cols="1,1"]
+|===
+|작성 요령
+| ※ AI 관련 R&D 과제의 경우 아래의 사항을 고려하여 작성 요망  ① 연구개발 과정에서 AI가 기여하는 역할과 단계별 절차 등 (연구개발 성과물에만 AI가 활용되는 경우는 제외)  ② AI 활용 기대효과 (기간 단축, 비용 절감, 연구인력 운용 효율화 등)
+.2+| 연구개발계획서 작성 후 작성 요령 표는 삭제
+
+2+|◦ 기 보유 기술 활용 및 외부기술 도입 등을 통한 목표달성 기간 단축과 연구개발비 절감 방안을 포함하여 작성  ※ AI 관련 R&D 과제의 경우 아래의 사항을 고려하여 작성 요망  ① 연구개발 과정에서 AI가 기여하는 역할과 단계별 절차 등 (연구개발 성과물에만 AI가 활용되는 경우는 제외)  ② AI 활용 기대효과 (기간 단축, 비용 절감, 연구인력 운용 효율화 등)
+
+|===
+#+END_EXAMPLE
+
+#+HWPX: 218
+#+BEGIN_SRC asciidoc
+[cols="1"]
+|===
+| ※ AI 관련 R&D 과제의 경우 아래의 사항을 고려하여 작성 요망  ① 연구개발 과정에서 AI가 기여하는 역할과 단계별 절차 등 (연구개발 성과물에만 AI가 활용되는 경우는 제외)  ② AI 활용 기대효과 (기간 단축, 비용 절감, 연구인력 운용 효율화 등)
+
+|===
+#+END_SRC
+
+** 3-2. 기술개발 추진체계
+:PROPERTIES:
+:HWPX_IDX: 219
+:END:
+
+#+HWPX: 220
+※ 다음 예시와 같이 작성함 (예 : 저진공 펌프 개발) 표가 아닌 별도 이미지로 작성 가능
+
+#+HWPX: 222
+작성 요령 연구개발계획서 작성 후 작성 요령 표는 삭제◦ 기술개발 추진 방법 - 개발목표 달성을 위하여 무엇을 활용하고 어떻게 수행할 것인지 등 수행 방법을 구체적으로 서술 - 세부개발 내용별 수행 방법, 수행 과정 중 예측되는 장애 요소 및 그 해결 방안, 계획된 실험과정 등을 기술◦ 기술개발 추진 체계 - 개발내용의 연차별 목표와 상호간의 연관 관계 및 선 ․ 후 관계를 구체적이고 명확하게 나타낼 수 있도록 상세하게 작성 - 연구개발기관별 업무분장이 명확하게 드러나도록 기술(공동연구개발기관이 없는 경우 생략)◦ 1차년도부터 최종년도 까지의 전체 연구개발기간 동안의 추진 방법 작성
+
+#+HWPX: 222
+#+BEGIN_EXAMPLE :name 작성요령
+[cols="1,1"]
+|===
+|작성 요령
+.2+| 연구개발계획서 작성 후 작성 요령 표는 삭제
+
+2+|◦ 기술개발 추진 방법  - 개발목표 달성을 위하여 무엇을 활용하고 어떻게 수행할 것인지 등 수행 방법을 구체적으로 서술  - 세부개발 내용별 수행 방법, 수행 과정 중 예측되는 장애 요소 및 그 해결 방안, 계획된 실험과정 등을 기술 ◦ 기술개발 추진 체계  -  개발내용의 연차별 목표와 상호간의 연관 관계 및 선 ․ 후 관계를 구체적이고 명확하게 나타낼 수 있도록  상세하게 작성  - 연구개발기관별 업무분장이 명확하게 드러나도록 기술(공동연구개발기관이 없는 경우 생략) ◦ 1차년도부터 최종년도 까지의 전체 연구개발기간 동안의 추진 방법 작성
+
+|===
+#+END_EXAMPLE
+
+** 3-3. 기술개발팀 편성도
+:PROPERTIES:
+:HWPX_IDX: 224
+:END:
+
+** 3-4. 과제 수행 중 일자리 창출 계획·방법
+:PROPERTIES:
+:HWPX_IDX: 227
+:END:
+
+**** (1) 일자리 창출 계획 및 효과
+:PROPERTIES:
+:HWPX_IDX: 229
+:END:
+
+#+HWPX: 230
+※ 본 과제 관련 일자리 창출 계획과 일자리 창출 예상 실적 등을 정량화하여 산출하고, 일자리 창출을 위한 노력 구체화
+
+#+HWPX: 231
+※ 연차별 채용 예정 인원 및 채용 방법 등에 대해 서술
+
+#+HWPX: 232
+※ 신규채용 실적 및 계획_(연구개발과제로부터 채용하는 경우 기재 必)
+
+#+HWPX: 233
+※ 채용예정이라도 국적을 필히 기재하고, 청년 채용은 내국인에 한함
+
+**** (2) 주관/공동연구개발기관별 일자리 창출 계획
+:PROPERTIES:
+:HWPX_IDX: 236
+:END:
+
+#+HWPX: 237
+※ 주관/공동연구개발기관별 일자리 창출 계획, 채용 예정 인원 및 채용 방법 등에 대해 서술
+
+**** o [주관연구개발기관(고퀄)]
+:PROPERTIES:
+:HWPX_IDX: 239
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 240
+:END:
+
+* 4. 연구개발성과의 활용방안 및 기대효과
+:PROPERTIES:
+:HWPX_IDX: 243
+:END:
+
+** 4-1. 연구개발성과의 활용방안
+:PROPERTIES:
+:HWPX_IDX: 245
+:END:
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 247
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 248
+:END:
+
+** 4-2. 연구개발성과의 기대효과  ※ 연구개발성과로부터 해당하는 측면에 대해 기재
+:PROPERTIES:
+:HWPX_IDX: 250
+:END:
+
+#+HWPX: 252
+[과학⋅기술적 측면]
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 255
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 256
+:END:
+
+#+HWPX: 259
+[경제적
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 262
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 263
+:END:
+
+#+HWPX: 265
+[인프라 측면]
+
+**** o 템플릿
+:PROPERTIES:
+:HWPX_IDX: 267
+:END:
+
+***** - 템플릿
+:PROPERTIES:
+:HWPX_IDX: 268
+:END:

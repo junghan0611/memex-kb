@@ -1,0 +1,71 @@
+#+title:      Org → ODT 변환 샘플
+#+date:       [2026-03-05 Thu]
+#+author:     Your Name
+#+description: Emacs org-odt-export 기반 고품질 문서 변환 예제
+#+bibliography: references.bib
+#+cite_export: csl
+
+* 개요
+
+이 문서는 Org-mode에서 ODT/DOC로 변환하는 파이프라인의 샘플입니다.
+pandoc 대신 Emacs의 =org-odt-export= 를 사용하여 다음과 같은 이점을 얻습니다.
+
+- =reference.odt= 스타일 정확 적용
+- 한글 캡션 (그림, 표)
+- 테이블 헤더 배경색 + 테두리 자동 보정
+- CSL bibliography (URL 포함 참고문헌)
+
+** 사용법
+
+#+begin_src bash
+./run.sh build              # sample.org → odt → doc
+./run.sh build resume.org   # 다른 파일도 가능
+./run.sh check              # 의존성 확인
+#+end_src
+
+* 본문 예제
+
+** 테이블
+
+| 항목 | 설명 | 비고 |
+|------+------+------|
+| A2UI | AI 에이전트 기반 동적 프론트엔드 | 1차년 |
+| A2A  | 에이전트 간 협업 모델 | 2차년 |
+| Usable Security | 사용성 중심 보안 UX | 전 연차 |
+
+** 이미지
+
+아래는 샘플 이미지 삽입 예시입니다.
+
+#+caption: 그림 1. 샘플 다이어그램
+[[file:images/sample.png]]
+
+이미지는 =images/= 폴더에 넣고 위와 같이 참조합니다.
+ODT 변환 시 자동으로 임베딩됩니다.
+
+** 목록과 강조
+
+- *볼드* 텍스트
+- /이탤릭/ 텍스트
+- =코드= 텍스트
+- 일반 텍스트
+
+1) 번호 목록 첫 번째
+2) 번호 목록 두 번째
+3) 번호 목록 세 번째
+
+** 인용
+
+#+begin_quote
+좋은 도구는 손에 익으면 보이지 않는다.
+#+end_quote
+
+* 참고문헌 활용
+
+=references.bib= 에 BibTeX 엔트리를 추가하고,
+본문에서 =[cite:@key]= 형식으로 인용합니다.
+
+예시: Server-Driven UI는 Airbnb에서 실전 검증된 접근이다 [cite:@airbnb-sdui-2021].
+Google의 A2A 프로토콜 [cite:@google-a2a-2025]은 에이전트 간 통신 표준을 제시한다.
+
+#+print_bibliography:

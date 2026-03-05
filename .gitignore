@@ -65,6 +65,8 @@ dorray-docs/
 *__human.org
 .direnv
 /**/samples
+!/samples/
+!/samples/org-to-odt/
 3rd
 
 .agent-shell/
@@ -75,3 +77,5 @@ tmp
 # 프로젝트별 내보내기 스크립트 (계정/문서ID 포함)
 scripts/export_kiat_*.sh
 output
+
+office

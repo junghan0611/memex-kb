@@ -272,12 +272,22 @@ def _clean_html(s: str) -> str:
 
 # ── 이미지 다운로드 ──────────────────────────────────────────
 
+def _encode_url(url: str) -> str:
+    """URL 내 한글 등 non-ASCII 문자를 percent-encoding."""
+    # 이미 인코딩된 부분은 보존, 한글만 인코딩
+    parts = urllib.parse.urlsplit(url)
+    path = urllib.parse.quote(parts.path, safe="/@!$&'()*+,;=-._~:")
+    query = urllib.parse.quote(parts.query, safe="=&")
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, path, query, parts.fragment))
+
+
 def download_image(img_url: str, dest_path: Path) -> bool:
     """이미지 다운로드. 이미 있으면 스킵."""
     if dest_path.exists():
         return True
     try:
-        req = urllib.request.Request(img_url, headers={
+        encoded_url = _encode_url(img_url)
+        req = urllib.request.Request(encoded_url, headers={
             "User-Agent": "Mozilla/5.0",
             "Referer": "https://m.blog.naver.com/",
         })
@@ -286,7 +296,7 @@ def download_image(img_url: str, dest_path: Path) -> bool:
         dest_path.write_bytes(data)
         return True
     except Exception as e:
-        print(f"  ⚠️ 이미지 다운로드 실패: {e}", file=sys.stderr)
+        print(f"  ⚠️ 이미지 다운로드 실패: {img_url[:80]} → {e}", file=sys.stderr)
         return False
 
 

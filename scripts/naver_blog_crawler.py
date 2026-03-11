@@ -313,11 +313,13 @@ def download_image(img_url: str, dest_path: Path) -> bool:
 # ── Denote org 출력 ──────────────────────────────────────────
 
 def slugify(title: str) -> str:
-    """한글 제목을 Denote 파일명용으로 변환."""
+    """한글 제목을 Denote 파일명용으로 변환. 영어는 소문자."""
     # 특수문자 제거, 공백→하이픈
     slug = re.sub(r"[^\w\s가-힣-]", "", title)
     slug = re.sub(r"\s+", "-", slug.strip())
     slug = re.sub(r"-+", "-", slug)
+    # Denote 규칙: 영어는 소문자
+    slug = re.sub(r'[A-Z]+', lambda m: m.group().lower(), slug)
     return slug[:80]  # 길이 제한
 
 

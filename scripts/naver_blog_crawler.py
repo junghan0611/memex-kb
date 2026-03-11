@@ -149,19 +149,22 @@ def extract_post(blog_id: str, log_no: str) -> dict:
     title = title_m.group(1).strip() if title_m else ""
 
     # 날짜+시간
+    # 초(seconds)는 블로그에 없으므로 logNo % 60으로 deterministic 생성
+    # → 재현 가능하고 Denote ID 충돌 방지
+    sec = int(log_no) % 60
     date_m = re.search(r'(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.?\s*(\d{1,2}):(\d{2})', html)
     if date_m:
         y, mo, d, h, mi = date_m.groups()
         date_str = f"{y}-{mo.zfill(2)}-{d.zfill(2)}"
         time_str = f"{h.zfill(2)}:{mi}"
-        denote_id = f"{y}{mo.zfill(2)}{d.zfill(2)}T{h.zfill(2)}{mi}00"
+        denote_id = f"{y}{mo.zfill(2)}{d.zfill(2)}T{h.zfill(2)}{mi}{sec:02d}"
     else:
         date_m2 = re.search(r'(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})', html)
         if date_m2:
             y, mo, d = date_m2.groups()
             date_str = f"{y}-{mo.zfill(2)}-{d.zfill(2)}"
             time_str = "00:00"
-            denote_id = f"{y}{mo.zfill(2)}{d.zfill(2)}T000000"
+            denote_id = f"{y}{mo.zfill(2)}{d.zfill(2)}T0000{sec:02d}"
         else:
             date_str = ""
             time_str = ""

@@ -230,6 +230,66 @@ cmd_proposal_export_odt() {
     fi
 }
 
+# ── Naver Blog ───────────────────────────────────────────────────────
+
+cmd_naver_list() {
+    # DESC: 네이버 블로그 전체 글 목록 수집
+    # USAGE: naver-list <BLOG_ID> [--output FILE]
+    # EXAMPLE: naver-list saiculture --output ./naver-saiculture/posts.json
+    local blog_id="${1:?BLOG_ID가 필요합니다}"
+    shift
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py list ${blog_id} $*"
+}
+
+cmd_naver_get() {
+    # DESC: 네이버 블로그 단일 글 추출 (Denote org 미리보기)
+    # USAGE: naver-get <BLOG_ID> <LOG_NO>
+    # EXAMPLE: naver-get saiculture 224202104252
+    local blog_id="${1:?BLOG_ID가 필요합니다}"
+    local log_no="${2:?LOG_NO가 필요합니다}"
+    ensure_project_dir
+    python3 "${SCRIPTS_DIR}/naver_blog_crawler.py" get "${blog_id}" "${log_no}"
+}
+
+cmd_naver_crawl() {
+    # DESC: 네이버 블로그 전체 크롤링 → Denote org + 이미지 (카테고리 폴더)
+    # USAGE: naver-crawl <BLOG_ID> [--output-dir DIR] [--delay SEC] [--limit N]
+    # EXAMPLE: naver-crawl saiculture
+    # EXAMPLE: naver-crawl saiculture --output-dir ./naver-saiculture --limit 100
+    # NOTE: 이어받기 지원. 중간에 끊어도 다시 실행하면 이어서 받음.
+    local blog_id="${1:?BLOG_ID가 필요합니다}"
+    shift
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py crawl ${blog_id} $*"
+}
+
+cmd_naver_verify() {
+    # DESC: 크롤링 결과 정합성 검사 (누락/고아/깨진 이미지)
+    # USAGE: naver-verify [--output-dir DIR]
+    # EXAMPLE: naver-verify --output-dir ./naver-saiculture
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py verify $*"
+}
+
+cmd_naver_retry() {
+    # DESC: 누락 이미지 재다운로드 (한글URL 인코딩, timeout 재시도)
+    # USAGE: naver-retry <BLOG_ID> [--output-dir DIR] [--delay SEC]
+    # EXAMPLE: naver-retry saiculture --output-dir ./naver-saiculture
+    local blog_id="${1:?BLOG_ID가 필요합니다}"
+    shift
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py retry ${blog_id} $*"
+}
+
+cmd_naver_wordmap() {
+    # DESC: 해시태그 워드맵 생성 (빈도 + 공기어)
+    # USAGE: naver-wordmap [--output-dir DIR]
+    # EXAMPLE: naver-wordmap --output-dir ./naver-saiculture
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py wordmap $*"
+}
+
 # ── Utility ──────────────────────────────────────────────────────────
 
 cmd_env_check() {
@@ -362,6 +422,13 @@ COMMANDS=(
     "proposal-merge:cmd_proposal_merge"
     "proposal-odt-fix:cmd_proposal_odt_fix"
     "proposal-export-odt:cmd_proposal_export_odt"
+    "--- Naver Blog"
+    "naver-list:cmd_naver_list"
+    "naver-get:cmd_naver_get"
+    "naver-crawl:cmd_naver_crawl"
+    "naver-verify:cmd_naver_verify"
+    "naver-retry:cmd_naver_retry"
+    "naver-wordmap:cmd_naver_wordmap"
     "--- Utility"
     "env-check:cmd_env_check"
     "secret-scan:cmd_secret_scan"

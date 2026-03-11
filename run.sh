@@ -282,6 +282,14 @@ cmd_naver_retry() {
     run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py retry ${blog_id} $*"
 }
 
+cmd_naver_fix_titles() {
+    # DESC: 기존 org 파일의 제목/파일명 HTML entity 수정 (재크롤링 불필요)
+    # USAGE: naver-fix-titles [--output-dir DIR]
+    # EXAMPLE: naver-fix-titles --output-dir ./naver-saiculture
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py fix-titles $*"
+}
+
 cmd_naver_wordmap() {
     # DESC: 해시태그 워드맵 생성 (빈도 + 공기어)
     # USAGE: naver-wordmap [--output-dir DIR]

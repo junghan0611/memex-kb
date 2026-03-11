@@ -69,8 +69,7 @@ def fetch_post_list(blog_id: str, page: int = 1, count: int = 30) -> tuple[list,
 
     results = []
     for log_no, title_enc in pairs:
-        title = urllib.parse.unquote_plus(title_enc)
-        title = title.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+        title = _decode_entities(urllib.parse.unquote_plus(title_enc))
         results.append({
             "log_no": log_no,
             "title": title,
@@ -146,7 +145,7 @@ def extract_post(blog_id: str, log_no: str) -> dict:
 
     # 제목
     title_m = re.search(r"<title>([^:<]+)", html)
-    title = title_m.group(1).strip() if title_m else ""
+    title = _decode_entities(title_m.group(1).strip()) if title_m else ""
 
     # 날짜+시간
     # 초(seconds)는 블로그에 없으므로 logNo % 60으로 deterministic 생성
@@ -260,14 +259,25 @@ def extract_post(blog_id: str, log_no: str) -> dict:
     }
 
 
+def _decode_entities(s: str) -> str:
+    """HTML 엔티티 변환. 제목/본문 공통."""
+    s = s.replace("&lt;", "<").replace("&gt;", ">")
+    s = s.replace("&amp;", "&").replace("&quot;", '"')
+    s = s.replace("&apos;", "'").replace("&#39;", "'")
+    s = s.replace("&nbsp;", " ").replace("&ndash;", "–").replace("&mdash;", "—")
+    # &#xNN; / &#NNN; 숫자 엔티티
+    s = re.sub(r'&#x([0-9A-Fa-f]+);', lambda m: chr(int(m.group(1), 16)), s)
+    s = re.sub(r'&#(\d+);', lambda m: chr(int(m.group(1))), s)
+    s = s.replace("\u200b", "")
+    # 연속 공백 정리
+    s = re.sub(r'  +', ' ', s)
+    return s
+
+
 def _clean_html(s: str) -> str:
     """HTML 태그 제거 + 엔티티 변환."""
     text = re.sub(r"<[^>]+>", "", s).strip()
-    text = text.replace("&lt;", "<").replace("&gt;", ">")
-    text = text.replace("&amp;", "&").replace("&quot;", '"')
-    text = text.replace("&nbsp;", " ").replace("&ndash;", "–")
-    text = text.replace("\u200b", "")
-    return text
+    return _decode_entities(text)
 
 
 # ── 이미지 다운로드 ──────────────────────────────────────────
@@ -609,6 +619,52 @@ def _clean_hashtag(tag: str) -> str:
     return tag
 
 
+def cmd_fix_titles(output_dir: str):
+    """기존 org 파일의 제목/파일명에서 HTML entity 잔여물 수정. 재크롤링 불필요."""
+    out = Path(output_dir)
+    fixed_titles = 0
+    renamed = 0
+
+    for org_file in sorted(out.rglob("*.org")):
+        text = org_file.read_text()
+        changed = False
+
+        # #+title: 정리
+        title_m = re.search(r'^(#\+title:\s+)(.+)$', text, re.MULTILINE)
+        if title_m:
+            old_title = title_m.group(2)
+            new_title = _decode_entities(old_title)
+            if old_title != new_title:
+                text = text.replace(title_m.group(0), title_m.group(1) + new_title)
+                changed = True
+                fixed_titles += 1
+
+        if changed:
+            org_file.write_text(text)
+
+        # 파일명 정리
+        fname = org_file.name
+        # Denote 패턴: YYYYMMDDTHHMMSS--제목.org
+        fname_m = re.match(r'(\d{8}T\d{6}--)(.*)(\.org)$', fname)
+        if not fname_m:
+            continue
+
+        # 수정된 제목에서 새 slug 생성
+        title_m2 = re.search(r'^#\+title:\s+(.+)$', text, re.MULTILINE)
+        if not title_m2:
+            continue
+        old_slug = fname_m.group(2)
+        new_slug = slugify(title_m2.group(1))
+        if old_slug != new_slug:
+            new_fname = f"{fname_m.group(1)}{new_slug}{fname_m.group(3)}"
+            new_path = org_file.parent / new_fname
+            if not new_path.exists():
+                org_file.rename(new_path)
+                renamed += 1
+
+    print(f"제목 수정: {fixed_titles}편, 파일명 변경: {renamed}편", file=sys.stderr)
+
+
 def cmd_wordmap(output_dir: str):
     """해시태그 워드맵 생성. HTML entity 정리 + 정규화 포함."""
     out = Path(output_dir)
@@ -713,6 +769,10 @@ def main():
         output_dir = _parse_flag(sys.argv, "--output-dir", f"./naver-{blog_id}")
         delay = float(_parse_flag(sys.argv, "--delay", "1.0"))
         cmd_retry(blog_id, output_dir, delay)
+
+    elif cmd == "fix-titles":
+        output_dir = _parse_flag(sys.argv, "--output-dir", "./output")
+        cmd_fix_titles(output_dir)
 
     elif cmd == "wordmap":
         output_dir = _parse_flag(sys.argv, "--output-dir", "./output")

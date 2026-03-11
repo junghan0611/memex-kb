@@ -587,19 +587,57 @@ def cmd_retry(blog_id: str, output_dir: str, delay: float = 1.0):
     print(f"\n완료: 성공 {done}, 실패 {failed}", file=sys.stderr)
 
 
+def _clean_hashtag(tag: str) -> str:
+    """해시태그 정규화. HTML entity 잔여물 제거, 문장부호 strip."""
+    # HTML entity 잔여물 (&#x27; → ', &#x3D; → = 등이 깨진 형태)
+    if re.match(r'^x[0-9A-Fa-f]{2};', tag):
+        return ""  # x27;..., x3D;... 패턴 통째 제거
+
+    # HTML entity 중간에 남은 것 제거
+    tag = re.sub(r'&#?x?[0-9A-Fa-f]{2,4};', '', tag)
+
+    # 끝 문장부호 strip (반복): 콜론, 쉼표, 마침표, 세미콜론, 물음표, 느낌표, 따옴표, 꺾쇠, 괄호
+    tag = re.sub(r'[,:;.!?\"\'>)\]]+$', '', tag)
+    # 앞 문장부호 strip
+    tag = re.sub(r'^[,:;.!?\"\'\[(<]+', '', tag)
+
+    # 빈 문자열이나 순수 부호만 남은 경우
+    tag = tag.strip()
+    if not tag or re.match(r'^[^가-힣a-zA-Z0-9]+$', tag):
+        return ""
+
+    return tag
+
+
 def cmd_wordmap(output_dir: str):
-    """해시태그 워드맵 생성."""
+    """해시태그 워드맵 생성. HTML entity 정리 + 정규화 포함."""
     out = Path(output_dir)
     tag_freq = {}
     tag_cooccur = {}
     file_count = 0
+    raw_count = 0
+    cleaned_count = 0
 
     for org_file in out.rglob("*.org"):
         text = org_file.read_text()
         tags_m = re.search(r"^\#\+blog_tags:\s+(.+)$", text, re.MULTILINE)
         if not tags_m:
             continue
-        tags = [t.lstrip("#") for t in tags_m.group(1).split()]
+
+        raw_tags = [t.lstrip("#") for t in tags_m.group(1).split()]
+        raw_count += len(raw_tags)
+
+        # 정규화
+        tags = []
+        for t in raw_tags:
+            cleaned = _clean_hashtag(t)
+            if cleaned:
+                tags.append(cleaned)
+        cleaned_count += len(tags)
+
+        if not tags:
+            continue
+
         file_count += 1
         for t in tags:
             tag_freq[t] = tag_freq.get(t, 0) + 1
@@ -611,6 +649,9 @@ def cmd_wordmap(output_dir: str):
     wm = {
         "total_files": file_count,
         "total_unique_tags": len(tag_freq),
+        "raw_tag_count": raw_count,
+        "cleaned_tag_count": cleaned_count,
+        "removed_noise": raw_count - cleaned_count,
         "frequency": dict(sorted(tag_freq.items(), key=lambda x: -x[1])),
         "cooccurrence_top100": {
             f"{k[0]} + {k[1]}": v
@@ -621,7 +662,9 @@ def cmd_wordmap(output_dir: str):
     result_file = out / "wordmap.json"
     result_file.write_text(json.dumps(wm, ensure_ascii=False, indent=2))
     print(f"워드맵: {result_file}", file=sys.stderr)
-    print(f"파일: {file_count}, 고유 태그: {len(tag_freq)}개\n", file=sys.stderr)
+    print(f"파일: {file_count}, 고유 태그: {len(tag_freq)}개", file=sys.stderr)
+    print(f"노이즈 제거: {raw_count} → {cleaned_count} ({raw_count - cleaned_count}개 제거)\n",
+          file=sys.stderr)
     print("상위 50개:")
     for tag, freq in list(wm["frequency"].items())[:50]:
         print(f"  {freq:4d}  {tag}")

@@ -469,6 +469,124 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0)
     print(f"\n완료: {done}편 저장, 이미지 {img_count}개, 스킵 {skipped}편", file=sys.stderr)
 
 
+def cmd_verify(output_dir: str) -> list[dict]:
+    """크롤링 결과 정합성 검사. 누락/고아/깨진 이미지 검출."""
+    out = Path(output_dir)
+
+    # 1. org 파일에서 이미지 참조 수집
+    referenced = {}  # full_path → org_file
+    missing = []
+    total_refs = 0
+    org_files = sorted(out.rglob("*.org"))
+
+    for org_file in org_files:
+        dir_path = org_file.parent
+        text = org_file.read_text()
+        for m in re.finditer(r'\[\[file:(images/[^\]]+)\]\]', text):
+            img_rel = m.group(1)
+            total_refs += 1
+            full = dir_path / img_rel
+            referenced[str(full.resolve())] = str(org_file.relative_to(out))
+            if not full.exists():
+                missing.append({
+                    "file": str(org_file.relative_to(out)),
+                    "image": img_rel,
+                })
+
+    # 2. 디스크 이미지 파일 수집
+    all_images = set()
+    for ext in ("*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp"):
+        for f in out.rglob(ext):
+            all_images.add(str(f.resolve()))
+
+    # 3. 고아 이미지 (파일O 참조X)
+    orphans = sorted(all_images - set(referenced.keys()))
+
+    # 4. 깨진 이미지 (1KB 미만 또는 HTML 응답)
+    corrupted = []
+    for img_path in sorted(all_images):
+        p = Path(img_path)
+        size = p.stat().st_size
+        if size < 1024:
+            corrupted.append({"path": str(p.relative_to(out.resolve())), "reason": f"too_small ({size}B)"})
+        elif size < 5000:
+            with open(p, "rb") as fh:
+                header = fh.read(20).lower()
+                if b"<html" in header or b"<!doctype" in header:
+                    corrupted.append({"path": str(p.relative_to(out.resolve())), "reason": "html_response"})
+
+    result = {
+        "total_org_files": len(org_files),
+        "total_image_refs": total_refs,
+        "total_images_on_disk": len(all_images),
+        "missing_count": len(missing),
+        "orphan_count": len(orphans),
+        "corrupted_count": len(corrupted),
+        "status": "OK" if not missing and not orphans and not corrupted else "ISSUES",
+        "missing": missing,
+        "orphans": [str(Path(o).relative_to(out.resolve())) for o in orphans[:50]],
+        "corrupted": corrupted[:50],
+    }
+
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return missing
+
+
+def cmd_retry(blog_id: str, output_dir: str, delay: float = 1.0):
+    """누락 이미지 재다운로드. verify 결과를 기반으로 글을 다시 파싱하여 이미지 URL 확보."""
+    out = Path(output_dir)
+
+    # 누락 이미지 수집
+    missing_by_logno = {}  # logNo → [(img_rel, dir_path)]
+    for org_file in sorted(out.rglob("*.org")):
+        dir_path = org_file.parent
+        text = org_file.read_text()
+        for m in re.finditer(r'\[\[file:(images/[^\]]+)\]\]', text):
+            img_rel = m.group(1)
+            if not (dir_path / img_rel).exists():
+                log_no_m = re.search(r'(\d{9,15})_\d{3}', img_rel)
+                if log_no_m:
+                    ln = log_no_m.group(1).split("_")[0].split("/")[-1]
+                    missing_by_logno.setdefault(ln, []).append((img_rel, str(dir_path)))
+
+    total_missing = sum(len(v) for v in missing_by_logno.values())
+    print(f"누락 이미지: {total_missing}개 ({len(missing_by_logno)}편)", file=sys.stderr)
+    if not missing_by_logno:
+        print("모든 이미지 정상!", file=sys.stderr)
+        return
+
+    done = 0
+    failed = 0
+    for i, (log_no, items) in enumerate(missing_by_logno.items()):
+        try:
+            post = extract_post(blog_id, log_no)
+            for img_rel, dir_str in items:
+                idx_m = re.search(r'_(\d{3})', img_rel)
+                if not idx_m:
+                    failed += 1
+                    continue
+                idx = int(idx_m.group(1))
+                if idx < len(post["images"]):
+                    img = post["images"][idx]
+                    dest = Path(dir_str) / img_rel
+                    if download_image(img["url"], dest):
+                        done += 1
+                    else:
+                        failed += 1
+                else:
+                    failed += 1
+        except Exception as e:
+            print(f"  ❌ {log_no}: {e}", file=sys.stderr)
+            failed += len(items)
+
+        if (i + 1) % 20 == 0:
+            print(f"  {i+1}/{len(missing_by_logno)} 글 처리 (성공: {done}, 실패: {failed})",
+                  file=sys.stderr)
+        time.sleep(delay)
+
+    print(f"\n완료: 성공 {done}, 실패 {failed}", file=sys.stderr)
+
+
 def cmd_wordmap(output_dir: str):
     """해시태그 워드맵 생성."""
     out = Path(output_dir)
@@ -542,6 +660,16 @@ def main():
         delay = float(_parse_flag(sys.argv, "--delay", "1.0"))
         limit = int(_parse_flag(sys.argv, "--limit", "0"))
         cmd_crawl(blog_id, output_dir, delay, limit)
+
+    elif cmd == "verify":
+        output_dir = _parse_flag(sys.argv, "--output-dir", "./output")
+        cmd_verify(output_dir)
+
+    elif cmd == "retry":
+        blog_id = sys.argv[2] if len(sys.argv) > 2 else "saiculture"
+        output_dir = _parse_flag(sys.argv, "--output-dir", f"./naver-{blog_id}")
+        delay = float(_parse_flag(sys.argv, "--delay", "1.0"))
+        cmd_retry(blog_id, output_dir, delay)
 
     elif cmd == "wordmap":
         output_dir = _parse_flag(sys.argv, "--output-dir", "./output")

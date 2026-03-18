@@ -2,24 +2,20 @@
 """
 md_to_gdocs_html.py — Markdown → Google Docs 붙여넣기용 HTML 변환기
 
+최적 경로: MD → Org (md_to_gdocs.py) → HTML (pandoc org→html5) → inline style 주입
+
 Google Docs는 <style> 블록과 CSS class를 무시한다.
 모든 서식을 inline style로 넣어야 붙여넣기 시 유지된다.
 
 사용법:
     python scripts/md_to_gdocs_html.py INPUT.md [-o OUTPUT.html] [--open]
-    python scripts/md_to_gdocs_html.py INPUT.md --open  # 변환 + 브라우저 열기
+    python scripts/md_to_gdocs_html.py INPUT.org [-o OUTPUT.html] [--open]
 
 파이프라인:
-    1. pandoc으로 MD → HTML 기본 변환 (--no-highlight로 깔끔하게)
-    2. BeautifulSoup으로 모든 태그에 inline style 주입
-    3. 특히 <pre>, <code>에 모노스페이스 + 배경색 강제
-    4. <table>에 테두리 + 패딩 강제
-    5. Google Docs가 인식하는 형태로 출력
-
-핵심 트릭:
-    - Google Docs는 <pre> 안의 텍스트를 줄바꿈 없이 이어붙임
-    - 해결: <pre> 내부 각 줄을 <div>로 감싸서 강제 줄바꿈
-    - ASCII 아트: 모노스페이스 + white-space:pre + 줄별 <div>
+    1. MD인 경우 → md_to_gdocs.py의 md_to_org()로 Org 변환 (코드블록/테이블 정확 변환)
+    2. Org → pandoc -f org -t html5 (깔끔한 <pre> 생성)
+    3. inline style 주입 (모노스페이스, 테이블 테두리, 줄별 <div>)
+    4. Google Docs 붙여넣기 최적화
 """
 
 import argparse
@@ -28,8 +24,10 @@ import re
 import subprocess
 import sys
 import tempfile
-from html.parser import HTMLParser
 from pathlib import Path
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 # ── 스타일 정의 ──────────────────────────────────────────────────────
@@ -194,77 +192,87 @@ class GDocsStyleInjector:
         return html
 
 
-# ── 메인 ─────────────────────────────────────────────────────────────
+# ── MD → Org 변환 (md_to_gdocs.py 재사용) ───────────────────────────
 
-def convert_md_to_gdocs_html(input_path: str, output_path: str | None = None) -> str:
-    """Markdown 파일을 Google Docs 붙여넣기용 HTML로 변환한다.
+def _md_to_org(input_path: Path) -> Path:
+    """MD 파일을 Org로 변환한다. md_to_gdocs.py의 md_to_org()를 import."""
+    sys.path.insert(0, str(SCRIPT_DIR))
+    from md_to_gdocs import md_to_org
 
-    Args:
-        input_path: 입력 MD 파일 경로
-        output_path: 출력 HTML 파일 경로 (None이면 자동 생성)
+    org_content = md_to_org(input_path)
 
-    Returns:
-        출력 파일 경로
-    """
-    input_path = Path(input_path).resolve()
-    if not input_path.exists():
-        print(f"❌ 파일을 찾을 수 없습니다: {input_path}", file=sys.stderr)
-        sys.exit(1)
+    # Org 헤더
+    title = input_path.stem.replace('-', ' ').replace('_', ' ').title()
+    header = f"#+TITLE: {title}\n#+OPTIONS: toc:nil author:nil num:t\n\n"
 
-    # 입력 형식 감지
-    suffix = input_path.suffix.lower()
-    if suffix == '.org':
-        from_format = 'org'
-    elif suffix in ('.md', '.markdown', '.mkd'):
-        from_format = 'markdown'
-    else:
-        from_format = 'markdown'  # 기본값
+    org_path = Path(f"/tmp/{input_path.stem}-gdocs.org")
+    org_path.write_text(header + org_content, encoding='utf-8')
+    return org_path
 
-    # 출력 경로
-    if output_path is None:
-        output_path = f"/tmp/{input_path.stem}-gdocs.html"
-    output_path = Path(output_path)
 
-    # 1단계: pandoc으로 기본 HTML 변환
-    pandoc_cmd = [
-        "pandoc",
-        str(input_path),
-        "-f", from_format,
-        "-t", "html5",
-        "-s",                   # standalone (html/head/body)
-        "--wrap=preserve",      # 줄바꿈 유지
-        "--no-highlight",       # 구문 강조 끔 (inline style 충돌 방지)
+# ── Org → HTML (pandoc) ─────────────────────────────────────────────
+
+def _org_to_html(org_path: Path) -> str:
+    """pandoc으로 Org → HTML5 변환."""
+    cmd = [
+        "pandoc", str(org_path),
+        "-f", "org", "-t", "html5",
+        "-s", "--wrap=preserve", "--no-highlight",
     ]
-
     try:
-        result = subprocess.run(
-            pandoc_cmd,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
         print(f"❌ pandoc 실행 실패: {e.stderr}", file=sys.stderr)
         sys.exit(1)
     except FileNotFoundError:
         print("❌ pandoc이 설치되어 있지 않습니다.", file=sys.stderr)
         sys.exit(1)
+    return result.stdout
 
-    raw_html = result.stdout
 
-    # 2단계: inline style 주입
+# ── 메인 ─────────────────────────────────────────────────────────────
+
+def convert_to_gdocs_html(input_path: str, output_path: str | None = None) -> str:
+    """입력 파일(MD/Org)을 Google Docs 붙여넣기용 HTML로 변환한다.
+
+    MD → Org → HTML → inline style 주입
+    """
+    input_path = Path(input_path).resolve()
+    if not input_path.exists():
+        print(f"❌ 파일을 찾을 수 없습니다: {input_path}", file=sys.stderr)
+        sys.exit(1)
+
+    suffix = input_path.suffix.lower()
+
+    # Step 1: MD → Org (이미 Org면 스킵)
+    if suffix in ('.md', '.markdown', '.mkd'):
+        print(f"📝 MD → Org: {input_path.name}")
+        org_path = _md_to_org(input_path)
+        print(f"   → {org_path}")
+    elif suffix == '.org':
+        org_path = input_path
+    else:
+        org_path = input_path  # 기본값: org로 시도
+
+    # Step 2: Org → HTML (pandoc)
+    print(f"📄 Org → HTML: {org_path.name}")
+    raw_html = _org_to_html(org_path)
+
+    # Step 3: inline style 주입
     injector = GDocsStyleInjector(raw_html)
     styled_html = injector.process()
 
-    # 3단계: 파일 저장
-    output_path.write_text(styled_html, encoding='utf-8')
+    # 출력 경로
+    if output_path is None:
+        output_path = f"/tmp/{input_path.stem}-gdocs.html"
+    Path(output_path).write_text(styled_html, encoding='utf-8')
 
     return str(output_path)
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Markdown → Google Docs 붙여넣기용 HTML 변환기",
+        description="Markdown/Org → Google Docs 붙여넣기용 HTML (MD→Org→HTML→inline style)",
         epilog="예시: python scripts/md_to_gdocs_html.py README.md --open",
     )
     parser.add_argument("input", help="입력 파일 (MD 또는 Org)")
@@ -273,7 +281,7 @@ def main():
 
     args = parser.parse_args()
 
-    output = convert_md_to_gdocs_html(args.input, args.output)
+    output = convert_to_gdocs_html(args.input, args.output)
     print(f"✅ 변환 완료: {output}")
     print(f"   브라우저에서 열고 → Ctrl+A → Ctrl+C → Google Docs에 Ctrl+V")
 

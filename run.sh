@@ -404,6 +404,17 @@ cmd_denote_test() {
     run_cmd "nix develop --command python ${SCRIPTS_DIR}/denote_namer.py"
 }
 
+cmd_md_to_gdocs() {
+    # DESC: Markdown/Org → Google Docs 붙여넣기용 DOCX 변환 (MD→Org→ODT→DOCX, 모노스페이스 코드블록, 테이블 유지)
+    # USAGE: md-to-gdocs <INPUT.md> [-o OUTPUT.docx] [--open] [--keep] [--step org|odt|docx]
+    # EXAMPLE: md-to-gdocs README.md --open
+    # EXAMPLE: md-to-gdocs ~/docs/guide.org --step org --keep
+    local input="${1:?입력 파일이 필요합니다 (MD 또는 Org)}"
+    shift
+    ensure_project_dir
+    run_cmd "python ${SCRIPTS_DIR}/md_to_gdocs.py ${input} $*"
+}
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # COMMAND REGISTRY — 명령어 이름 ↔ 함수 매핑
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -437,6 +448,8 @@ COMMANDS=(
     "naver-verify:cmd_naver_verify"
     "naver-retry:cmd_naver_retry"
     "naver-wordmap:cmd_naver_wordmap"
+    "--- 변환 도구"
+    "md-to-gdocs:cmd_md_to_gdocs"
     "--- Utility"
     "env-check:cmd_env_check"
     "secret-scan:cmd_secret_scan"

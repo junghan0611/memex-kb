@@ -79,3 +79,14 @@ scripts/export_kiat_*.sh
 output
 
 office
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+# Keep .pdf and .tex for reproducibility

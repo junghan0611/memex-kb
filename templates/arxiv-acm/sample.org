@@ -1,0 +1,77 @@
+#+TITLE: A Sample ACM ArXiv Paper using Org-Mode
+#+AUTHOR: First Author
+#+DATE: \today
+#+OPTIONS: title:nil author:nil toc:nil date:nil
+
+#+LATEX_CLASS: acmart
+#+LATEX_CLASS_OPTIONS: [sigconf, authordraft, nonacm]
+#+LATEX_HEADER: \settopmatter{printacmref=false}
+#+LATEX_HEADER: \acmDOI{}
+#+LATEX_HEADER: \acmISBN{}
+
+#+BEGIN_EXPORT latex
+\title{A Sample ACM ArXiv Paper using Org-Mode}
+
+\author{John Doe}
+\email{john.doe@example.com}
+\affiliation{%
+  \institution{University of Science}
+  \city{Seoul}
+  \country{South Korea}
+}
+
+\author{Jane Doe}
+\email{jane.doe@example.com}
+\affiliation{%
+  \institution{Institute of Technology}
+  \city{Busan}
+  \country{South Korea}
+}
+
+\renewcommand{\shortauthors}{Doe and Doe}
+
+\begin{abstract}
+This is a comprehensive template demonstrating how to compile an ArXiv-ready ACM \texttt{acmart} paper directly from Emacs \texttt{org-mode}. It includes configurations for authors, abstract, references, figures, and tables in the expected ACM format, effectively acting as an \textit{org-mode-to-PDF} boilerplate.
+\end{abstract}
+
+\keywords{org-mode, LaTeX, ArXiv, Template}
+
+\maketitle
+#+END_EXPORT
+
+* Introduction
+Academic writing in \texttt{org-mode} has gained traction due to its seamless text manipulation and extensive export capabilities. By utilizing the \texttt{acmart} document class, researchers can produce beautiful, standard-compliant papers suitable for ACM conferences and ArXiv preprints.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit \cite{knuth1984}. Integer nec odio. Praesent libero. Sed cursus ante dapibus diam. Sed nisi. Nulla quis sem at nibh elementum imperdiet \cite{lamport1994}.
+
+* Methodology
+We formulate our document strictly inside Emacs \texttt{org-mode}. The export pipeline utilizes \texttt{ox-latex} which interfaces with a local \LaTeX{} installation (e.g., via NixOS \texttt{texlive}). 
+
+** Document Structure
+The structure includes:
+- A YAML/Org frontmatter for export options.
+- A raw \LaTeX{} block for ACM-specific metadata (title, authors, abstract, keywords) which must appear before \verb|\maketitle|.
+- Standard \texttt{org-mode} headers for sections.
+
+* Results
+We present our findings in Table \ref{tab:results} and Figure \ref{fig:sample}. As you can see, the \texttt{acmart} class automatically formats tables and figures cleanly.
+
+#+CAPTION: Sample Results Overview
+#+NAME: tab:results
+| Method   | Accuracy | Time (ms) |
+|----------+----------+-----------|
+| Baseline |   85.2\% |       120 |
+| Proposed |   94.8\% |       115 |
+
+As shown in the table, our method is much better. Below is a sample figure:
+
+#+CAPTION: A simple placeholder figure.
+#+NAME: fig:sample
+#+ATTR_LATEX: :width 0.5\linewidth
+[[file:sample_fig.png]]
+
+* Conclusion
+In this document, we showcased a complete working example of an \texttt{org-mode} to ACM ArXiv PDF pipeline. This approach reduces the cognitive load of dealing with boilerplate \LaTeX{} code and allows authors to focus purely on content.
+
+#+LATEX: \bibliographystyle{ACM-Reference-Format}
+#+LATEX: \bibliography{sample}

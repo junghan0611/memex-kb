@@ -298,6 +298,30 @@ cmd_naver_wordmap() {
     run_cmd "python3 ${SCRIPTS_DIR}/naver_blog_crawler.py wordmap $*"
 }
 
+
+# ── ArXiv Paper Template ─────────────────────────────────────────────
+
+cmd_arxiv_build() {
+    # DESC: Org → ACM acmart LaTeX → PDF 빌드 (ArXiv 논문 템플릿)
+    # USAGE: arxiv-build [ORG_FILE]
+    # EXAMPLE: arxiv-build
+    # EXAMPLE: arxiv-build templates/arxiv-acm/sample.org
+    # NOTE: NixOS texlive (scheme-full) 필요. templates/arxiv-acm/flake.nix 참조.
+    local input="${1:-${PROJECT_DIR}/templates/arxiv-acm/sample.org}"
+    ensure_project_dir
+    if [[ ! -f "$input" ]]; then
+        error "파일 없음: $input"
+        return 1
+    fi
+    local build_el="${PROJECT_DIR}/templates/arxiv-acm/build.el"
+    info "Org → ACM PDF: $input"
+    run_cmd "nix-shell -p 'pkgs.emacs' '(pkgs.texlive.combine { inherit (pkgs.texlive) scheme-full latexmk; })' --run \"emacs -Q --batch --script ${build_el} ${input}\""
+    local pdf="${input%.org}.pdf"
+    if [[ -f "$pdf" ]]; then
+        success "PDF 생성: $pdf ($(du -h "$pdf" | cut -f1))"
+    fi
+}
+
 # ── Utility ──────────────────────────────────────────────────────────
 
 cmd_env_check() {
@@ -462,6 +486,8 @@ COMMANDS=(
     "--- 변환 도구"
     "md-to-gdocs:cmd_md_to_gdocs"
     "md-to-gdocs-html:cmd_md_to_gdocs_html"
+    "--- ArXiv Paper"
+    "arxiv-build:cmd_arxiv_build"
     "--- Utility"
     "env-check:cmd_env_check"
     "secret-scan:cmd_secret_scan"

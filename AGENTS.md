@@ -1,619 +1,358 @@
 # AGENTS
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file explains how coding agents should work inside the `memex-kb` repository.
+
+It is written for maintainers, local coding agents, and any automation that needs to inspect, edit, or extend the repo safely.
 
 ---
 
-## 🔧 Development Environment
+## 1. Repository snapshot
 
-**IMPORTANT: This project uses Nix Flake for dependency management.**
+`memex-kb` is no longer just a knowledge-base converter.
+It is now a mixed toolkit for:
 
-**Always use `nix develop` to run Python scripts:**
+- document ingestion from external systems
+- format conversion into Markdown / Org / BibTeX / ODT / DOC / PDF
+- proposal-authoring pipelines
+- reusable publishing templates for papers and presentations
+
+### Current high-value areas
+
+- **Google Docs export** with tab-aware Markdown extraction
+- **Threads export** into a single Org archive with images and replies
+- **Confluence export cleanup** for AI-friendly Markdown
+- **GitHub Stars → BibTeX** export
+- **Naver Blog crawling** into Denote-style outputs
+- **Proposal pipeline** for Google Docs → Markdown → Org → ODT/DOC workflows
+- **Template workflows**:
+  - Org → ACM paper PDF (`templates/arxiv-acm/`)
+  - Quarto presentation template (`templates/presentation/`)
+  - Org → branded PPTX injection (`templates/presentation-pptx/`)
+
+---
+
+## 2. Working rules
+
+### Always use the Nix environment for Python-based work
+
+Preferred:
 
 ```bash
-# ✅ Correct way (Nix Flake environment)
 nix develop --command python scripts/threads_exporter.py --download-images
-
-# ✅ With direnv (auto-activate on cd)
-direnv allow  # once
-python scripts/threads_exporter.py --download-images
-
-# ❌ Wrong way (will fail with missing dependencies)
-python scripts/threads_exporter.py --download-images
 ```
 
-**Why Nix Flake?**
-- ✅ Declarative dependencies (`flake.nix`)
-- ✅ Reproducible builds with lockfile (`flake.lock`)
-- ✅ Faster than `nix-shell` (cached evaluation)
-- ✅ No `pip install` needed
-- ✅ direnv integration (`.envrc`)
+Also acceptable after `direnv allow`:
 
-**Available packages in `flake.nix`:**
-- Python 3.12 + all required packages
-- Pandoc (document conversion)
-- Git, jq, rclone
-- gitleaks (secret detection)
-
-**Quick start:**
 ```bash
-# Enter Nix environment (interactive)
-nix develop
-
-# Or run single command
-nix develop --command python scripts/your_script.py
-
-# With direnv (recommended)
-direnv allow
-# → auto-loads environment on cd
+python scripts/threads_exporter.py --download-images
 ```
+
+Avoid running Python scripts outside the flake environment unless the task is explicitly trivial and dependency-free.
+
+### Use `run.sh` first when a command already exists
+
+`./run.sh` is the main human/agent entry point.
+Before adding a new script path to documentation, check whether the same workflow already has a `run.sh` command.
+
+### Do not commit unless explicitly asked
+
+When updating docs or code:
+
+- make the edits
+- show the diff / summary
+- stop before commit unless the user asks for commit and/or push
+
+### Keep documentation synchronized
+
+If you add or change a backend, pipeline, or template, update the relevant docs in the same task:
+
+- `README.md`
+- `AGENTS.md`
+- `BACKENDS.md` if backend-related
+- `run.sh` if it should be a public command
 
 ---
 
-## 🎯 Project Overview
+## 3. Repo map for agents
 
-**memex-kb**: Universal Knowledge Base Converter - Denote 기반 범용 지식베이스 변환 시스템
-
-**Core Philosophy**: "Legacy → Denote → RAG-ready" - 산재된 지식을 체계적으로 정리하고 AI 협업 가능한 형태로 변환
-
-**Key Innovation**:
-- **Denote File Naming**: `timestamp--한글-제목__태그1_태그2.md` (parsable, time-sortable, semantic)
-- **Rule-based Classification**: YAML 설정으로 일관성 확보, LLM 비용 0원
-- **Adapter Pattern**: Backend 중립 (Google Docs, Threads SNS, Dooray Wiki, etc.)
-- **Git Versioning**: 모든 변환 과정 추적
-
----
-
-## 🏗️ Architecture
-
-```
-[Backend Sources]
-    ├── Google Docs (✅)
-    ├── Threads SNS (✅)
-    ├── GitHub Stars (✅)
-    ├── Confluence (✅)
-    ├── HWPX (✅)
-    └── Dooray Wiki (🔧 WIP)
-         ↓
-[Backend Adapter] ← Adapter Pattern (scripts/adapters/)
-         ↓
-[Markdown/Org Conversion] ← Pandoc
-         ↓
-[Common Pipeline]
-    ├── DenoteNamer (파일명 생성)
-    ├── Categorizer (자동 분류)
-    └── Tag Extractor (태그 추출)
-         ↓
-[Local Git Repository] → docs/
-```
-
-**Directory Structure**:
-```
+```text
 memex-kb/
-├── flake.nix                     # Nix Flake (dependencies)
-├── flake.lock                    # Locked versions
-├── .envrc                        # direnv config
-├── scripts/                      # Conversion scripts
-│   ├── adapters/                 # Backend adapters (extensible)
-│   │   ├── base.py               # BaseAdapter (abstract class)
-│   │   └── threads.py            # Threads API Adapter
-│   ├── gdocs_to_markdown.py      # Google Docs converter
-│   ├── threads_exporter.py       # Threads exporter (posts + replies → single Org file)
-│   ├── refresh_threads_token.py  # Threads API token refresh (OAuth)
-│   ├── gh_starred_to_bib.sh      # GitHub Stars → BibTeX (Citar 호환)
-│   ├── denote_namer.py           # Denote filename generator (common)
-│   ├── categorizer.py            # Auto categorizer (common)
-│   └── sync_pipeline.sh          # Automation pipeline
-├── docs/                         # Converted documents
-│   ├── threads-aphorisms.org     # Threads 아포리즘 통합 파일
-│   ├── images/threads/           # Threads images (gitignored)
-│   └── 2025*.org                 # Project docs
+├── README.md
+├── AGENTS.md
+├── BACKENDS.md
+├── DEVELOPMENT.md
+├── DENOTE-RULES.md
+├── run.sh
+├── flake.nix
 ├── config/
-│   ├── .env                      # Environment variables (gitignored)
-│   ├── .env.example              # Template
-│   └── categories.yaml           # Classification rules
-└── logs/                         # Execution logs
+├── scripts/
+├── templates/
+│   ├── arxiv-acm/
+│   ├── presentation/
+│   └── presentation-pptx/
+├── proposal-pipeline/
+├── hwpx2org/
+├── orgadoc2odt/
+├── office/
+├── docs/
+└── logs/
 ```
+
+### Directory guidance
+
+#### `scripts/`
+Primary location for backend integrations and small conversion tools.
+Important files include:
+
+- `gdocs_md_processor.py`
+- `threads_exporter.py`
+- `refresh_threads_token.py`
+- `confluence_to_markdown.py`
+- `gh_starred_to_bib.sh`
+- `md_to_gdocs.py`
+- `md_to_gdocs_html.py`
+- `naver_blog_crawler.py`
+
+#### `templates/`
+Reusable publishing starters.
+
+- `arxiv-acm/` — Org → ACM paper workflow
+- `presentation/` — Quarto / Reveal.js presentation template
+- `presentation-pptx/` — Org → PPTX template injection using `python-pptx`
+
+#### `proposal-pipeline/`
+The most end-to-end workflow in the repository.
+Used for proposal documents that move through:
+
+Google Docs → Markdown → Org-mode → ODT → DOC/HWP-oriented deliverables
+
+#### `hwpx2org/` and `orgadoc2odt/`
+Lower-level conversion tooling and experiments related to HWPX, AsciiDoc, Org, and ODT workflows.
+
+#### `office/`
+Contains real-world working artifacts and examples.
+Treat this as practical context, not as a general-purpose public API.
 
 ---
 
-## 🚀 Common Development Tasks
+## 4. Main commands agents should know
 
-### Environment Setup
+Use `./run.sh` when possible.
 
-**This project uses Nix Flake (`flake.nix`) - no manual installation needed!**
-
-All dependencies are declared in `flake.nix`:
-- Python 3.12 + all required packages
-- Pandoc (document conversion)
-- Git, jq, rclone
-- gitleaks (secret detection)
-
-**To use:**
-```bash
-# Enter Nix environment
-nix develop
-
-# You'll see:
-# 🚀 memex-kb 개발 환경 (flake)
-# ================================
-# Python: Python 3.12.12
-# Pandoc: pandoc 3.7.0.2
-# Gitleaks: 8.30.0
-# ...
-
-# Or use direnv (recommended)
-direnv allow
-```
-
-**Secret scanning before commit:**
-```bash
-gitleaks detect              # git repo 스캔
-gitleaks detect --no-git     # 파일 스캔 (디지털 가든 배포용)
-```
-
-### Running Converters
-
-**⚠️ ALWAYS use `nix develop --command` for Python scripts!**
-
-**Google Docs Conversion**:
-```bash
-# Single document
-nix develop --command python scripts/gdocs_to_markdown.py DOCUMENT_ID
-
-# Batch conversion (pipeline)
-nix develop --command ./scripts/sync_pipeline.sh
-```
-
-**Threads SNS Export**:
-```bash
-# Step 1: Get/Refresh OAuth token
-# 방법: Graph API Explorer에서 threads.net API로 변경 후 토큰 발급
-# https://developers.facebook.com/tools/explorer/1351795096326806/
-nix develop --command python scripts/refresh_threads_token.py --exchange "단기토큰"
-
-# Step 2: Test token
-nix develop --command python scripts/refresh_threads_token.py --test
-
-# Step 3: Export all posts (with replies!)
-nix develop --command python scripts/threads_exporter.py --download-images
-
-# Options:
-nix develop --command python scripts/threads_exporter.py --max-posts 5 --download-images  # Test mode
-nix develop --command python scripts/threads_exporter.py --reverse                        # Oldest first
-```
-
-**Output**:
-- `docs/threads-aphorisms.org` (single file, all posts + replies, datetree structure)
-- `docs/images/threads/` (downloaded images, gitignored)
-
-**Key Features**:
-- ✅ 댓글 자동 수집 (본인 포스트에 달린 모든 댓글)
-- ✅ 이미지 다운로드 (단일/캐러셀 모두 지원)
-- ✅ Datetree 구조 (연도 → 월 → 일 → 포스트)
-
-### Testing
-
-**No formal test suite yet**. Manual testing workflow:
+### Google Docs
 
 ```bash
-# Test Threads API token
-nix develop --command python scripts/refresh_threads_token.py --test
-
-# Test Denote filename generation
-nix develop --command python scripts/denote_namer.py
-
-# Test categorizer
-nix develop --command python scripts/categorizer.py
-
-# Secret scan before commit
-nix develop --command gitleaks detect
+./run.sh gdocs-export <DOC_ID>
+./run.sh gdocs-export-kiat
+./run.sh gdocs-wrapper <DOC_ID>
 ```
 
----
+### Threads
 
-## 📋 Key Technical Details
-
-### 1. Denote File Naming Convention
-
-**Format**: `timestamp--한글-제목__태그1_태그2.md`
-
-**Implementation**: `scripts/denote_namer.py`
-
-**Rules**:
-- `timestamp`: `YYYYMMDDTHHMMSS` (capital T required!)
-- `한글-제목`: Korean title (human-readable, searchable)
-- `태그들`: Lowercase English tags (separated by `_`)
-
-**Example**:
-```
-Input:
-  title: "API 설계 가이드"
-  tags: ["백엔드", "api", "가이드"]
-
-Output:
-  20250913t150000--api-설계-가이드__backend_api_guide.md
-```
-
-**Why**:
-- **Time-sortable**: Automatic chronological ordering
-- **Parsable**: Programmatic metadata extraction
-- **Semantic**: Korean titles + English tags
-- **Consistent**: No manual naming variations
-
-### 2. Rule-based Classification
-
-**Config**: `config/categories.yaml`
-
-**Categories**:
-- `architecture`: 시스템 설계
-- `development`: 개발 가이드
-- `operations`: 운영 문서
-- `products`: 제품별 문서
-- `_uncategorized`: 미분류 (manual review required)
-
-**Scoring Algorithm** (`scripts/categorizer.py`):
-```python
-weights:
-  title_keyword: 10      # Keyword in title
-  title_pattern: 15      # Regex pattern match
-  content_keyword: 5     # Keyword in content
-  file_hint: 20          # Filename hint match
-
-min_score: 30            # Minimum threshold
-```
-
-**Why No LLM?**:
-- ✅ Zero token cost
-- ✅ Reproducible
-- ✅ Fast
-- ✅ Transparent (YAML-based)
-- ✅ Version-controllable
-
-### 3. Adapter Pattern
-
-**Base Interface**: `scripts/adapters/base.py`
-
-**Required Methods**:
-```python
-class BaseAdapter(ABC):
-    @abstractmethod
-    def authenticate(self) -> Any:
-        """인증 수행"""
-
-    @abstractmethod
-    def list_documents(self, **kwargs) -> List[Dict]:
-        """문서 목록 조회"""
-
-    @abstractmethod
-    def fetch_document(self, doc_id: str, **kwargs) -> Dict:
-        """개별 문서 내용 가져오기"""
-
-    @abstractmethod
-    def convert_to_format(self, content: Dict, output_format: str) -> str:
-        """문서를 Markdown/Org로 변환"""
-```
-
-**Extending with New Backend**:
-1. Create `scripts/adapters/yourbackend.py`
-2. Inherit from `BaseAdapter`
-3. Implement all abstract methods
-4. Use common pipeline (DenoteNamer, Categorizer)
-
-**Example**: `scripts/adapters/threads.py` (Threads SNS adapter)
-
-### 4. Org-mode Special Characters
-
-**Important**: When exporting to Org-mode, escape special characters:
-
-```python
-# Org special characters that need escaping
-ORG_SPECIAL_CHARS = {
-    '\\': '\\\\',      # Backslash (must be first!)
-    '[': '\\[',        # Link syntax
-    ']': '\\]',
-    '*': '\\*',        # Bold/heading
-    '/': '\\/',        # Italic
-    '_': '\\_',        # Underline
-    '=': '\\=',        # Verbatim
-    '~': '\\~',        # Code
-    '+': '\\+',        # Strikethrough
-}
-```
-
-**Why**: Prevents Org-mode from misinterpreting text as markup.
-
-**Implementation**: See `scripts/threads_exporter.py:escape_org_special_chars()`
-
-### 5. Google Docs 연동
-
-**핵심 스크립트**: `scripts/gdocs_md_processor.py` (v5)
-
-**작동 원리**:
-1. MCP google-workspace의 credentials 파일에서 `refresh_token` 획득
-   - 경로: `~/.google_workspace_mcp_work/credentials/{email}.json`
-2. `refresh_token` → `access_token` 갱신 (OAuth2 token endpoint)
-3. Google Docs REST API로 탭 목록 조회
-4. 각 탭을 지정 포맷(MD/DOCX/PDF/HTML/TXT)으로 내보내기
-5. MD 포맷일 때: base64 이미지 추출 → PNG + 이스케이프 정리
-
-**지원 포맷**:
-| CLI format | Google export | 후처리 |
-|------------|---------------|--------|
-| `md`       | `markdown`    | 이미지 추출 + 이스케이프 정리 |
-| `docx`     | `docx`        | raw bytes 저장 |
-| `pdf`      | `pdf`         | raw bytes 저장 |
-| `html`     | `zip`         | 텍스트 저장 |
-| `txt`      | `txt`         | 텍스트 저장 |
-
-**사용법**:
 ```bash
-# 범용 래퍼 스크립트
-./scripts/export_gdoc.sh DOC_ID [ACCOUNT]
-
-# KIAT 연구개발계획서 (D-0 세션 하위만)
-./scripts/export_kiat_proposal.sh
-
-# Python 직접 호출
-nix develop --command python scripts/gdocs_md_processor.py export DOC_ID \
-    --format md \
-    --parent-tab "D-0 스프린트 세션" \
-    --depth -1 \
-    --account jhkim2@goqual.com \
-    --output-dir ./output
+./run.sh threads-export --download-images
+./run.sh threads-token-exchange <SHORT_TOKEN>
+./run.sh threads-token-test
+./run.sh threads-token-refresh
 ```
 
-**주요 옵션**:
-- `--format`, `-f`: 출력 포맷 (md, docx, pdf, html, txt, 기본: md)
-- `--parent-tab`, `-p`: 상위 탭 필터 (부분 매칭, 해당 탭 + 하위 탭만)
-- `--depth`, `-d`: 탭 깊이 제한 (0=상위만, -1=전체, 기본: -1)
-- `--account`, `-a`: Google 계정 지정
+### GitHub Stars
 
-**인증 전제조건**:
-- MCP google-workspace 서버가 한 번이라도 인증된 상태여야 함
-- `~/.google_workspace_mcp_work/credentials/`에 JSON 파일 존재 필요
-- `refresh_token`은 revoke하지 않는 한 만료 없음 (영구 사용)
-
-**래퍼 스크립트 환경변수**:
-- `OUTPUT_DIR`: 출력 디렉토리 (기본: ./output)
-- `DEPTH`: 탭 깊이 제한
-- `FORMAT`: 출력 포맷
-- `PARENT_TAB`: 상위 탭 필터
-
-### 6. Threads API Integration
-
-**Token Refresh (60일마다 필요)**:
 ```bash
-# 1. Graph API Explorer에서 단기 토큰 발급
-#    https://developers.facebook.com/tools/explorer/1351795096326806/
-#    → API를 "threads.net"으로 변경 (중요!)
-#    → Generate Access Token
-
-# 2. 장기 토큰(60일)으로 교환
-nix develop --command python scripts/refresh_threads_token.py --exchange "단기토큰"
-
-# 3. 테스트
-nix develop --command python scripts/refresh_threads_token.py --test
-```
-
-**Key Endpoints**:
-- `/me`: User profile
-- `/me/threads`: List all posts (pagination)
-- `/media/{id}`: Post details + comments
-- Media URL: Direct image download
-
-**Unique Feature**: "어쏠리즘(Assholism)" - 아포리즘을 단일 Org 파일로 통합, 시간순 정렬, 주제별 자동 분류
-
-### 7. Proposal Pipeline
-
-**디렉토리**: `proposal-pipeline/` (최상위, hwpx2org/ 등과 동일 패턴)
-
-**파이프라인**: Google Docs → MD → Org-mode → ODT → DOC → HWP
-
-**디렉토리 구조**:
-```
-proposal-pipeline/
-├── build_proposal.sh       # 오케스트레이터
-├── md_to_org.py            # MD → Org (HWPX 레벨 호환)
-├── merge_chapters.py       # 장별 Org → 통합 Org
-├── merge_to_template.py    # 템플릿 + 콘텐츠 병합
-├── build_master_md.py      # 5개 MD → 통합 MD
-├── cleanup_md.py           # MD 전처리 (불릿, 캡션 정규화)
-├── org_merge_levels.py     # Level 6→5 후처리
-├── odt_postprocess.py      # ODT 테이블 헤더/테두리 보정
-├── templates/              # ODT 스타일, CSL, BibTeX
-└── docs/                   # HWP 서식 사양, 유니코드 가이드
-```
-
-**run.sh 명령**:
-- `proposal-build`: 전체 파이프라인 (GDocs→MD→Org→통합)
-- `proposal-convert`: 개별 MD→Org 변환
-- `proposal-merge`: Org 통합 + L6→L5 후처리
-- `proposal-odt-fix`: ODT 후처리 (테이블 스타일)
-
-**핵심 주의사항**:
-- Python stdlib만 사용 → `flake.nix` 수정 불필요
-- `reference.odt` (7.9M)는 git-tracked (변경 빈도 극히 낮음)
-- 한글 볼드 + NBSP 문제 → `docs/unicode-bullet-guide.md` 참조
-- HWP 양식은 최대 5단계 → L6은 반드시 `org_merge_levels.py`로 통합
-
-### 8. GitHub Stars → BibTeX
-
-**스크립트**: `scripts/gh_starred_to_bib.sh`
-
-**작동 원리**:
-1. `gh api --paginate user/starred` + `Accept: application/vnd.github.star+json` 헤더
-2. `jq`로 `@software{}` BibTeX 엔트리 생성
-3. 3가지 시간축 보존: `starred_at`, `pushed_at`, `updated_at`
-
-**사용법**:
-```bash
-# run.sh 경유
 ./run.sh github-starred-export
-
-# 직접 실행
-./scripts/gh_starred_to_bib.sh [output.bib]
 ```
 
-**의존성**: `gh` (시스템 전역), `jq` (flake.nix)
+### Confluence
 
-**출력**: `~/org/resources/github-starred.bib` (Citar 자동 감지 경로)
-
----
-
-## 🔧 Environment Variables
-
-**Google Docs** (`.env` or `.env.example`):
 ```bash
-GOOGLE_APPLICATION_CREDENTIALS=config/credentials.json
-GOOGLE_DRIVE_FOLDER_ID=your_folder_id
-MAX_DOCS_PER_RUN=50
-ENABLE_AUTO_COMMIT=false
+./run.sh confluence-convert <INPUT.doc> [OUTPUT.md]
+./run.sh confluence-batch <INPUT_DIR> [OUTPUT_DIR]
 ```
 
-**Threads SNS** (`.env` or `.env.threads.example`):
+### Proposal pipeline
+
 ```bash
-APP_ID=your_app_id
-APP_SECRET=your_app_secret
-REDIRECT_URI=https://localhost/callback
-ACCESS_TOKEN=your_access_token           # Auto-populated by get_threads_token.py
-USER_ID=your_user_id                     # Auto-populated
-THREADS_IMAGES_DIR=docs/images/threads   # Image directory (default)
+./run.sh proposal-build
+./run.sh proposal-convert <INPUT.md>
+./run.sh proposal-merge
+./run.sh proposal-odt-fix <INPUT.odt>
+./run.sh proposal-export-odt [ORG_FILE]
 ```
 
-**Security**:
-- ✅ All credential files are gitignored
-- ✅ Use `.env.example` as template
-- ✅ Never commit credentials
+### Naver Blog
 
----
-
-## 📚 Important Documentation
-
-**Design Philosophy**:
-- `docs/20251015T180500--memex-kb-rag-통합-전략__rag_embedding_architecture.org`
-  - v2.0 roadmap: RAG pipeline integration
-  - Why Denote + Rule-based classification + Adapter pattern
-  - Connection to existing tech stack (n8n, Supabase pgvector, Ollama)
-
-**Threads Integration**:
-- `docs/20251107T123200--threads-aphorism-exporter-프로젝트__threads_aphorism_assholism.org`
-  - "어쏠리즘(Assholism)" concept
-  - Architecture (Adapter pattern)
-  - Org-mode export structure
-  - Special character escaping
-
-**Embedding Strategy**:
-- `docs/20251016T140000--구조화-데이터-임베딩-가치-벤치마크__benchmark_structured_embedding.org`
-  - Why structured data > raw dumps
-  - Embedding benchmarks (2,945 Org files)
-
----
-
-## 🎨 Code Style
-
-**Python**:
-- Follow existing patterns in `scripts/`
-- Use type hints (as seen in `adapters/base.py`)
-- Korean docstrings + English comments (mixed approach)
-- Logging with `logging` module (not `print`)
-
-**Bash**:
-- Color output (RED, GREEN, YELLOW, BLUE)
-- Error handling with `set -e`
-- Log files in `logs/`
-
-**Git Commits**:
-- ✅ Professional format (no "Generated with Claude")
-- ✅ Follow existing commit patterns
-- ✅ Korean or English (project uses both)
-
----
-
-## 📦 Backend 확장 시 문서 업데이트 체크리스트
-
-새 Backend를 추가하거나 기존 Backend를 변경할 때, **커밋 전에** 아래 파일을 반드시 업데이트하세요.
-이 체크리스트를 무시하면 문서와 코드가 괴리되어 에이전트/사람 모두 혼란에 빠집니다.
-
-### 필수 업데이트 파일 (4개)
-
-| 순서 | 파일 | 업데이트 내용 |
-|------|------|--------------|
-| 1 | `scripts/` 또는 해당 디렉토리 | 스크립트 추가/수정 |
-| 2 | `run.sh` | cmd 함수 + COMMANDS 배열 등록 |
-| 3 | `BACKENDS.md` | 현황 테이블 + 전용 섹션 (사용법, 에이전트 가이드) |
-| 4 | `AGENTS.md` | Architecture 다이어그램 + Directory Structure + Key Technical Details 섹션 |
-
-### 체크리스트
-
-```
-□ run.sh: cmd_xxx() 함수에 DESC/USAGE/EXAMPLE 주석 작성
-□ run.sh: COMMANDS 배열에 "--- 섹션명" + "명령어:함수" 등록
-□ run.sh: env-check에 인증/의존성 상태 체크 추가 (해당 시)
-□ BACKENDS.md: "지원 Backend 현황" 테이블에 행 추가
-□ BACKENDS.md: History에 날짜 + 한 줄 요약 추가
-□ BACKENDS.md: 전용 섹션 작성 (사용법, 에이전트 가이드, 기술 세부)
-□ AGENTS.md: Architecture 다이어그램 업데이트
-□ AGENTS.md: Directory Structure에 스크립트 경로 추가
-□ AGENTS.md: Key Technical Details에 번호 섹션 추가
+```bash
+./run.sh naver-list <BLOG_ID>
+./run.sh naver-get <BLOG_ID> <LOG_NO>
+./run.sh naver-crawl <BLOG_ID>
+./run.sh naver-verify
+./run.sh naver-retry <BLOG_ID>
+./run.sh naver-wordmap
 ```
 
-### 원칙
+### Other conversion helpers
 
-- **BACKENDS.md가 진실의 원천(Source of Truth)**: 각 Backend의 상세 문서는 여기에
-- **AGENTS.md는 에이전트 요약**: Architecture 개요 + 빠른 참조용
-- **run.sh는 실행 인터페이스**: 사람/에이전트 모두가 쓰는 단일 진입점
-- **docs/ 디렉토리 문서는 레거시화 빠름** → 루트 MD 파일만 관리
+```bash
+./run.sh md-to-gdocs <INPUT.md>
+./run.sh md-to-gdocs-html <INPUT.md>
+./run.sh arxiv-build [ORG_FILE]
+```
 
----
+### Utility
 
-## 🚨 Common Pitfalls
-
-1. **NixOS Environment** (user runs NixOS on storage server):
-   - ❌ No command substitution `$(cmd)` in single Bash call (sandbox escape)
-   - ✅ Split into multiple sequential Bash calls
-   - ✅ Use `nix develop` (flake) instead of `nix-shell`
-   - ✅ Use direnv for auto-environment loading
-
-2. **Org-mode Export**:
-   - ❌ Forgetting to escape special characters (`*`, `[`, `]`, etc.)
-   - ✅ Always use `escape_org_special_chars()` function
-
-3. **Denote Timestamp**:
-   - ❌ Using lowercase `t` → `20250913t150000` (should be capital `T`)
-   - ✅ Use capital `T` → `20250913T150000`
-
-4. **Categorization**:
-   - ❌ Manually categorizing documents (inconsistent)
-   - ✅ Use `categorizer.py` with `categories.yaml` rules
-
-5. **Git Credentials**:
-   - ❌ Committing `.env`, `credentials.json`
-   - ✅ Check `.gitignore` before adding new config files
+```bash
+./run.sh env-check
+./run.sh secret-scan
+./run.sh categorize-test
+./run.sh denote-test
+```
 
 ---
 
-## 📞 Contact
+## 5. Current documentation state
 
-- **Developer**: Junghan Kim (junghanacs)
-- **GitHub**: [junghan0611](https://github.com/junghan0611)
-- **Blog**: [힣's 디지털가든](https://notes.junghanacs.com)
+When you update docs, reflect the repository as it exists now, not as it existed during the original Google Docs-only phase.
+
+Important current realities:
+
+1. The repository includes **multiple pipelines**, not only backends.
+2. `templates/presentation-pptx/` is now a first-class template area.
+3. `templates/arxiv-acm/` is also a first-class template area.
+4. `proposal-pipeline/`, `hwpx2org/`, `orgadoc2odt/`, and `office/` are part of the meaningful repo surface.
+5. `README.md` should describe the repository as a **document workflow toolkit**, not just a KB converter.
 
 ---
 
-**Version**: 1.3.0
-**Last Updated**: 2026-02-15
-**Status**: 🟢 Actively developing
+## 6. Validation guidance
 
-**Changelog (1.3.0)**:
-- Added GitHub Stars → BibTeX backend (`gh_starred_to_bib.sh`)
-- Added "Backend 확장 시 문서 업데이트 체크리스트" section
-- Updated Architecture diagram (6 backends)
+There is no single formal test suite yet.
+Use targeted validation based on what you changed.
 
-**Changelog (1.2.0)**:
-- Migrated from `shell.nix` to `flake.nix` for faster builds
-- Added `refresh_threads_token.py` for OAuth token management
-- Replaced secretlint (npm) with gitleaks (native)
-- Added direnv integration (`.envrc`)
+### Safe checks
 
+```bash
+./run.sh env-check
+./run.sh secret-scan
+nix develop --command python scripts/refresh_threads_token.py --test
+nix develop --command python scripts/denote_namer.py
+nix develop --command python scripts/categorizer.py
+```
 
+### For documentation-only changes
+
+Usually enough:
+
+- verify file paths exist
+- verify command names match `run.sh`
+- verify links in README / AGENTS are correct
+- run `git diff --stat`
+
+---
+
+## 7. Known pitfalls
+
+### 7.1 Nix first
+
+If a Python script depends on packages from `flake.nix`, do not assume the global Python environment is correct.
+
+### 7.2 `run.sh` is the public interface
+
+If a workflow already exists in `run.sh`, document that first.
+Only document raw script invocation when it adds useful detail.
+
+### 7.3 Denote timestamp uses capital `T`
+
+Correct:
+
+```text
+20250913T150000
+```
+
+Incorrect:
+
+```text
+20250913t150000
+```
+
+### 7.4 Org-mode export requires careful escaping
+
+For Org output, special characters like `*`, `[`, `]`, `_`, `~`, and `=` can break rendering if not escaped correctly.
+
+### 7.5 Google Docs export is tab-aware
+
+Prefer `gdocs_md_processor.py export` and the corresponding `run.sh gdocs-export` workflow instead of older ad-hoc paths.
+
+### 7.6 PPTX template injection is not the same as HTML slide generation
+
+- `templates/presentation/` → Quarto / Reveal.js HTML slides
+- `templates/presentation-pptx/` → inject Org content into an existing PowerPoint template
+
+Do not confuse these two in docs or implementation notes.
+
+### 7.7 `pandoc --reference-doc` is not enough for localized PPTX templates
+
+The repo now contains `org2pptx` specifically because layout-name-based approaches fail on many real-world templates with non-English layout names.
+
+---
+
+## 8. If you add or change a backend/template
+
+Update all relevant surfaces before finishing:
+
+### Backend changes
+
+- implementation in `scripts/` or another relevant directory
+- command exposure in `run.sh`
+- `BACKENDS.md`
+- `README.md`
+- `AGENTS.md`
+
+### Template changes
+
+- template directory under `templates/`
+- local `README.md` inside that template directory
+- root `README.md`
+- `AGENTS.md`
+- `run.sh` if a convenient command should exist
+
+---
+
+## 9. Style expectations
+
+### Python
+
+- follow existing script style
+- prefer type hints where practical
+- use logging for non-trivial scripts
+- keep conversion logic explicit and inspectable
+
+### Bash
+
+- keep `set -e`-style safety
+- use readable command wrappers
+- prefer clear usage/help comments inside `run.sh`
+
+### Documentation
+
+- write clear English when updating shared project docs
+- prefer accurate, current descriptions over aspirational ones
+- avoid stale paths and outdated architecture summaries
+
+---
+
+## 10. Important files to read before larger edits
+
+- `README.md`
+- `BACKENDS.md`
+- `DEVELOPMENT.md`
+- `DENOTE-RULES.md`
+- `proposal-pipeline/README.md`
+- template-local READMEs under `templates/`
+
+---
+
+## 11. Contact
+
+- Developer: **Junghan Kim** (`junghanacs`)
+- GitHub: <https://github.com/junghan0611>
+- Blog: <https://notes.junghanacs.com>

@@ -1,137 +1,294 @@
-# Memex-KB: Universal Knowledge Base Converter
+# memex-kb
 
-> "당신의 지식을 당신의 방식으로" - Denote 기반 범용 지식베이스 변환 시스템
+A document conversion and publishing toolkit for an org-centric knowledge workflow.
 
-**Memex-KB는 지식 관리의 시작점이자, RAG 파이프라인의 입구입니다.**
+**memex-kb** started as a Google Docs → Denote knowledge base converter and has grown into a broader toolbox for turning legacy or platform-bound content into plain-text, version-controlled, and AI-friendly formats.
 
-Legacy 문서(Google Docs, Threads, Confluence, HWPX...)를 **AI 협업 가능한 형태**로 변환합니다.
+Today the repository combines three layers:
 
----
+1. **Knowledge ingestion** — Google Docs, Threads, Confluence, GitHub Stars, and blog exports
+2. **Structured document pipelines** — proposal workflows, Org/ODT/HWP-oriented transformations
+3. **Reusable publishing templates** — paper, presentation, and PowerPoint template injection workflows
 
-## 핵심 특징
+The guiding idea is simple:
 
-| 특징 | 설명 |
-|------|------|
-| **Denote 파일명** | `timestamp--한글-제목__태그들.md` - 파싱 가능, 시간 정렬 |
-| **규칙 기반 분류** | YAML 설정, LLM 비용 0원, 재현 가능 |
-| **Git 버전 관리** | 모든 변환 과정 추적 |
-| **Backend 중립** | Adapter 패턴으로 확장 |
-
-→ 상세: [docs/PHILOSOPHY.md](docs/PHILOSOPHY.md)
+> Legacy content → structured text → reproducible artifacts → human + AI collaboration
 
 ---
 
-## 지원 Backend
+## What this repository is for
 
-| Backend | 상태 | 설명 |
-|---------|------|------|
-| Google Docs | ✅ | Pandoc 기반 변환 |
-| Threads SNS | ✅ | 아포리즘 → Org 통합 |
-| Confluence | ✅ | MIME 파싱, UTF-8 정규화 |
-| HWPX | ✅ | AsciiDoc 양방향 변환 |
-| GitHub Stars | ✅ | Starred repos → BibTeX (Citar 호환) |
-| Dooray Wiki | 🔧 | 개발 중 |
+memex-kb is useful when you want to:
 
-→ 상세: [docs/BACKENDS.md](docs/BACKENDS.md)
+- convert documents into **Markdown**, **Org-mode**, **BibTeX**, **ODT**, **DOC**, **PDF**, or **PPTX-adjacent workflows**
+- preserve structure well enough for **search**, **versioning**, and **AI-assisted editing**
+- standardize output with **Denote-style naming**, **rule-based classification**, and **template-driven publishing**
+- keep the whole workflow reproducible with **Nix Flakes** and CLI-first tooling
+
+---
+
+## Current capabilities
+
+### Ingestion / conversion backends
+
+| Backend / Source | Status | Main entry point | Output |
+|---|---|---|---|
+| Google Docs | Stable | `scripts/gdocs_md_processor.py`, `./run.sh gdocs-export` | Markdown, DOCX, PDF, HTML, TXT |
+| Threads | Stable | `scripts/threads_exporter.py`, `./run.sh threads-export` | Org-mode + images |
+| Confluence export (`.doc` MIME HTML) | Stable | `scripts/confluence_to_markdown.py` | Clean Markdown |
+| GitHub Stars | Stable | `scripts/gh_starred_to_bib.sh`, `./run.sh github-starred-export` | BibTeX |
+| Naver Blog | Active | `scripts/naver_blog_crawler.py`, `./run.sh naver-*` | Denote-style Org + assets |
+| HWPX / OWPML related workflows | Active | `hwpx2org/`, `orgadoc2odt/`, `proposal-pipeline/` | Org, ODT, DOC, HWP-oriented outputs |
+
+### Publishing / template workflows
+
+| Template / Pipeline | Purpose |
+|---|---|
+| `templates/arxiv-acm/` | Org-mode → ACM `acmart` → PDF / ArXiv-ready source workflow |
+| `templates/presentation/` | Quarto / Reveal.js HTML presentation template |
+| `templates/presentation-pptx/` | **org2pptx**: inject Org-mode content into an existing PPTX template while preserving layout/design |
+| `proposal-pipeline/` | Google Docs → Markdown → Org-mode → ODT/DOC proposal workflow |
+
+---
+
+## Repository structure
+
+```text
+memex-kb/
+├── README.md
+├── AGENTS.md
+├── BACKENDS.md
+├── DEVELOPMENT.md
+├── DENOTE-RULES.md
+├── run.sh                         # Primary command entry point
+├── flake.nix                      # Reproducible dev environment
+├── config/                        # Local env/config templates
+├── scripts/                       # Main backend and utility scripts
+│   ├── adapters/
+│   ├── gdocs_md_processor.py
+│   ├── threads_exporter.py
+│   ├── confluence_to_markdown.py
+│   ├── gh_starred_to_bib.sh
+│   ├── md_to_gdocs.py
+│   ├── md_to_gdocs_html.py
+│   └── naver_blog_crawler.py
+├── templates/
+│   ├── arxiv-acm/
+│   ├── presentation/
+│   └── presentation-pptx/
+├── proposal-pipeline/            # Proposal authoring and export pipeline
+├── hwpx2org/                     # HWPX/Org-related conversion utilities
+├── orgadoc2odt/                  # AsciiDoc/ODT conversion utilities
+├── office/                       # Real project working materials and samples
+├── docs/                         # Converted output and project notes
+└── logs/                         # Execution logs
+```
+
+### Notes on key directories
+
+- **`scripts/`**: the main place for backend integrations and conversion entry points
+- **`templates/`**: reusable starter templates for papers and presentations
+- **`proposal-pipeline/`**: the most opinionated end-to-end workflow in the repo
+- **`office/`**: practical working examples and proposal artifacts
+- **`hwpx2org/` and `orgadoc2odt/`**: lower-level format conversion experiments and tools
+
+---
+
+## Development environment
+
+This project uses **Nix Flakes**.
+
+Use one of the following:
+
+```bash
+# interactive shell
+nix develop
+
+# one-off command
+nix develop --command python scripts/threads_exporter.py --download-images
+
+# recommended for regular work
+direnv allow
+```
+
+### Why Nix here?
+
+- reproducible dependencies
+- no ad-hoc `pip install`
+- consistent Python / Pandoc / CLI tooling
+- easier agent automation
+
+---
+
+## Quick start
+
+### 1) Inspect available commands
+
+```bash
+./run.sh
+```
+
+### 2) Export a Google Doc by document ID
+
+```bash
+./run.sh gdocs-export <DOC_ID>
+./run.sh gdocs-export <DOC_ID> --format md
+./run.sh gdocs-export <DOC_ID> --format docx --depth 0
+```
+
+### 3) Export Threads posts into a single Org file
+
+```bash
+./run.sh threads-export --download-images
+./run.sh threads-export --max-posts 5 --download-images
+```
+
+### 4) Convert Confluence export files to clean Markdown
+
+```bash
+./run.sh confluence-convert document.doc
+./run.sh confluence-batch ./input-dir ./output-dir
+```
+
+### 5) Export GitHub Stars to BibTeX
+
+```bash
+./run.sh github-starred-export
+./run.sh github-starred-export ~/org/resources/github-starred.bib
+```
+
+### 6) Run the proposal pipeline
+
+```bash
+./run.sh proposal-build --export-md
+./run.sh proposal-merge --strip-hwpx-idx --org-tables
+./run.sh proposal-export-odt
+```
+
+### 7) Build the ArXiv ACM sample
+
+```bash
+./run.sh arxiv-build
+./run.sh arxiv-build templates/arxiv-acm/sample.org
+```
 
 ---
 
 ## Templates
 
-| 템플릿 | 설명 |
-|--------|------|
-| [ArXiv ACM](templates/arxiv-acm/) | Org → ACM `acmart` LaTeX → PDF. ArXiv 제출용 논문 파이프라인 |
+### `templates/arxiv-acm/`
 
-```bash
-# ArXiv 논문 PDF 빌드
-./run.sh arxiv-build
+A complete sample for:
 
-# 사용자 org 파일로 빌드
-./run.sh arxiv-build path/to/paper.org
-```
+- Org-mode authoring
+- ACM `acmart` LaTeX export
+- PDF generation suitable for paper drafting / ArXiv submission workflows
 
-→ 상세: [templates/arxiv-acm/README.md](templates/arxiv-acm/README.md)
+See: [`templates/arxiv-acm/README.md`](templates/arxiv-acm/README.md)
 
----
+### `templates/presentation/`
 
-## Quick Start
+A Quarto / Reveal.js presentation starter for browser-based slide decks.
 
-**Nix Flake로 의존성 자동 관리** - 수동 설치 불필요!
+See: [`templates/presentation/README.md`](templates/presentation/README.md)
 
-```bash
-# 환경 진입
-nix develop
-# 또는 direnv 사용
-direnv allow
+### `templates/presentation-pptx/`
 
-# 예시: Threads 내보내기
-nix develop --command python scripts/threads_exporter.py --download-images
+A newer **org2pptx** pipeline for teams that must submit or reuse a branded **PowerPoint template**.
 
-# 예시: Confluence 변환
-nix develop --command python scripts/confluence_to_markdown.py document.doc
+Instead of rendering slides from scratch, it:
 
-# 예시: GitHub Stars → BibTeX
-./run.sh github-starred-export
-```
+- parses an Org file
+- injects content into an existing `.pptx` template
+- preserves original slide backgrounds, logos, layouts, and branding
 
-→ Backend별 상세 가이드: [docs/BACKENDS.md](docs/BACKENDS.md)
+This is especially useful when `pandoc --reference-doc` or layout-name-based approaches fail on localized corporate templates.
+
+See: [`templates/presentation-pptx/README.md`](templates/presentation-pptx/README.md)
 
 ---
 
-## 로드맵
+## How to choose the right tool
 
-### v1.3 (2026-02-03, 완료)
-- ✅ HWPX ↔ AsciiDoc 변환기
-- ✅ EPUB → Org-mode 변환기
-- ✅ HTML → EPUB 파이프라인
-
-### v1.4 (진행 중) - **Org-mode 메타 포맷**
-
-> "Org-mode를 국가과제 제안서의 메타 포맷으로"
-
-```
-[여러 세부과제 Org 파일들]
-        ↓ 취합/병합
-[통합 Org 메타 포맷]
-        ↓ AI 에이전트 편집
-[HWPX] → 정부 시스템 업로드
-```
-
-→ GitHub Issue: [#2](https://github.com/junghan0611/memex-kb/issues/2)
-
-### v2.0 (추후 검토)
-- 💭 Denote → Vector Embedding → RAG 파이프라인
+- Need **Google Docs tabs exported cleanly** → use `gdocs-export`
+- Need **social writing archived into Org** → use `threads-export`
+- Need **legacy Confluence exports cleaned up** → use `confluence-convert`
+- Need **citation-ready GitHub Stars** → use `github-starred-export`
+- Need **proposal submission artifacts** → use `proposal-pipeline/`
+- Need **a paper PDF from Org** → use `templates/arxiv-acm/`
+- Need **HTML slides** → use `templates/presentation/`
+- Need **content injected into an existing company PPTX** → use `templates/presentation-pptx/`
 
 ---
 
-## 문서
+## Documentation
 
-| 문서 | 내용 |
-|------|------|
-| [PHILOSOPHY.md](docs/PHILOSOPHY.md) | 철학, 왜 memex-kb, 대상 사용자 |
-| [BACKENDS.md](docs/BACKENDS.md) | Backend별 연동 가이드 |
-| [DENOTE-RULES.md](docs/DENOTE-RULES.md) | Denote 파일명/분류 규칙 |
-| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Adapter 확장 가이드 |
-| [AGENTS.md](AGENTS.md) | Claude Code 에이전트 가이드 |
-| [CHANGELOG.md](CHANGELOG.md) | 변경 이력 |
-
----
-
-## 기여하기
-
-새로운 Backend Adapter 기여를 환영합니다!
-
-1. Fork → Feature 브랜치 → PR
-2. [DEVELOPMENT.md](docs/DEVELOPMENT.md) 참조
+| File | Purpose |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | Working guidance for coding agents and maintainers |
+| [`BACKENDS.md`](BACKENDS.md) | Backend-specific notes and usage details |
+| [`DEVELOPMENT.md`](DEVELOPMENT.md) | Development guidance for extending the project |
+| [`DENOTE-RULES.md`](DENOTE-RULES.md) | Naming and structuring rules for Denote-style output |
+| [`proposal-pipeline/README.md`](proposal-pipeline/README.md) | Detailed proposal workflow documentation |
+| [`office/README.md`](office/README.md) | Real-world working context and example materials |
 
 ---
 
-## 연락처
+## Changelog
 
-- **개발자**: Junghan Kim (junghanacs)
-- **GitHub**: [junghan0611](https://github.com/junghan0611)
-- **블로그**: [힣's 디지털가든](https://notes.junghanacs.com)
+### 2026-04-03 — org2pptx presentation template added
+
+- Added `templates/presentation-pptx/`
+- Introduced an Org-mode → PPTX template injection workflow using `python-pptx`
+- Preserves branded PowerPoint templates instead of recreating slides from scratch
+
+### 2026-04-02 — ArXiv ACM paper template added
+
+- Added `templates/arxiv-acm/`
+- Added Org-mode → `acmart` → PDF sample pipeline
+- Exposed `./run.sh arxiv-build`
+
+### 2026-03-31 — Markdown to Google Docs helpers expanded
+
+- Added `md_to_gdocs.py` and `md_to_gdocs_html.py`
+- Optimized the Markdown → Org/HTML/Docx path for Google Docs import workflows
+
+### 2026-03-31 — Naver Blog crawler expanded
+
+- Added listing, crawling, verification, retry, title-fix, and wordmap commands
+- Improved image handling, slug normalization, and title cleanup
+
+### 2026-02-15 — GitHub Stars backend added
+
+- Added `scripts/gh_starred_to_bib.sh`
+- Added `./run.sh github-starred-export`
+- Preserved `starred_at`, `pushed_at`, and `updated_at` metadata for BibTeX output
+
+### 2026-02-03 — format conversion toolkit broadened
+
+- Added HWPX/AsciiDoc-related tooling
+- Added EPUB → Org workflows
+- Added HTML → EPUB → Org experiments
+
+### 2026-01-29 — Confluence conversion pipeline stabilized
+
+- Added MIME-aware Confluence export parsing
+- Normalized UTF-8/NFC issues and cleaned noisy markup
+
+### 2026-01-21 — development environment modernized
+
+- Migrated from `shell.nix` to `flake.nix`
+- Added `direnv` integration
+- Replaced secretlint with gitleaks
+- Improved Threads OAuth token management
+
+### Earlier foundation
+
+- Project began as a Google Docs → Denote knowledge base converter
+- Evolved toward a multi-backend, template-oriented, AI-friendly document workflow toolkit
 
 ---
 
-**버전**: 1.3.1 | **라이선스**: MIT | **상태**: 🟢 활발히 개발 중
+## License
+
+MIT

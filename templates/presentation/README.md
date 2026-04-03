@@ -2,6 +2,9 @@
 
 Reveal.js 기반 프레젠테이션 템플릿입니다.
 
+> **pptx 양식 제출이 필요하면** → [`../presentation-pptx/`](../presentation-pptx/)를 사용하세요.
+> org-mode로 내용 작성 → python-pptx로 pptx 템플릿에 주입하는 방식입니다.
+
 ## 사용법
 
 ```bash

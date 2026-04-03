@@ -1,0 +1,81 @@
+#+title:      Presentation Title
+#+author:     Author | Organization
+#+date:       2026-04
+#+pptx_template: your-template.pptx
+
+# ──────────────────────────────────────────────────
+# org2pptx conventions:
+#   - Level 1 heading = one slide
+#   - :SLIDE_INDEX:   = template slide number (1-based, required)
+#   - :LAYOUT:        = informational label (not used by injector)
+#   - :SKIP: true     = keep template slide as-is
+#   - :REPLACE_TEXT:   = old=new text replacement (;; separates pairs)
+#   - Level 2 heading = sub-section (▶ title + bullets or table)
+#   - "- item"        = bullet point
+#   - "| col | col |" = org table row
+# ──────────────────────────────────────────────────
+
+* Title Slide
+:PROPERTIES:
+:SLIDE_INDEX: 1
+:LAYOUT: Title
+:SKIP: true
+:REPLACE_TEXT: Presenter Name=Your Name Here
+:END:
+
+Title slide is kept from the template. Only text replacements are applied.
+
+* Introduction
+:PROPERTIES:
+:SLIDE_INDEX: 2
+:END:
+
+** Background
+- Context and motivation for this presentation
+- Key problem statement
+- Why this matters
+
+** Objectives
+- Objective 1: Clear and measurable
+- Objective 2: Achievable within scope
+- Objective 3: Aligned with strategy
+
+* Progress Summary
+:PROPERTIES:
+:SLIDE_INDEX: 3
+:END:
+
+| Item       | Target | Achieved |
+|------------+--------+----------|
+| Milestone A | Q1    | Done     |
+| Milestone B | Q2    | Done     |
+| Milestone C | Q3    | 80%      |
+
+* Plan
+:PROPERTIES:
+:SLIDE_INDEX: 4
+:END:
+
+| Task    | Apr | May | Jun | Jul | Aug | Sep |
+|---------+-----+-----+-----+-----+-----+-----|
+| Task A  | ■   | ■   |     |     |     |     |
+| Task B  |     | ■   | ■   | ■   |     |     |
+| Task C  |     |     |     | ■   | ■   | ■   |
+
+* Discussion
+:PROPERTIES:
+:SLIDE_INDEX: 5
+:END:
+
+- Topic for discussion 1
+- Topic for discussion 2
+- Open question or risk
+
+* End Slide
+:PROPERTIES:
+:SLIDE_INDEX: 6
+:LAYOUT: Blank
+:SKIP: true
+:END:
+
+End slide is kept from the template.

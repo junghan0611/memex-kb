@@ -1,0 +1,86 @@
+#+title: scanpdf2org — 스캔 한글 책 PDF → org (vision 전사 파이프라인)
+#+author: junghanacs
+
+* 무엇인가
+
+전자책이 없는 귀한 한글 책을 스캔한 PDF(OCR 안 됨)를 =org-mode= 로 옮기는
+파이프라인이다. 목적은 두 가지:
+
+1. *읽기/데이터* — org 지식베이스에서 다룰 본문 (수식은 LaTeX로 보존)
+2. *듣기* — org → EPUB으로 만들어 귀로 듣기 (수식은 TTS에서 안 읽힘, 감수)
+
+* 핵심 결정 — 전통 OCR을 쓰지 않는다
+
+tesseract/ocrmypdf 같은 전통 OCR은 *쓰지 않는다*. 한글 + 수식 책에서
+지저분해지고, 머리말/꼬리말/읽기순서/수식 복원이 무너지기 때문이다.
+
+대신 *에이전트가 페이지 이미지를 직접 vision으로 읽어 org로 전사*한다.
+느리지만(노가다) 정확하고, Claude / Codex / Gemini 누구나 같은 규칙으로
+이어받을 수 있다.
+
+* 파이프라인
+
+#+begin_example
+scanpdf/<책>.pdf          (저작권 스캔 원본 — gitignore)
+   │  ① 렌더 (pymupdf, OCR 아님 — 단순 래스터)
+   ▼
+scanpdf/work/<책>/pages/*.png
+   │  ② vision 전사 (에이전트가 PNG를 Read → org)
+   │     규칙: scanpdf2org/prompts/page-to-org.md
+   ▼
+scanpdf/work/<책>/org/*.org   (책 본문 — gitignore)
+   │  ③ 조립 + 헤더 + 검수 (CHECK 마커 해소)
+   ▼
+   책.org → (epub2org/html2epub 역방향) → EPUB
+#+end_example
+
+저작권 본문(PDF·PNG·org)은 전부 =scanpdf/= 안에 두며 gitignore 된다.
+재사용 로직(스크립트·프롬프트·이 문서)만 =scanpdf2org/= 에서 커밋된다.
+
+* 사용법
+
+** ① 페이지 렌더
+
+#+begin_src bash
+# 목차 추정용 앞부분
+./run.sh scanpdf2org-render scanpdf/물질생명인간001.pdf scanpdf/work/물질생명인간/pages 1-15
+
+# 전사할 장 범위 (고해상도)
+./run.sh scanpdf2org-render scanpdf/물질생명인간001.pdf scanpdf/work/물질생명인간/pages_hi 11-74 250
+#+end_src
+
+물리 페이지 ≠ 인쇄 쪽번호일 수 있다. 목차 페이지를 먼저 렌더해 읽고
+오프셋을 확정한 뒤 장 범위를 잡는다. (물질생명인간: 물리 = 인쇄 + 2)
+
+** ② vision 전사
+
+에이전트가 =scanpdf/work/<책>/pages_hi/NNNN.png= 를 Read하고
+[[file:prompts/page-to-org.md][page-to-org.md]] 규칙대로 org로 옮긴다.
+흐릿한 어절은 그 페이지만 dpi 350~360으로 재렌더해 확인한다. 끝까지 불확실하면
+=[?]= / =[[CHECK: p<쪽>]]= 마커를 남기고 넘어간다.
+
+** ③ 조립·검수
+
+장별 org를 합치고 Denote 헤더를 붙인 뒤, =CHECK= 마커를 사람이 확인한다.
+
+* 진행 상태
+
+각 책의 진행은 =scanpdf/work/<책>/PROGRESS.md= 에 기록한다(gitignore).
+어느 페이지까지 전사했는지, 미해소 CHECK가 어디인지를 남겨 다음 세션/하네스가
+이어받게 한다.
+
+* 디렉토리
+
+#+begin_example
+scanpdf2org/
+├── README.org              # 이 문서
+├── prompts/
+│   └── page-to-org.md      # 전사 규칙 (SSOT)
+└── scripts/
+    └── pdf_to_images.py    # PDF 페이지 → PNG 렌더
+#+end_example
+
+* 도구
+
+=flake.nix= 에 =pymupdf=, =pillow=, =poppler-utils= 추가됨. 항상
+=nix develop= 안에서 실행한다.

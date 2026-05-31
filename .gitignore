@@ -80,6 +80,12 @@ output
 
 office
 
+# scanpdf: 저작권 스캔 원본(PDF) + 변환 산출물(org/epub — 책 본문 포함) 전부 제외.
+# 폴더 구조와 워크플로 설명만 보존한다. 책 내용은 절대 커밋 금지.
+scanpdf/*
+!scanpdf/.gitkeep
+!scanpdf/README.md
+
 # LaTeX build artifacts
 *.aux
 *.bbl

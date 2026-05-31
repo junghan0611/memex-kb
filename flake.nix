@@ -47,6 +47,10 @@
           # HWPX 처리
           lxml
           python-hwpx
+
+          # scanpdf2org: 스캔 PDF 페이지 → 이미지 렌더 (vision 전사용, OCR 아님)
+          pymupdf
+          pillow
         ]);
       in
       {

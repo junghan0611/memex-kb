@@ -322,6 +322,25 @@ cmd_arxiv_build() {
     fi
 }
 
+# ── ScanPDF→Org (스캔 PDF → org vision 전사) ────────────────────────────
+
+cmd_scanpdf2org_render() {
+    # DESC: 스캔 PDF 페이지 → PNG 렌더 (vision 전사용, OCR 아님)
+    # USAGE: scanpdf2org-render <PDF> <OUT_DIR> [PAGES] [DPI]
+    # EXAMPLE: scanpdf2org-render scanpdf/물질생명인간001.pdf scanpdf/work/물질생명인간/pages 1-15
+    # EXAMPLE: scanpdf2org-render scanpdf/물질생명인간001.pdf scanpdf/work/물질생명인간/pages_hi 11-16 250
+    # NOTE: 렌더 후 에이전트(Claude/Codex/Gemini)가 PNG를 직접 읽어 org로 옮긴다.
+    #       전사 규칙은 scanpdf2org/prompts/page-to-org.md 참조.
+    ensure_project_dir
+    local pdf="${1:?PDF 경로 필요}"
+    local out="${2:?출력 디렉토리 필요}"
+    local pages="${3:-}"
+    local dpi="${4:-200}"
+    local args="\"${pdf}\" --out \"${out}\" --dpi ${dpi}"
+    [[ -n "$pages" ]] && args="${args} --pages ${pages}"
+    run_cmd "nix develop --command python ${PROJECT_DIR}/scanpdf2org/scripts/pdf_to_images.py ${args}"
+}
+
 # ── Utility ──────────────────────────────────────────────────────────
 
 cmd_env_check() {
@@ -488,6 +507,8 @@ COMMANDS=(
     "md-to-gdocs-html:cmd_md_to_gdocs_html"
     "--- ArXiv Paper"
     "arxiv-build:cmd_arxiv_build"
+    "--- ScanPDF→Org"
+    "scanpdf2org-render:cmd_scanpdf2org_render"
     "--- Utility"
     "env-check:cmd_env_check"
     "secret-scan:cmd_secret_scan"

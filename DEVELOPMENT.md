@@ -147,7 +147,7 @@ memex-kb/
 │   └── [backend]_exporter.py  # Backend별 CLI 스크립트
 ├── hwpx2asciidoc/             # HWPX 변환 모듈
 ├── epub2org/                  # EPUB 변환 모듈
-├── htmltoepub/                # HTML→EPUB 변환 모듈
+├── html2epub/                # HTML→EPUB 변환 모듈
 ├── config/
 │   ├── categories.yaml        # 분류 규칙
 │   └── .env.example           # 환경변수 템플릿

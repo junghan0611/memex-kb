@@ -80,11 +80,10 @@ output
 
 office
 
-# scanpdf: 저작권 스캔 원본(PDF) + 변환 산출물(org/epub — 책 본문 포함) 전부 제외.
-# 폴더 구조와 워크플로 설명만 보존한다. 책 내용은 절대 커밋 금지.
-scanpdf/*
-!scanpdf/.gitkeep
-!scanpdf/README.md
+# scanpdf/ 는 별도 private git 리포 (저작권 스캔 PDF=LFS + 전사 작업물).
+# memex-kb(공개)에서는 전부 무시한다. 데이터/작업은 scanpdf 리포에서 추적하고,
+# 변환 도구만 여기 scanpdf2org/ 에 둔다. 두 리포를 나란히 클론해 쓴다.
+scanpdf/
 
 # LaTeX build artifacts
 *.aux

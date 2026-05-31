@@ -4,16 +4,25 @@
 
 ## 지금 작업 중: scanpdf2org (스캔 한글 책 → org)
 
-전자책 없는 한글 책 5권을 스캔(`scanpdf/`, gitignore). vision 전사로 org화 →
-EPUB(듣기). **전통 OCR 안 씀** — 에이전트가 페이지 이미지를 직접 읽어 옮긴다.
+전자책 없는 한글 책 5권을 스캔. vision 전사로 org화 → EPUB(듣기).
+**전통 OCR 안 씀** — 에이전트가 페이지 이미지를 직접 읽어 옮긴다.
 
 - 파이프라인 문서: `scanpdf2org/README.org`
 - 전사 규칙(SSOT): `scanpdf2org/prompts/page-to-org.md`
 - 렌더: `./run.sh scanpdf2org-render <PDF> <OUT> [PAGES] [DPI]`
 
+### 리포 분리 (2026-05-31)
+
+- **데이터/작업 = 별도 private 리포 `scanpdf/`** (memex-kb 안에 nested, memex-kb는 전체 무시).
+  - PDF 5권 = **Git LFS** (~1GB), 전사 org/골격/PROGRESS = 일반 추적, 렌더 PNG = ignore(재생성).
+  - 로컬 init 커밋 완료. **remote 호스팅 미정** (oracle forge / work forge / 기타 — 힣이 결정).
+  - push 시 전역 pre-push 안전훅이 LFS 업로드를 위임하는지 검증 필요.
+- forgebot 자동화 루프: **보류** (구조는 이슈화 가능하나 지금은 안 함). git 버전관리만 유지.
+- 도구(scanpdf2org 등)는 공개 memex-kb 유지. 두 리포 나란히 클론해 사용.
+
 ### 진행
 
-- ✅ `scanpdf/` gitignore 설정 (저작권 보호 — PDF/이미지/org 본문 커밋 금지)
+- ✅ `scanpdf/` 별도 리포화 + LFS (저작권 보호, memex-kb는 scanpdf/ 전체 무시)
 - ✅ flake.nix에 pymupdf/pillow 추가
 - ✅ 렌더 스크립트 + 전사 프롬프트 + run.sh 명령
 - ✅ **파일럿**: 물질,생명,인간 1장 1절 전사 완료 (`scanpdf/work/물질생명인간/org/01장-01절.org`)
@@ -31,6 +40,14 @@ EPUB(듣기). **전통 OCR 안 씀** — 에이전트가 페이지 이미지를 
 5권 모두 1장 범위 확정 + hi-res 렌더 + 도입부 SEED + PROGRESS 완료.
 각 책 `scanpdf/work/<책>/{PROGRESS.md, org/*-seed.org}` 에 페이지맵·grind 지침·CHECK 정리.
 → **분신(GPT-5.4)에게 PROGRESS + seed 주면 책별로 쭉 grind 가능.**
+
+**★ 마스터 골격 완료** — 5권 모두 전체 목차를 `scanpdf/work/<책>/org/<책>.org`에
+헤딩(`*` 책 / `**` 장·부 / `***` 절·소절 / `****` 항목) + **인쇄 페이지번호**로 박아둠.
+내용 없이 골격만 — 분신은 "이 소절 = 인쇄 NN쪽" 보고 해당 페이지를 채우기만 하면 됨.
+- 페이지번호 완비: 물질생명인간(전 절), 물리의정석(전 강), 자연철학(전 장), 인공지능시대(전 장)
+- 물리학강의: 강-level 일부만 확인됨(1·2·4·5·6·13·14·21~27강), 나머지는 부 범위 내 탐색
+- 책 제목 확정: 인공지능시대 → 《인공지능시대와 철학의 쓸모》(이기상 추정)
+- offset: 물질생명인간 −2 / 물리학강의 −2 / 자연철학 0 / 물리의정석 −4 / 인공지능시대 −2 (물리=인쇄+offset)
 
 ### 다음 한 걸음
 

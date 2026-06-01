@@ -125,6 +125,17 @@
 
 (message "[Proposal] Required packages loaded")
 
+;;;; ox-odt 호환 shim (Emacs 30.2+)
+
+;; Emacs 30.2 의 ox-odt 에서 `org-odt--enumerable-table-p' 가 제거/리네임됨.
+;; (image-p / formula-p / latex-image-p 는 존재, table-p 만 void → ODT export 실패)
+;; org 의 다른 enumerable predicate 와 동일 의미: caption 존재 시 번호 매김 대상.
+(unless (fboundp 'org-odt--enumerable-table-p)
+  (defun org-odt--enumerable-table-p (element _info)
+    "표(table)의 번호 매김 대상 여부: caption 존재 시 t."
+    (org-element-property :caption element))
+  (message "[Proposal] shim: defined org-odt--enumerable-table-p"))
+
 ;;;; User Info + Bibliography
 
 (defvar org-directory (expand-file-name "~/org"))

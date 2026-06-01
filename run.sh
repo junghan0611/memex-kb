@@ -341,6 +341,57 @@ cmd_scanpdf2org_render() {
     run_cmd "nix develop --command python ${PROJECT_DIR}/scanpdf2org/scripts/pdf_to_images.py ${args}"
 }
 
+# ── Org→EPUB (org-mode → clean EPUB 3.0) ─────────────────────────────
+
+cmd_org2epub_build() {
+    # DESC: org-mode → clean EPUB 3.0 (local ox-epub fork 직접 사용)
+    # USAGE: org2epub-build <INPUT.org> [OUTPUT.epub]
+    # EXAMPLE: org2epub-build scanpdf/work/물질생명인간/org/물질생명인간.org
+    # ENV: OX_EPUB_REPO=~/repos/gh/ox-epub EPUBCHECK=1
+    # NOTE: memex-kb 내부 후처리 스크립트 없이 ox-epub 포크가 EPUB3/headless export를 직접 처리.
+    ensure_project_dir
+    local org="${1:?org 파일 경로 필요}"
+    local out="${2:-}"
+    org="$(readlink -f "$org")"
+    if [[ ! -f "$org" ]]; then
+        error "파일 없음: $org"
+        return 1
+    fi
+
+    local ox_repo="${OX_EPUB_REPO:-${HOME}/repos/gh/ox-epub}"
+    local ox_el="${ox_repo}/ox-epub.el"
+    if [[ ! -f "$ox_el" ]]; then
+        error "ox-epub.el 없음: $ox_el"
+        return 1
+    fi
+
+    local produced="${org%.org}.epub"
+    local final="$produced"
+    if [[ -n "$out" ]]; then
+        final="$(readlink -m "$out")"
+        mkdir -p "$(dirname "$final")"
+    fi
+
+    info "ox-epub export: $org"
+    ORG_FILE="$org" emacs --batch -l "$ox_el" --eval \
+        '(with-current-buffer (find-file-noselect (getenv "ORG_FILE"))
+           (let ((default-directory (file-name-directory (getenv "ORG_FILE"))))
+             (org-epub-export-to-epub)))'
+
+    if [[ -n "$out" && "$produced" != "$final" ]]; then
+        cp -f "$produced" "$final"
+    fi
+
+    if [[ "${EPUBCHECK:-1}" == "1" ]]; then
+        info "epubcheck: $final"
+        nix run nixpkgs#epubcheck -- "$final"
+    else
+        info "epubcheck skipped (EPUBCHECK=1 로 활성화)"
+    fi
+
+    success "EPUB 생성: $final"
+}
+
 # ── Utility ──────────────────────────────────────────────────────────
 
 cmd_env_check() {
@@ -509,6 +560,8 @@ COMMANDS=(
     "arxiv-build:cmd_arxiv_build"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
+    "--- Org→EPUB"
+    "org2epub-build:cmd_org2epub_build"
     "--- Utility"
     "env-check:cmd_env_check"
     "secret-scan:cmd_secret_scan"

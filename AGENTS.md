@@ -91,6 +91,8 @@ memex-kb/
 │   ├── presentation/
 │   └── presentation-pptx/
 ├── proposal-pipeline/
+├── scanpdf2org/
+├── epub2org/
 ├── hwpx2org/
 ├── orgadoc2odt/
 ├── office/
@@ -125,6 +127,20 @@ The most end-to-end workflow in the repository.
 Used for proposal documents that move through:
 
 Google Docs → Markdown → Org-mode → ODT → DOC/HWP-oriented deliverables
+
+#### `scanpdf2org/`, `ox-epub`, and `epub2org/`
+Scan-to-ebook pipeline surfaces.
+
+- `scanpdf2org/` — scanned PDF → page PNG → agent **vision transcription** → Org
+  (no OCR; the agent reads page images directly). See `scanpdf2org/README.org`.
+- `~/repos/gh/ox-epub` — maintained local fork for Org → **clean EPUB 3.0**.
+  It now emits EPUB3 natively and handles headless export, so memex-kb should not
+  reintroduce an internal `epub_upgrade.py` / `org2epub.el` post-processing stack.
+- `./run.sh org2epub-build <book.org>` is only a thin convenience wrapper that
+  loads the local ox-epub fork directly and optionally runs `epubcheck`.
+
+Together they form: scanned PDF → Org → EPUB. `epub2org/` is the reverse
+(EPUB → Org, conventions in its `PATTERNS.org`).
 
 #### `hwpx2org/` and `orgadoc2odt/`
 Lower-level conversion tooling and experiments related to HWPX, AsciiDoc, Org, and ODT workflows.

@@ -48,6 +48,8 @@ memex-kb is useful when you want to:
 | `templates/presentation/` | Quarto / Reveal.js HTML presentation template |
 | `templates/presentation-pptx/` | **org2pptx**: inject Org-mode content into an existing PPTX template while preserving layout/design |
 | `proposal-pipeline/` | Google Docs → Markdown → Org-mode → ODT/DOC proposal workflow |
+| `scanpdf2org/` | Scanned PDF → page PNG → agent vision transcription → Org (no OCR) |
+| `./run.sh org2epub-build` | Org → clean **EPUB 3.0** using the maintained local `~/repos/gh/ox-epub` fork directly; supports images, LaTeX→SVG math, tables, footnotes, TOC, Korean, and `epubcheck` validation |
 
 ---
 
@@ -77,6 +79,8 @@ memex-kb/
 │   ├── presentation/
 │   └── presentation-pptx/
 ├── proposal-pipeline/            # Proposal authoring and export pipeline
+├── scanpdf2org/                  # Scanned PDF → Org (vision transcription)
+├── epub2org/                     # EPUB → Org (reverse direction)
 ├── hwpx2org/                     # HWPX/Org-related conversion utilities
 ├── orgadoc2odt/                  # AsciiDoc/ODT conversion utilities
 ├── office/                       # Real project working materials and samples

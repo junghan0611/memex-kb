@@ -27,6 +27,7 @@ ORG_FILE="${2:-$SCRIPT_DIR/sample.org}"
 BASENAME="$(basename "$ORG_FILE" .org)"
 ODT_FILE="$SCRIPT_DIR/$BASENAME.odt"
 DOC_FILE="$SCRIPT_DIR/$BASENAME.doc"
+DOCX_FILE="$SCRIPT_DIR/$BASENAME.docx"
 
 # 색상
 RED='\033[0;31m'
@@ -42,15 +43,16 @@ err()   { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 usage() {
     cat <<EOF
-Org → ODT/DOC 변환 파이프라인
+Org → ODT/DOCX 변환 파이프라인
 
 사용법: ./run.sh <명령> [파일.org]
 
 명령:
-  build [FILE]  org → odt → doc 전체 빌드 (기본: sample.org)
+  build [FILE]  org → odt → 후처리 → docx 전체 빌드 (기본: sample.org)
   odt   [FILE]  org → odt 변환만
   postprocess   odt 테이블 후처리만
-  doc           odt → doc 변환만
+  docx          odt → docx 변환만
+  doc           odt → doc 변환만 (레거시)
   clean         생성 파일 정리
   check         의존성 확인
 
@@ -145,8 +147,21 @@ cmd_doc() {
         err "파일 없음: $ODT_FILE"
         exit 1
     fi
-    libreoffice --headless --convert-to doc "$ODT_FILE" --outdir "$SCRIPT_DIR" 2>&1 | grep -v "^$"
+    libreoffice -env:UserInstallation=file:///tmp/lo_sample_build \
+        --headless --convert-to doc "$ODT_FILE" --outdir "$SCRIPT_DIR" >/dev/null 2>&1
     ok "생성: $DOC_FILE ($(ls -lh "$DOC_FILE" | awk '{print $5}'))"
+}
+
+cmd_docx() {
+    info "odt → docx 변환..."
+    if [[ ! -f "$ODT_FILE" ]]; then
+        err "파일 없음: $ODT_FILE"
+        exit 1
+    fi
+    # 별도 프로파일 — GUI 로 docx 를 열어둔 상태에서도 변환 충돌 회피
+    libreoffice -env:UserInstallation=file:///tmp/lo_sample_build \
+        --headless --convert-to docx "$ODT_FILE" --outdir "$SCRIPT_DIR" >/dev/null 2>&1
+    ok "생성: $DOCX_FILE ($(ls -lh "$DOCX_FILE" | awk '{print $5}'))"
 }
 
 cmd_build() {
@@ -156,11 +171,11 @@ cmd_build() {
     echo ""
     cmd_postprocess
     echo ""
-    cmd_doc
+    cmd_docx
     echo ""
     ok "=== 빌드 완료 ==="
     echo ""
-    ls -lh "$SCRIPT_DIR/$BASENAME".{org,odt,doc} 2>/dev/null
+    ls -lh "$SCRIPT_DIR/$BASENAME".{org,odt,docx} 2>/dev/null
 }
 
 cmd_clean() {
@@ -178,6 +193,7 @@ case "${1:-}" in
     odt)         cmd_odt ;;
     postprocess) cmd_postprocess ;;
     doc)         cmd_doc ;;
+    docx)        cmd_docx ;;
     clean)       cmd_clean ;;
     check)       cmd_check ;;
     *)           usage ;;

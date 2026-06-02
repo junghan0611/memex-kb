@@ -18,8 +18,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-PIPELINE_DIR="$REPO_ROOT/proposal-pipeline"
+# self-contained: 변환 로직은 이 폴더의 pipeline/ 에 vendoring (외부 의존 없음)
+PIPELINE_DIR="$SCRIPT_DIR/pipeline"
 EXPORT_EL="$PIPELINE_DIR/proposal-export.el"
 
 # 기본 org 파일 (인자 없으면 sample.org)

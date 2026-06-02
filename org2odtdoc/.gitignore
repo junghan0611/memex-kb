@@ -1,3 +1,6 @@
 *.odt
 *.doc
 *.docx
+
+# 단, 스타일 마스터(reference.odt)는 SSOT 로직이므로 커밋에 포함
+!pipeline/templates/reference.odt

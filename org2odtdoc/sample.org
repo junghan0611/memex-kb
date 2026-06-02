@@ -49,7 +49,7 @@ pandoc 대신 Emacs =org-odt-export= 를 사용하여 다음 이점을 얻는다
 =images/= 폴더에 PNG/JPG 를 넣고 아래처럼 참조한다.
 =#+ATTR_ODT: :width= 로 폭(cm)을 지정하면 본문 폭에 맞게 들어간다.
 
-#+CAPTION: 그림 1. 샘플 다이어그램
+#+CAPTION: 샘플 다이어그램
 #+ATTR_ODT: :width 14
 [[file:images/sample.png]]
 

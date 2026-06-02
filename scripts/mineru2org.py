@@ -131,6 +131,184 @@ def clean_html(t: str, log: list) -> str:
     return t
 
 
+def _nospace(s: str) -> str:
+    return re.sub(r"\s+", "", s)
+
+
+# 헤딩 안 인라인 수식은 nav/TOC 에서 SVG 리소스를 참조하는데 ox-epub 패키징이
+# 누락해 epubcheck RSC-007 을 낸다(물질생명인간 가시). 헤딩의 \(..\)/\[..\] 는
+# 평문(그리스문자·기호 유니코드)으로 바꿔 SVG 참조 자체를 없앤다.
+_GREEK = {
+    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε",
+    "zeta": "ζ", "eta": "η", "theta": "θ", "iota": "ι", "kappa": "κ",
+    "lambda": "λ", "mu": "μ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ",
+    "sigma": "σ", "tau": "τ", "upsilon": "υ", "phi": "φ", "chi": "χ",
+    "psi": "ψ", "omega": "ω", "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ",
+    "Lambda": "Λ", "Xi": "Ξ", "Pi": "Π", "Sigma": "Σ", "Phi": "Φ",
+    "Psi": "Ψ", "Omega": "Ω", "nabla": "∇", "partial": "∂", "infty": "∞",
+    "times": "×", "cdot": "·", "Rightarrow": "⇒", "rightarrow": "→",
+    "leq": "≤", "geq": "≥", "equiv": "≡", "approx": "≈", "sqrt": "√",
+}
+
+
+def _demath_inline(expr: str) -> str:
+    s = expr
+    for k, v in sorted(_GREEK.items(), key=lambda kv: -len(kv[0])):
+        s = s.replace("\\" + k, v)
+    s = re.sub(r"([_^])\{([^{}]*)\}", r"\1\2", s)  # _{x}->_x
+    s = s.replace("{", "").replace("}", "")
+    s = re.sub(r"\\[a-zA-Z]+", " ", s)             # 남은 명령 제거
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def demath_headings(t: str, log: list) -> str:
+    n = 0
+    out = []
+    for ln in t.split("\n"):
+        if re.match(r"^\*+ ", ln) and re.search(r"\\[(\[]", ln):
+            ln = re.sub(r"\\\((.+?)\\\)", lambda m: _demath_inline(m.group(1)), ln)
+            ln = re.sub(r"\\\[(.+?)\\\]", lambda m: _demath_inline(m.group(1)), ln)
+            n += 1
+        out.append(ln)
+    if n:
+        log.append(f"[H-demath] 헤딩 내 수식 평문화: {n}")
+    return "\n".join(out)
+
+
+# ──────── 구조 복원 — 장 / 고정마커 절 / 소절 (자연철학강의류) ────────
+def reconstruct_chapsec(t: str, struct: dict, log: list):
+    """장(章) `*` / 절(고정 마커) `**` / 소절 `***` 복원.
+
+    절 레벨이 번호도 합성도 아닌 '고정 문자열 집합'인 책용
+    (예: [역사 지평]/[내용 정리]/[해설 및 성찰]). config `section_markers` 로 구동.
+    - 장: config chapters 의 `match`(MinerU 헤딩에 나타난 십우도 구절, OCR 형태)로 잡고
+      제목은 config `title`(권위, OCR 보정). 표지의 평문/헤딩 `제N장` 토큰과 짧은 부제
+      평문 라인은 드롭.
+    - 절: section_markers(공백 무시 매칭) → `**` (정규형 출력).
+    - 그 외 본문 헤딩 → `*** 소절`. back_matter → `*`. index_start 이후 헤딩 드롭.
+    """
+    chapters = struct.get("chapters", [])
+    chap_by_match = {}
+    for c in chapters:
+        key = _nospace(c.get("match", c["title"]))
+        chap_by_match[key] = (c["num"], c["title"])
+    sec_norm = {_nospace(s): s for s in struct.get("section_markers", [])}
+    back = set(struct.get("back_matter", []))
+    body_start = struct.get("body_start")
+    preface_keep = struct.get("preface_keep", [])
+    index_start = struct.get("index_start")
+
+    lines = t.split("\n")
+    # front-matter/TOC 컷
+    cut = 0
+    if body_start:
+        bs = _nospace(body_start)
+        for i, ln in enumerate(lines):
+            m = re.match(r"^#\s+(.*\S)\s*$", ln)
+            if m and _nospace(m.group(1)) == bs:
+                cut = i
+                break
+    front, lines = lines[:cut], lines[cut:]
+
+    # preface 보존 (3level 과 동일 규약)
+    preface_out = []
+    if preface_keep:
+        keep_norm = {_nospace(k) for k in preface_keep}
+        start = None
+        for i, ln in enumerate(front):
+            m = re.match(r"^#\s+(.*\S)\s*$", ln)
+            if m and _nospace(m.group(1)) in keep_norm:
+                start = i
+                break
+        if start is not None:
+            for ln in front[start:]:
+                m = re.match(r"^#\s+(.*\S)\s*$", ln)
+                if m:
+                    txt = m.group(1).strip()
+                    preface_out.append(f"* {txt}" if _nospace(txt) in keep_norm else f"** {txt}")
+                else:
+                    preface_out.append(ln)
+
+    def next_nonempty(idx):
+        j = idx + 1
+        while j < len(lines) and lines[j].strip() == "":
+            j += 1
+        return j
+
+    out = list(preface_out)
+    stats = {"chapter": 0, "section": 0, "subsection": 0,
+             "false_demote": 0, "index_drop": 0, "drop": 0}
+    in_index = False
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        raw = ln.strip()
+        if in_index and re.match(r"^#\s+", ln):
+            stats["index_drop"] += 1
+            i += 1
+            continue
+        # '제N장' 평문/헤딩 토큰 드롭(장은 십우도 제목으로 잡는다)
+        if re.match(r"^(?:#\s+)?제\d+장$", raw):
+            stats["drop"] += 1
+            i += 1
+            continue
+        mh = re.match(r"^#\s+(.*\S)\s*$", ln)
+        if not mh:
+            out.append(ln)
+            i += 1
+            continue
+        text = mh.group(1).strip()
+        key = _nospace(text)
+        # 장 제목(십우도 구절)
+        if key in chap_by_match:
+            num, ctitle = chap_by_match[key]
+            out.append(f"* {num} {ctitle}")
+            stats["chapter"] += 1
+            # 다음 짧은 평문 부제 라인 드롭(예: '않의 바탕 구도')
+            j = next_nonempty(i)
+            if j < len(lines):
+                nxt = lines[j].strip()
+                if nxt and not re.match(r"^#|^!\[|^<", nxt) and len(nxt) <= 25:
+                    i = j + 1
+                    continue
+            i += 1
+            continue
+        # 절 마커
+        if key in sec_norm:
+            out.append(f"** {sec_norm[key]}")
+            stats["section"] += 1
+            i += 1
+            continue
+        # index 시작
+        if index_start and key == _nospace(index_start):
+            out.append(f"* {text}")
+            in_index = True
+            i += 1
+            continue
+        # 후미
+        if text in back:
+            out.append(f"* {text}")
+            i += 1
+            continue
+        # 가짜 헤딩 강등
+        if (re.match(r"^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫]", text)
+                or re.match(r"^[<〈].*[>〉]$", text)
+                or not re.search(r"[가-힣]", text)):
+            out.append(text)
+            stats["false_demote"] += 1
+            i += 1
+            continue
+        # 소절
+        out.append(f"*** {text}")
+        stats["subsection"] += 1
+        i += 1
+    log.append(f"[H5-chapsec] 장 {stats['chapter']} / 절 {stats['section']} / "
+               f"소절 {stats['subsection']} / 가짜강등 {stats['false_demote']} / "
+               f"제N장드롭 {stats['drop']} / 색인드롭 {stats['index_drop']}")
+    return "\n".join(out), stats
+
+
 # ──────────────── 구조 복원 — 3단 계층 (부/강/소절) ────────────────
 def reconstruct_3level(t: str, struct: dict, log: list):
     """부(部) `*` / 강(講) `**` / 소절 `***` 3단 책 구조 복원.
@@ -280,6 +458,9 @@ def reconstruct(t: str, struct: dict, log: list):
     # 3단 계층(부/강/소절) 모드: config에 parts 가 있으면.
     if struct.get("parts"):
         return reconstruct_3level(t, struct, log)
+    # 장/고정마커 절/소절 모드: config에 section_markers 가 있으면.
+    if struct.get("section_markers"):
+        return reconstruct_chapsec(t, struct, log)
 
     chap_by_title = {}
     for ch in struct.get("chapters", []):
@@ -463,6 +644,7 @@ def main() -> int:
     t = surface(md, corr, log, cand)
     t = clean_html(t, log)
     t, _ = reconstruct(t, struct, log)
+    t = demath_headings(t, log)
     t = footnote_defs(t, content_list, log, cand)
     t = re.sub(r"\n{3,}", "\n\n", t)
 

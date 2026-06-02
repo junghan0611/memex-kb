@@ -1,0 +1,72 @@
+{
+  "_doc": "최무영 교수의 물리학 강의 교정/구조 사전. 3단 계층(부/강/소절): structure.parts + structure.lectures(part 소속) 구동. safe_regex/literal은 자동 적용(증명 가능 안전), candidate_regex는 후보 로그만(본문 미변경). 강 제목은 lectures가 SSOT — MinerU OCR 오독을 덮어쓴다.",
+  "footnote_superscript": false,
+  "meta": {
+    "title": "최무영 교수의 물리학 강의",
+    "author": "최무영",
+    "date": "2019",
+    "language": "ko",
+    "publisher": "책갈피",
+    "subject": "물리학 과학철학 양자역학 상대성이론 통계역학 복잡계 엔트로피 우주론",
+    "uid": "urn:uuid:c4b8f201-cmy-physics-0001"
+  },
+  "structure": {
+    "body_start": "과학과 물리학",
+    "preface_keep": ["일러두기", "추천의 글", "개정판을 내면서", "여는 글"],
+    "parts": [
+      { "num": "1부", "title": "과학과 물리학" },
+      { "num": "2부", "title": "물질의 구성 요소" },
+      { "num": "3부", "title": "자연현상의 역학적 기술" },
+      { "num": "4부", "title": "혼돈과 질서" },
+      { "num": "5부", "title": "거시현상과 엔트로피" },
+      { "num": "6부", "title": "우주의 구조와 진화" },
+      { "num": "7부", "title": "복잡계와 통합적 사고" }
+    ],
+    "lectures": [
+      { "num": "1강",  "part": "1부", "title": "과학이란 무엇인가" },
+      { "num": "2강",  "part": "1부", "title": "과학적 지식" },
+      { "num": "3강",  "part": "1부", "title": "과학의 발전과 시대정신" },
+      { "num": "4강",  "part": "1부", "title": "물리학의 분야" },
+      { "num": "5강",  "part": "2부", "title": "물질과 원자" },
+      { "num": "6강",  "part": "2부", "title": "기본입자와 쿼크 이론" },
+      { "num": "7강",  "part": "2부", "title": "물리법칙의 대칭성" },
+      { "num": "8강",  "part": "3부", "title": "고전역학" },
+      { "num": "9강",  "part": "3부", "title": "전자기이론" },
+      { "num": "10강", "part": "3부", "title": "공간과 시간" },
+      { "num": "11강", "part": "3부", "title": "특수상대성이론" },
+      { "num": "12강", "part": "3부", "title": "일반상대성이론" },
+      { "num": "13강", "part": "3부", "title": "양자역학" },
+      { "num": "14강", "part": "3부", "title": "측정과 해석" },
+      { "num": "15강", "part": "4부", "title": "비선형동역학" },
+      { "num": "16강", "part": "4부", "title": "혼돈과 질서" },
+      { "num": "17강", "part": "5부", "title": "거시적 관점과 통계역학" },
+      { "num": "18강", "part": "5부", "title": "엔트로피" },
+      { "num": "19강", "part": "5부", "title": "확률과 정보" },
+      { "num": "20강", "part": "6부", "title": "관측되는 우주" },
+      { "num": "21강", "part": "6부", "title": "별과 별사이물질" },
+      { "num": "22강", "part": "6부", "title": "우주의 기원과 진화" },
+      { "num": "23강", "part": "6부", "title": "우주와 인간" },
+      { "num": "24강", "part": "7부", "title": "복잡성과 고비성" },
+      { "num": "25강", "part": "7부", "title": "복잡계의 물리" },
+      { "num": "26강", "part": "7부", "title": "생명현상의 이해" },
+      { "num": "27강", "part": "7부", "title": "복잡계와 통합과학" }
+    ],
+    "back_matter": ["읽을거리", "찾아보기"]
+  },
+  "safe_regex": [],
+  "literal": [
+    { "from": "힍스", "to": "힉스", "desc": "힉스(Higgs) 오독 — 힍은 깨진 글자" },
+    { "from": "빗알", "to": "빛알", "desc": "빛알(광자, 책 토박이말) 오독" },
+    { "from": "퀴크", "to": "쿼크", "desc": "쿼크(quark) 오독 — 퀴크는 비단어" },
+    { "from": "폐르미온", "to": "페르미온", "desc": "페르미온(fermion) 오독 — 폐(肺) 글자 충돌" },
+    { "from": "렌톤", "to": "렙톤", "desc": "렙톤(lepton) 오독" },
+    { "from": "겹실툴", "to": "겹실틈", "desc": "겹실틈(이중슬릿) 오독 — 정상형 '겹실틈' 공존 확인" },
+    { "from": "\\leqq", "to": "\\leq", "desc": "비표준 LaTeX \\leqq(≦)→\\leq. amssymb 없이 dvisvgm 렌더 실패 방지" },
+    { "from": "\\geqq", "to": "\\geq", "desc": "비표준 LaTeX \\geqq→\\geq" }
+  ],
+  "candidate_regex": [
+    { "pattern": "보오손", "desc": "보오손→보손? (boson — 장음 표기일 수 있어 문맥 판정)" },
+    { "pattern": "겹실툴|겹실틈", "desc": "겹실틈(이중슬릿)? 표기 확인" },
+    { "pattern": "[가-힣]*[a-zA-Z]+[가-힣]+", "desc": "한글 속 라틴자 혼입(OCR 깨짐: 나/ns는데, 바(pr) 등) — 문맥 판정" }
+  ]
+}

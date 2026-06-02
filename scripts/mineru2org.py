@@ -59,18 +59,22 @@ def surface(t: str, corr: dict, log: list, cand: list) -> str:
     t = re.sub(r"\$\$(.+?)\$\$", lambda m: "\\[" + m.group(1) + "\\]", t, flags=re.DOTALL)
     if n:
         log.append(f"[S-eq] 블록 $$..$$ → \\[..\\]: {n}")
-    # 각주참조 $^{n}$
-    n = len(re.findall(r"\$\^\{?(\d+)\}?\$", t))
-    t = re.sub(r"\$\^\{?(\d+)\}?\$", r"[fn:\1]", t)
-    if n:
-        log.append(f"[F-fnref] $^{{n}}$ → [fn:n]: {n}")
-    # unicode 위첨자 각주 (⁵ ²³ ...)
-    def sup_repl(m):
-        return "[fn:" + "".join(SUP[c] for c in m.group(0)) + "]"
-    n = len(re.findall(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+", t))
-    t = re.sub(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+", sup_repl, t)
-    if n:
-        log.append(f"[F-fnref] unicode 위첨자 → [fn:n]: {n}")
+    # 각주참조 위첨자 변환. 물리/수학책은 위첨자가 대개 '지수'(cm², 10²³, x²)이지
+    # 각주가 아니므로 config 의 footnote_superscript:false 로 끈다(기본 true).
+    # 끄면 $^{n}$ 는 아래 인라인 $..$ 패스가 \(^{n}\) 로, 유니코드 위첨자는 그대로 둔다.
+    if corr.get("footnote_superscript", True):
+        # 각주참조 $^{n}$
+        n = len(re.findall(r"\$\^\{?(\d+)\}?\$", t))
+        t = re.sub(r"\$\^\{?(\d+)\}?\$", r"[fn:\1]", t)
+        if n:
+            log.append(f"[F-fnref] $^{{n}}$ → [fn:n]: {n}")
+        # unicode 위첨자 각주 (⁵ ²³ ...)
+        def sup_repl(m):
+            return "[fn:" + "".join(SUP[c] for c in m.group(0)) + "]"
+        n = len(re.findall(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+", t))
+        t = re.sub(r"[⁰¹²³⁴⁵⁶⁷⁸⁹]+", sup_repl, t)
+        if n:
+            log.append(f"[F-fnref] unicode 위첨자 → [fn:n]: {n}")
     # 인라인 수식
     n = len(re.findall(r"\$([^$\n]+?)\$", t))
     t = re.sub(r"\$([^$\n]+?)\$", lambda m: "\\(" + m.group(1) + "\\)", t)
@@ -127,12 +131,155 @@ def clean_html(t: str, log: list) -> str:
     return t
 
 
+# ──────────────── 구조 복원 — 3단 계층 (부/강/소절) ────────────────
+def reconstruct_3level(t: str, struct: dict, log: list):
+    """부(部) `*` / 강(講) `**` / 소절 `***` 3단 책 구조 복원.
+
+    MinerU는 헤딩을 전부 플랫 '#'로 뱉고, 강 표지를 두 방식으로 낸다:
+      (a) '# N강' + '# 제목'  (헤딩 2개)        — 다수
+      (b) 평문 'N강' + 평문 '제목'              — 일부(번호 헤딩 누락분)
+    부 제목은 본문에서 유일하지 않다(소절/강 제목과 충돌). 따라서 부 표지는
+    제목 매칭으로 잡지 않고, config 의 part↔lecture 소속을 SSOT 로 삼아
+    '각 부의 첫 강 직전'에 부 헤딩을 합성한다. 본문의 부 표지 헤딩(다음 헤딩이
+    N강인 경우)은 드롭한다. 강 제목은 config 값으로 권위 보정(OCR 오독 무시).
+    """
+    parts = struct.get("parts", [])
+    lectures = struct.get("lectures", [])
+    part_titles = {p["title"] for p in parts}
+    part_by_num = {p["num"]: p["title"] for p in parts}
+    lec_title = {l["num"]: l["title"] for l in lectures}
+    # 각 부의 첫 강 → 부 헤딩 합성 트리거
+    first_lec = {}
+    seen = set()
+    for l in lectures:
+        pn = l.get("part")
+        if pn and pn not in seen:
+            first_lec[l["num"]] = (pn, part_by_num.get(pn, ""))
+            seen.add(pn)
+    back = set(struct.get("back_matter", []))
+    body_start = struct.get("body_start")
+    preface_keep = struct.get("preface_keep", [])
+
+    lines = t.split("\n")
+    # front-matter/TOC 컷
+    cut = 0
+    if body_start:
+        for i, ln in enumerate(lines):
+            if re.match(r"^#\s+" + re.escape(body_start) + r"\s*$", ln):
+                cut = i
+                break
+    front, lines = lines[:cut], lines[cut:]
+
+    # preface 보존: 가장 이른 preface_keep 헤딩~front 끝.
+    # preface_keep 이름은 '*', 그 외 '#' 헤딩은 '**', 본문은 그대로.
+    preface_out = []
+    if preface_keep:
+        keep_set = set(preface_keep)
+        start = None
+        for i, ln in enumerate(front):
+            m = re.match(r"^#\s+(.*\S)\s*$", ln)
+            if m and m.group(1).strip() in keep_set:
+                start = i
+                break
+        if start is not None:
+            for ln in front[start:]:
+                m = re.match(r"^#\s+(.*\S)\s*$", ln)
+                if m:
+                    txt = m.group(1).strip()
+                    preface_out.append(f"* {txt}" if txt in keep_set else f"** {txt}")
+                else:
+                    preface_out.append(ln)
+
+    def next_nonempty(idx):
+        j = idx + 1
+        while j < len(lines) and lines[j].strip() == "":
+            j += 1
+        return j
+
+    def next_heading(idx):
+        j = idx + 1
+        while j < len(lines):
+            s = lines[j].strip()
+            if re.match(r"^#\s+", lines[j]) or re.match(r"^\d+강$", s):
+                return j
+            j += 1
+        return -1
+
+    out = list(preface_out)
+    stats = {"part": 0, "lecture": 0, "subsection": 0,
+             "false_demote": 0, "index_drop": 0, "part_drop": 0}
+    in_index = False
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        raw = ln.strip()
+        # 찾아보기 내부: 모든 '#' 헤딩(자모 구분자 노이즈) 드롭
+        if in_index and re.match(r"^#\s+", ln):
+            stats["index_drop"] += 1
+            i += 1
+            continue
+        # 강 토큰: '# N강' 또는 평문 'N강'
+        m_lec = re.match(r"^(?:#\s+)?(\d+강)$", raw)
+        if m_lec:
+            num = m_lec.group(1)
+            if num in first_lec:
+                pn, pt = first_lec[num]
+                out.append(f"* {pn} {pt}")
+                stats["part"] += 1
+            j = next_nonempty(i)
+            title = lec_title.get(num)
+            if title is None and j < len(lines):
+                title = re.sub(r"^#\s+", "", lines[j]).strip()
+            out.append(f"** {num} {title}")
+            stats["lecture"] += 1
+            i = (j + 1) if j < len(lines) else (i + 1)
+            continue
+        mh = re.match(r"^#\s+(.*\S)\s*$", ln)
+        if not mh:
+            out.append(ln)
+            i += 1
+            continue
+        text = mh.group(1).strip()
+        # 부 표지: 다음 헤딩이 N강이면 드롭(부는 첫 강에서 합성)
+        if text in part_titles:
+            nh = next_heading(i)
+            if nh != -1 and re.match(r"^(?:#\s+)?\d+강$", lines[nh].strip()):
+                stats["part_drop"] += 1
+                i += 1
+                continue
+        # 후미(읽을거리/찾아보기)
+        if text in back:
+            out.append(f"* {text}")
+            in_index = (text == "찾아보기")
+            i += 1
+            continue
+        # 가짜 헤딩 강등: ①②, <도식>, 한국어 없는 헤딩(영문 그림 포스터/기호/숫자)
+        if (re.match(r"^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫]", text)
+                or re.match(r"^[<〈].*[>〉]$", text)
+                or not re.search(r"[가-힣]", text)):
+            out.append(text)
+            stats["false_demote"] += 1
+            i += 1
+            continue
+        # 소절
+        out.append(f"*** {text}")
+        stats["subsection"] += 1
+        i += 1
+    log.append(f"[H5-3lvl] 부 {stats['part']} / 강 {stats['lecture']} / "
+               f"소절 {stats['subsection']} / 가짜강등 {stats['false_demote']} / "
+               f"부표지드롭 {stats['part_drop']} / 색인드롭 {stats['index_drop']}")
+    return "\n".join(out), stats
+
+
 # ───────────────────── 구조 복원 (헤딩 계층) ─────────────────────
 def reconstruct(t: str, struct: dict, log: list):
     if not struct:
         # 구조 정보 없으면 단순 #→** (v1 동작)
         t = re.sub(r"^#\s+", "** ", t, flags=re.MULTILINE)
         return t, {}
+    # 3단 계층(부/강/소절) 모드: config에 parts 가 있으면.
+    if struct.get("parts"):
+        return reconstruct_3level(t, struct, log)
 
     chap_by_title = {}
     for ch in struct.get("chapters", []):
@@ -276,6 +423,12 @@ def footnote_defs(t: str, content_list: list, log: list, cand: list) -> str:
     resolved = sorted(refs & set(defs))
     unresolved_ref = sorted(refs - set(defs))
     unused_def = sorted(set(defs) - refs)
+    if not defs:
+        # 각주 정의 없음(content_list page_footnote 부재 + 흡수 0) → 섹션 생략
+        if refs:
+            cand.append(f"[각주 ref 있으나 정의 전무] {sorted(refs)}")
+        log.append("[F5-fndef] 각주 정의 0개 → '* 각주' 섹션 생략")
+        return t
     block = ["", "* 각주", ""]
     for n in sorted(defs):
         block.append(f"[fn:{n}] {defs[n]}")

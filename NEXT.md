@@ -4,7 +4,35 @@
 
 ---
 
-## ★★★ MinerU→후처리→org→EPUB 파이프라인 완성 (2026-06-02 15:10)
+## ★★★ 물리학강의 — 3단 계층(부/강/소절) EPUB 성공 (2026-06-02 16:20)
+
+**두 번째 책. MinerU→org→EPUB 풀사이클 동작 + 엔진 3단 확장.**
+《최무영 교수의 물리학 강의》(718쪽) → **부7/강27/소절129** → EPUB **epubcheck 0/0/0**(10MB).
+
+### 엔진 개선 (mineru2org.py — 물질생명인간 2단 경로는 보존)
+
+| 추가 | 내용 |
+|------|------|
+| `reconstruct_3level()` | 부`*`/강`**`/소절`***`. 부 제목이 본문서 비유일(소절·강 제목과 충돌) → config part↔lecture 소속 SSOT로 **첫 강 직전 부 헤딩 합성**, 부 표지(다음이 N강) 드롭. 강 표지 2형태(`# N강`+제목 / 평문 `N강`+제목, 4·6·13·18강 누락분 흡수). 강 제목은 config 권위(퀴크→쿼크 보정). 한글 없는 헤딩(영문 포스터) 강등 |
+| `footnote_superscript:false` | 수식책 위첨자=지수(cm²/10²³), 각주 아님 → 변환 끔. 스퓨리어스 각주 87건→0 |
+| 각주 조건부 | 정의 0개면 `* 각주` 섹션 생략 |
+
+### 산출/설정
+
+- 변환기: `scripts/mineru2org.py` (v3, 3단 지원). config: `scripts/corrections/물리학강의.json`.
+- 산출: `scanpdf/work/물리학강의/mineru/{물리학강의-mineru.org, .epub, README.md, *.log}`.
+- 재현 3-command + 구조 특이점 = `mineru/README.md`.
+
+### 남은 단계 (text-accuracy만, 구조/EPUB는 끝)
+
+1. **candidates.log 858건 LLM 경량 패스**: Latin 혼입(`나/ns지요`, `손 pop히는`, `바(pr)`, `von리학`) + 깨진 어절. **보오손은 책 의도 표기**(찾아보기 `보오손(boson)`) — 고치지 말 것.
+2. LLM 패스 후 안전 분류는 config literal 승격 → 재변환 → EPUB 재빌드.
+3. 어제 vision seed(`org/01강-seed.org`, `org/물리학강의.org` 골격)는 **은퇴**. 골격은 config 작성 재료로 소진됨. MinerU 산출이 primary.
+4. 다음 책: 자연철학강의 / 물리의정석 / 인공지능시대.
+
+---
+
+## (이전) MinerU→후처리→org→EPUB 파이프라인 완성 (2026-06-02 15:10)
 
 **vision/Opus 전사 완전 은퇴. 풀 사이클 동작.** `MinerU → mineru2org.py(후처리) → org(이미지/수식/각주) → ox-epub`.
 물질생명인간 EPUB 생성 성공(**epubcheck 0 errors/warnings**). 다음은 물리학강의(수식 많음).

@@ -7,7 +7,7 @@
 ## ★★★ MinerU→후처리→org→EPUB 파이프라인 완성 (2026-06-02 15:10)
 
 **vision/Opus 전사 완전 은퇴. 풀 사이클 동작.** `MinerU → mineru2org.py(후처리) → org(이미지/수식/각주) → ox-epub`.
-물질생명인간 EPUB 생성 성공(epubcheck 통과 목표). 다음은 물리학강의(수식 많음).
+물질생명인간 EPUB 생성 성공(**epubcheck 0 errors/warnings**). 다음은 물리학강의(수식 많음).
 
 ### 파이프라인 구성요소
 
@@ -53,7 +53,7 @@
    같은 파이프라인. config 새로 작성(structure/meta). 수식 많음 → `text_image` 억제(GPT P4) 필요.
    새 세션은 run.sh가 아니라 **scanbook 스킬**부터 읽어라 — 원격 gpu2i 서버·교정전략·함정이 거기 있다.
 5. **mineru2org.py 추가 개선**(GPT 우선순위): footnote stable id(page 기반), `text_image` 수식 격리, TOC 완전 분리.
-6. **커밋**: scanpdf(포지깃) + memex-kb(github). 둘 다 GLG 최종 결정.
+6. **문서 기준선 유지**: 새 세션이 헷갈리지 않도록 README/BACKENDS/AGENTS/scanbook 스킬의 primary path를 항상 MinerU 기준으로 동기화한다.
 
 > GPT 후처리 리뷰 전문: `scanpdf/work/물질생명인간/mineru/REVIEW-gpt.md` (충돌 유형표 + P0~P5 개선안 + epub blocker).
 
@@ -104,14 +104,14 @@
 
 ---
 
-## 품질 가드 도구 (marker → 검수 레이어로 강등, 유지)
+## 품질 가드 도구 — diff-review만 유지
 
-`marker/STRATEGY.md` / `marker/SMOKE-RESULTS.md`. 핵심: **어느 엔진도 절대 권위 아님 →
-diff로 충돌점만 LLM이 이미지 판정**. MinerU 시대에도 `diff_review`가 그대로 QA 도구.
+핵심: **어느 엔진도 절대 권위 아님 → diff로 충돌점만 LLM/사람이 이미지 판정**.
+MinerU 시대에도 `scripts/diff_review.py`가 QA 도구로 살아남았다.
 
-- `./run.sh marker-diff <md> <org>` = `marker/scripts/diff_review.py`(stdlib, 엔진 무관).
-- `./run.sh marker-pdf` = marker surya OCR(CPU 4분/쪽). 이제 1차본 아님, 교차검증용 보조.
-- 근거(2장2절 6쪽): marker 정답례(93쪽·라세·초래할·필연적으로·대해·되냐고) / vision 정답례(버금가는).
+- 현재 명령: `./run.sh diff-review <a.md|org> <b.md|org>`.
+- marker/surya OCR 명령(`marker-pdf`, `marker-diff`)은 memex-kb에서 은퇴했다. 새 세션은 이 이름을 쓰지 말 것.
+- 이미 존재하는 vision 전사본은 gold/oracle로 비교할 수 있지만, 새 책 primary는 MinerU다.
 
 ---
 
@@ -208,37 +208,30 @@ diff로 충돌점만 LLM이 이미지 판정**. MinerU 시대에도 `diff_review
 
 ---
 
-## OCR / marker 툴체인 — 정리됨 (2026-06-02)
+## 은퇴한 OCR / vision 경로 — 역사 기록
 
 해결된 결정(상단 ★ 섹션이 현재 상태):
 
 - **tesseract/ocrmypdf 제거.** 한글 스캔 OCR 품질 사용 불가 → flake/`run.sh ocr-pdf`에서 삭제.
-  OCR 경로는 marker(surya)로 일원화. (nixos-config 전역 설치분은 별개로 남아있음 — memex-kb는 더이상 선언 안 함)
-- **marker는 `uv` venv/lock으로 pin** (`marker/` 디렉토리, 별도 flake input 아님). 결정 완료.
-- `nougat`은 당장 안 씀. marker 우선.
-- marker CPU smoke 완료(thinkpad ~4분/쪽). run.sh `marker-pdf`/`marker-diff` 추가됨.
-- 배치/책 단위는 `tmux` + 서버 오버나잇.
-
-남은 것은 상단 ★ "다음(적용)" 참조 — 수식 smoke, Org 구조 후처리, GPU 재측정.
+- **marker/surya OCR 제거.** `marker-pdf`, `marker-diff` 명령은 더 이상 현재 작업 경로가 아니다. 살아남은 것은 엔진 무관 `scripts/diff_review.py` / `./run.sh diff-review`뿐.
+- **Opus 병렬 vision 전체전사 은퇴.** 이미 만든 vision본은 oracle로 비교할 수 있지만, 새 책은 MinerU 1차 + config + LLM 경량 교정으로 간다.
 
 ---
 
-## 다른 책 scanpdf2org
-
-이번 실험으로 “Opus 병렬팀” 패턴이 검증됨. 다른 책도 같은 방식으로 갈 수 있다.
+## 다른 책 — scanbook 경로로 시작
 
 대상 후보:
 
-- `물리학강의`
+- `물리학강의` — 다음 1순위. 수식 많음 → `text_image` 억제/격리 필요.
 - `자연철학강의`
 - `물리의정석`
 - `인공지능시대와 철학의 쓸모`
 
-각 책은 기존 `scanpdf/work/<책>/PROGRESS.md`와 seed/org 골격을 보고 시작.
+새 책은 기존 `scanpdf2org`/Opus 패턴이 아니라 **`.claude/skills/scanbook/SKILL.md` New book checklist**로 시작한다.
 
 ---
 
 ## 별건
 
-- repo 전체 정리 예정 — scanpdf2org 큰 흐름이 끝난 뒤 진행.
+- repo 전체 정리 예정 — MinerU/scanbook 큰 흐름이 안정된 뒤 진행.
 - `epub2org/AGENTS.md`와 `.beads/` 삭제 이력 있음. beads는 이제 안 씀.

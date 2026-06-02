@@ -21,62 +21,69 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
 | GitHub Stars | ✅ 구현됨 | `gh_starred_to_bib.sh` | gh CLI + jq → BibTeX |
 | Dooray Wiki | 🔧 개발 중 | - | - |
-| Scan PDF / OCR | 🔧 실험 중 | `scanpdf2org/`, `marker-pdf`, `marker/diff_review` | vision transcription + marker OCR 교차검증 |
+| Scan PDF / EPUB | ✅ 활성 | `.claude/skills/scanbook/`, `mineru-client/`, `scripts/mineru2org.py`, `./run.sh mineru-*`, `./run.sh diff-review`, `./run.sh org2epub-build` | MinerU VLM → Org → EPUB. 새 세션은 scanbook 스킬부터 읽기 |
 
 ---
 
-## 문서 OCR / PDF 변환 툴체인
+## 스캔 책 → Org/EPUB 변환 툴체인
 
-이 섹션은 스캔 책 → Org/Markdown/EPUB 변환을 위한 재현 가능한 도구 경계를 정리한다.
-`nixos-config`에는 편의상 PDF/EPUB/OCR 도구가 전역 설치되어 있지만, memex-kb 자체도
-다른 머신에서 같은 작업을 재현할 수 있어야 하므로 `flake.nix`에 CLI 도구를 포함한다.
+현재 기준선(2026-06)은 **MinerU VLM → `scripts/mineru2org.py` → Org → ox-epub**이다.
+새 세션에서 `물리학강의`, `mineru`, `스캔책`, `epub 만들` 같은 작업을 시작하면 먼저
+repo-local skill **`.claude/skills/scanbook/SKILL.md`** 를 읽는다. run.sh는 로컬 명령만 담고,
+스킬은 원격 GPU 서버, 책별 config 작성법, 교정 판단, EPUB 함정을 담는다.
+
+### 경계와 진입점
+
+| 구성요소 | 역할 | 메모 |
+|----------|------|------|
+| `.claude/skills/scanbook/SKILL.md` | 운영 절차 SSOT | gpu2i 서버 확인, 5단계 파이프라인, 교정 전략, 새 책 체크리스트 |
+| `mineru-client/` | 로컬 얇은 클라이언트 | 추론은 원격 gpu2i vLLM; 로컬은 HTTP client |
+| `./run.sh mineru-setup` | MinerU client 설치 | `uv sync`; opencv-headless override |
+| `./run.sh mineru-parse <PDF> [OUT]` | PDF → Markdown + `content_list.json` + images | SSH tunnel 자동 생성. 서버 자체는 nixos 담당 영역 |
+| `scripts/mineru2org.py` | MinerU Markdown → clean Org | headings/footnotes/equations/images/HTML residue/EPUB header 처리 |
+| `scripts/corrections/<book>.json` | 책별 구조·교정 SSOT | `meta`, `structure`, `safe_regex`, `literal`, `candidate_regex` |
+| `./run.sh diff-review <a> <b>` | 전사본 충돌점 추출 | 엔진 무관 QA. marker 전용 명령이 아님 |
+| `./run.sh org2epub-build <book.org>` | Org → EPUB3 + epubcheck | `~/repos/gh/ox-epub` fork를 직접 로드 |
+| `scanpdf/` | nested private repo | PDF, MinerU outputs, EPUB 등 책 데이터는 여기서 추적 |
+| `scanpdf2org/` | 이전 vision 전사 표면 | 이미 있는 vision본은 oracle로 쓸 수 있지만 새 책 primary는 아님 |
+
+### 원격 MinerU 서버
+
+- 서버: `gpu2i` tmux session `mineru-vllm`, vLLM `MinerU2.5-Pro`, port `30000`.
+- 새 parse 전 먼저 확인:
+
+```bash
+ssh gpu2i 'tmux ls | grep mineru-vllm'
+```
+
+- 없으면 GLG / nixos 담당에게 요청한다. memex-kb 세션에서 직접 서버를 띄우지 않는다.
+- `./run.sh mineru-parse`는 `localhost:30000 → gpu2i:30000` SSH tunnel만 자동 보장한다.
+
+### 교정 전략
+
+MinerU가 본문·수식·그림을 빠르게 깔아주지만, 책의 핵심어 OCR 오독은 남을 수 있다.
+자동 치환은 안전한 규칙만 적용한다.
+
+- `safe_regex`: 문맥 없이도 안전한 정규식만 자동 적용.
+- `literal`: 검증된 정확 문자열 치환.
+- `candidate_regex`: 로그만 남기고 본문은 건드리지 않음.
+- 애매한 후보는 사람/LLM이 문맥을 읽어 경량 교정한다.
+- 이미 vision 전사본이 있는 책은 `diff-review`로 oracle처럼 비교할 수 있다.
+
+### 은퇴한 경로
+
+- **vision/Opus 전체 전사**: 새 책 primary가 아니다. 기존 전사본은 gold/oracle로만 사용.
+- **marker/surya OCR**: memex-kb에서 제거됨. `marker-pdf`, `marker-diff`, `marker/STRATEGY.md`를 문서나 새 작업 지시의 primary로 쓰지 않는다.
+- **tesseract / ocrmypdf**: 한글 스캔 품질 문제로 flake/run.sh에서 제거됨.
 
 ### flake.nix에 포함한 경량/중간급 도구
 
 | 도구 | 역할 | 메모 |
 |------|------|------|
-| `mupdf` / `mutool` | PDF 조작·추출·점검 | CLI 작업면. GUI 뷰어는 전역 `zathura` 사용 가능 |
+| `mupdf` / `mutool` | PDF 조작·추출·점검 | `pdfinfo`/page sanity, 이미지/페이지 확인 보조 |
 | `poppler_utils` | `pdfinfo`, `pdftotext`, `pdfimages` | born-digital PDF 구조 점검/추출 보조 |
 | `epubcheck` | EPUB 검증 | `./run.sh org2epub-build` 검증에도 사용 |
-| `uv` | PyPI ML 도구 잠금/venv 관리 | `marker-pdf` venv/lock 러너 |
-
-> **tesseract / ocrmypdf 제거됨 (2026-06-02).** 한글 스캔 OCR 품질이 사용 불가 수준이라
-> ("온 쟁 명"=온생명 오독) flake에서 뺐다. OCR 경로는 marker(surya)로 일원화. 근거:
-> `marker/SMOKE-RESULTS.md`. marker는 nixpkgs 미패키징이라 `uv` venv로 관리하며,
-> NixOS+PyPI wheel 충돌 우회(PYTHONPATH 제거 + nix-ld libstdc++)는 `run.sh`에 내장.
-
-### OCR의 역할 — 전사 대체가 아니라 교차검증/부담 절감
-
-목표는 “OCR만으로 끝내기”가 아니라 **에이전트가 직접 읽어야 할 일을 줄이면서 품질을 가드**하는 것.
-smoke 결과 vision-only는 유창하지만 환각/정규화 실패 모드가, marker(OCR)는 충실하지만
-가끔 글자 오독이 있다. **어느 쪽도 단독 신뢰 불가** → diff-guided 교차검증:
-
-1. `./run.sh marker-pdf`로 marker 충실 Markdown 1차본을 만들고,
-2. `./run.sh marker-diff <md> <org>`로 vision 전사본과 갈린 **충돌점만** 추출하고,
-3. 에이전트가 페이지 전체 재독 없이 **충돌점만 이미지로 판정**해 정정한다.
-
-전략 전문: `marker/STRATEGY.md`.
-
-### 수식 OCR
-
-- 수식·표가 많은 책은 `marker-pdf`(surya) / `nougat` 계열로 보낸다.
-- marker의 LaTeX·표 처리력은 산문 smoke 이후 별도 평가 예정(`marker/STRATEGY.md` §4).
-
-### nixpkgs에 없는 무거운 ML 도구 — 별도 트랙
-
-nixpkgs 25.11 기준 `marker-pdf`, `pix2tex`, `texify`는 미패키징이다.
-현재 memex-kb에서는 **marker-pdf만 우선** 별도 관리한다. `nougat`은 당장 넣지 않는다.
-
-1. **marker-pdf** — 1순위. PDF 전체 → Markdown+LaTeX, 표·수식 인식. CPU 가능하지만 무거움.
-2. **pix2tex / texify** — 단일 수식 이미지 → LaTeX. 필요 시 부분 도구로 도입.
-3. **nougat** — 보류. 학술 PDF 전용 대안이지만 현재 closure/운영 복잡도를 늘리지 않는다.
-
-결정 대기:
-
-- `marker-pdf`를 uv-managed venv/lockfile로 pin할지, 별도 flake input으로 감쌀지 결정.
-- `memex-kb` flake.lock의 nixpkgs rev는 `nixos-config` lock에 맞춰 store path 중복을 줄인다.
-- thinkpad에는 GPU가 없다고 보고 CPU 추론을 전제한다.
-- 배치 변환은 `tmux` 장시간 작업으로 실행한다.
+| `uv` | PyPI client 도구 잠금/venv 관리 | `mineru-client/` 설치 |
 
 ---
 

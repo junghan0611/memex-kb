@@ -4,6 +4,15 @@ All notable changes, tracked by CalVer date tags.
 
 ## Unreleased
 
+### Features
+
+- **Repo-local `scanbook` skill**: `.claude/skills/scanbook/SKILL.md` captures the scanned-book → EPUB operating procedure that `run.sh` cannot own: remote gpu2i MinerU server checks, per-book correction config authoring, safe-vs-candidate correction strategy, GPT structure-review loop, EPUB gotchas, and the new-book checklist.
+- **pi skill loading for this repo**: `.pi/settings.json` loads `../.claude/skills`, voscli-style, so a fresh pi/Claude session can pick up `scanbook` automatically.
+
+### Docs
+
+- Updated repository guidance to make MinerU the primary scan-to-EPUB path and to mark vision/Opus full transcription plus marker/surya OCR as retired/fallback-only.
+
 ## v2026.6.2
 
 First CalVer snapshot. memex-kb is a mixed document-workflow toolkit

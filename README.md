@@ -48,9 +48,12 @@ memex-kb is useful when you want to:
 | `templates/presentation/` | Quarto / Reveal.js HTML presentation template |
 | `templates/presentation-pptx/` | **org2pptx**: inject Org-mode content into an existing PPTX template while preserving layout/design |
 | `proposal-pipeline/` | Google Docs → Markdown → Org-mode → ODT/DOC proposal workflow |
-| `scanpdf2org/` | Scanned PDF → page PNG → agent vision transcription → Org (OCR-less primary path) |
-| `./run.sh marker-pdf` / `marker-diff` | marker(surya) faithful OCR draft + `diff_review` quality-guard: cross-check vision vs OCR, adjudicate only divergences. See `marker/STRATEGY.md` |
+| `.claude/skills/scanbook/` | Repo-local operating manual for scanned-book work. New agents should read this first for MinerU server checks, per-book config, correction strategy, and EPUB gotchas |
+| `./run.sh mineru-setup` / `mineru-parse` | Scanned PDF → MinerU VLM Markdown + `content_list.json` + images, using the remote gpu2i vLLM server through an SSH tunnel |
+| `scripts/mineru2org.py` + `scripts/corrections/*.json` | MinerU Markdown → clean Org: structure recovery, footnotes, images, LaTeX, EPUB metadata, and book-specific corrections |
+| `./run.sh diff-review` | Engine-agnostic QA helper for comparing two transcriptions and surfacing only conflicts |
 | `./run.sh org2epub-build` | Org → clean **EPUB 3.0** using the maintained local `~/repos/gh/ox-epub` fork directly; supports images, LaTeX→SVG math, tables, footnotes, TOC, Korean, and `epubcheck` validation |
+| `scanpdf2org/` | Older page-render + vision-transcription surface; kept as a fallback/oracle path, not the primary scanned-book pipeline |
 
 ---
 
@@ -65,6 +68,8 @@ memex-kb/
 ├── DENOTE-RULES.md
 ├── run.sh                         # Primary command entry point
 ├── flake.nix                      # Reproducible dev environment
+├── .claude/skills/scanbook/       # Repo-local scanned-book → EPUB operating manual
+├── .pi/settings.json              # Loads repo-local skills for pi sessions
 ├── config/                        # Local env/config templates
 ├── scripts/                       # Main backend and utility scripts
 │   ├── adapters/
@@ -74,13 +79,15 @@ memex-kb/
 │   ├── gh_starred_to_bib.sh
 │   ├── md_to_gdocs.py
 │   ├── md_to_gdocs_html.py
+│   ├── mineru2org.py
 │   └── naver_blog_crawler.py
+├── mineru-client/                 # Thin local client for remote gpu2i MinerU vLLM
 ├── templates/
 │   ├── arxiv-acm/
 │   ├── presentation/
 │   └── presentation-pptx/
 ├── proposal-pipeline/            # Proposal authoring and export pipeline
-├── scanpdf2org/                  # Scanned PDF → Org (vision transcription)
+├── scanpdf2org/                  # Older scanned PDF → page render → vision fallback
 ├── epub2org/                     # EPUB → Org (reverse direction)
 ├── hwpx2org/                     # HWPX/Org-related conversion utilities
 ├── orgadoc2odt/                  # AsciiDoc/ODT conversion utilities
@@ -94,6 +101,8 @@ memex-kb/
 - **`scripts/`**: the main place for backend integrations and conversion entry points
 - **`templates/`**: reusable starter templates for papers and presentations
 - **`proposal-pipeline/`**: the most opinionated end-to-end workflow in the repo
+- **`.claude/skills/scanbook/`**: the durable operating guide for scanned-book → EPUB work; read before touching `scanpdf/work/<book>/`
+- **`mineru-client/`, `scripts/mineru2org.py`, `scripts/corrections/*.json`**: the current MinerU → Org → EPUB path
 - **`office/`**: practical working examples and proposal artifacts
 - **`hwpx2org/` and `orgadoc2odt/`**: lower-level format conversion experiments and tools
 

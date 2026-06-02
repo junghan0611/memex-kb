@@ -21,7 +21,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
 | GitHub Stars | ✅ 구현됨 | `gh_starred_to_bib.sh` | gh CLI + jq → BibTeX |
 | Dooray Wiki | 🔧 개발 중 | - | - |
-| Scan PDF / OCR | 🔧 실험 중 | `scanpdf2org/`, `ocrmypdf`, `marker-pdf`(예정) | vision transcription + OCR/ML 검증 |
+| Scan PDF / OCR | 🔧 실험 중 | `scanpdf2org/`, `marker-pdf`, `marker/diff_review` | vision transcription + marker OCR 교차검증 |
 
 ---
 
@@ -36,46 +36,31 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | 도구 | 역할 | 메모 |
 |------|------|------|
 | `mupdf` / `mutool` | PDF 조작·추출·점검 | CLI 작업면. GUI 뷰어는 전역 `zathura` 사용 가능 |
-| `poppler_utils` | `pdfinfo`, `pdftotext`, `pdfimages` fallback | 구조 점검/추출 보조 |
-| `tesseract` | OCR 엔진 | `eng`, `kor`, `osd`만 enable |
-| `ocrmypdf` | 스캔 PDF → searchable PDF | overridden `tesseractKor`를 공유해 전체 언어팩 중복 방지 |
+| `poppler_utils` | `pdfinfo`, `pdftotext`, `pdfimages` | born-digital PDF 구조 점검/추출 보조 |
 | `epubcheck` | EPUB 검증 | `./run.sh org2epub-build` 검증에도 사용 |
-| `uv` | PyPI ML 도구 잠금/venv 관리 | `marker-pdf` 등 nixpkgs 미패키징 도구용 |
+| `uv` | PyPI ML 도구 잠금/venv 관리 | `marker-pdf` venv/lock 러너 |
 
-Tesseract override 패턴:
+> **tesseract / ocrmypdf 제거됨 (2026-06-02).** 한글 스캔 OCR 품질이 사용 불가 수준이라
+> ("온 쟁 명"=온생명 오독) flake에서 뺐다. OCR 경로는 marker(surya)로 일원화. 근거:
+> `marker/SMOKE-RESULTS.md`. marker는 nixpkgs 미패키징이라 `uv` venv로 관리하며,
+> NixOS+PyPI wheel 충돌 우회(PYTHONPATH 제거 + nix-ld libstdc++)는 `run.sh`에 내장.
 
-```nix
-let
-  tesseractKor = pkgs.tesseract.override {
-    enableLanguages = [ "eng" "kor" "osd" ];
-  };
-  ocrmypdfKor = pkgs.ocrmypdf.override {
-    tesseract = tesseractKor;
-  };
-in [ tesseractKor ocrmypdfKor ]
-```
+### OCR의 역할 — 전사 대체가 아니라 교차검증/부담 절감
 
-`osd`는 `ocrmypdf --rotate-pages` / `--deskew`가 사용한다. `ocrmypdf`는 내부 경로에
-`tesseract`를 박기 때문에 반드시 override로 같은 엔진을 넘겨야 전체 언어팩 closure가
-중복으로 들어오지 않는다.
+목표는 “OCR만으로 끝내기”가 아니라 **에이전트가 직접 읽어야 할 일을 줄이면서 품질을 가드**하는 것.
+smoke 결과 vision-only는 유창하지만 환각/정규화 실패 모드가, marker(OCR)는 충실하지만
+가끔 글자 오독이 있다. **어느 쪽도 단독 신뢰 불가** → diff-guided 교차검증:
 
-### OCR의 역할 — 전사 대체가 아니라 검증/부담 절감
+1. `./run.sh marker-pdf`로 marker 충실 Markdown 1차본을 만들고,
+2. `./run.sh marker-diff <md> <org>`로 vision 전사본과 갈린 **충돌점만** 추출하고,
+3. 에이전트가 페이지 전체 재독 없이 **충돌점만 이미지로 판정**해 정정한다.
 
-현재 《물질, 생명, 인간》 실험에서는 Opus vision transcription 품질이 매우 높았다.
-따라서 일반 본문 전사에서는 OCR을 필수로 보지 않는다. 다만 더 적극적인 자동화에서는:
+전략 전문: `marker/STRATEGY.md`.
 
-1. `ocrmypdf` / `tesseract`로 searchable text와 page orientation을 얻고,
-2. `marker-pdf` 같은 ML PDF→Markdown 모델로 수식·표·레이아웃 후보를 만들고,
-3. 에이전트 vision이 OCR/marker 결과를 대조·수정하며,
-4. 최종 Org/EPUB을 빌드한다.
+### 수식 OCR
 
-즉 목표는 “OCR만으로 끝내기”가 아니라 **에이전트가 직접 읽어야 할 일을 줄이는 것**이다.
-
-### 수식 OCR 한계
-
-- `tesseract`의 `equ.traineddata`는 존재하지만 품질이 낮아 수식 영역 감지 수준에 가깝다.
-- 책 수식 변환에는 부적합하므로 전역/flake override에서 `equ`를 제외한다.
-- 수식·표가 많은 책은 `tesseract/ocrmypdf`가 아니라 `marker-pdf` / `nougat` 계열로 보낸다.
+- 수식·표가 많은 책은 `marker-pdf`(surya) / `nougat` 계열로 보낸다.
+- marker의 LaTeX·표 처리력은 산문 smoke 이후 별도 평가 예정(`marker/STRATEGY.md` §4).
 
 ### nixpkgs에 없는 무거운 ML 도구 — 별도 트랙
 

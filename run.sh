@@ -341,16 +341,45 @@ cmd_scanpdf2org_render() {
     run_cmd "nix develop --command python ${PROJECT_DIR}/scanpdf2org/scripts/pdf_to_images.py ${args}"
 }
 
-cmd_ocr_pdf() {
-    # DESC: 스캔 PDF → searchable PDF (검증/보조 OCR, 기본 kor+eng)
-    # USAGE: ocr-pdf <INPUT.pdf> [OUTPUT.pdf] [LANGS]
-    # EXAMPLE: ocr-pdf scanpdf/물질생명인간001.pdf /tmp/물질생명인간-ocr.pdf
-    # NOTE: flake의 ocrmypdf는 eng+kor+osd tesseract override를 공유한다. 전사 대체가 아니라 검증/보조용.
+# ── marker (surya OCR) — 충실 전사 + 품질 가드 ───────────────────────
+#
+# NixOS + PyPI wheel 충돌 우회를 명령에 박는다:
+#   - PYTHONPATH 제거: nix develop 셸이 nix python Pillow를 주입해 _imaging 충돌.
+#   - LD_LIBRARY_PATH=nix-ld: PyPI numpy/torch가 찾는 libstdc++.so.6 공급.
+#     nix-ld 경로는 하드코딩 store hash 없이 머신 간 재현 가능.
+# 설치: nix develop --command uv sync --directory marker  (venv ~5G, torch+surya)
+
+MARKER_VENV="marker/.venv"
+MARKER_NIXLD="/run/current-system/sw/share/nix-ld/lib"
+
+cmd_marker_pdf() {
+    # DESC: 스캔 PDF → Markdown (marker/surya OCR, CPU). OCR 충실본 — 품질 가드용 1차본.
+    # USAGE: marker-pdf <INPUT.pdf> [OUTPUT_DIR]
+    # EXAMPLE: marker-pdf marker/smoke/물질생명인간-p86-91.pdf marker/out
+    # NOTE: CPU ~4분/쪽. 책 단위는 GPU/서버 권장. 환경 우회는 명령에 내장됨.
     ensure_project_dir
     local input="${1:?입력 PDF 경로 필요}"
-    local output="${2:-${input%.pdf}.ocr.pdf}"
-    local langs="${3:-kor+eng}"
-    run_cmd "nix develop --command ocrmypdf -l '${langs}' --rotate-pages --deskew --skip-text '${input}' '${output}'"
+    local outdir="${2:-marker/out}"
+    if [[ ! -x "${MARKER_VENV}/bin/marker_single" ]]; then
+        error "marker venv 없음. 설치: nix develop --command uv sync --directory marker"
+        return 1
+    fi
+    run_cmd "env -u PYTHONPATH LD_LIBRARY_PATH='${MARKER_NIXLD}' TORCH_DEVICE=cpu ${MARKER_VENV}/bin/marker_single '${input}' --output_dir '${outdir}' --output_format markdown"
+}
+
+cmd_marker_diff() {
+    # DESC: marker(OCR 충실본) ↔ vision(구조본) 충돌점 추출. 페이지 전체 재독 없이 갈린 곳만 판정.
+    # USAGE: marker-diff <marker.md> <vision.org>
+    # EXAMPLE: marker-diff marker/out/물질생명인간-p86-91/물질생명인간-p86-91.md scanpdf/work/물질생명인간/org/02장-02절.org
+    # NOTE: 충돌점은 이미지로 판정. 숫자/고유명사/구절은 marker, 애매문자/탈자는 vision이 강한 편(양방향).
+    ensure_project_dir
+    local mk="${1:?marker Markdown 경로 필요}"
+    local vi="${2:?vision Org/텍스트 경로 필요}"
+    if [[ -x "${MARKER_VENV}/bin/python" ]]; then
+        run_cmd "env -u PYTHONPATH ${MARKER_VENV}/bin/python marker/scripts/diff_review.py '${mk}' '${vi}'"
+    else
+        run_cmd "nix develop --command python marker/scripts/diff_review.py '${mk}' '${vi}'"
+    fi
 }
 
 # ── Org→EPUB (org-mode → clean EPUB 3.0) ─────────────────────────────
@@ -572,7 +601,8 @@ COMMANDS=(
     "arxiv-build:cmd_arxiv_build"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
-    "ocr-pdf:cmd_ocr_pdf"
+    "marker-pdf:cmd_marker_pdf"
+    "marker-diff:cmd_marker_diff"
     "--- Org→EPUB"
     "org2epub-build:cmd_org2epub_build"
     "--- Utility"

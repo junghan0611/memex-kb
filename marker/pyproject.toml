@@ -1,0 +1,8 @@
+[project]
+name = "memex-marker"
+version = "0.1.0"
+description = "uv-managed marker-pdf runner for scanpdf2org smoke tests (CPU inference)"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "marker-pdf>=1.2.0",
+]

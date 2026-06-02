@@ -4,39 +4,63 @@
 
 ---
 
-## ★ 다음 작업 — 품질 가드 전략 확보됨, 적용 단계 (2026-06-02 갱신)
+## ★ 다음 작업 — MinerU로 《물질, 생명, 인간》 풀가동 (2026-06-02)
 
-**smoke 1 완료 + 전략 도구화 완료.** 전략: `marker/STRATEGY.md`, 근거: `marker/SMOKE-RESULTS.md`.
+**엔진 확정: MinerU VLM (원격 vLLM, gpu2i RTX 5080).** marker(CPU 4분/쪽)는 검수용으로
+강등. MinerU는 6쪽 2초 + **수식 LaTeX·그림 자동 추출** — 산문/수식그림 둘 다 검증됨.
 
-전략 한 줄: **marker(충실 OCR) ↔ vision(유창 구조)를 자동 diff로 충돌점만 추출,
-LLM은 페이지 재독 없이 충돌점만 이미지로 판정**(`diff_review`). 양쪽 약점
-(vision 환각/정규화 + marker 글자오독)을 동시에 잡는다 = "덜 수고 + 품질 가드".
+### 새 세션 시작 체크리스트 (이 순서로)
 
-검증된 근거(2장 2절 6쪽, 30 충돌점 자동추출):
+```bash
+# 0) 서버 살아있나 (nixos 담당이 gpu2i tmux 'mineru-vllm' 으로 띄움)
+ssh gpu2i 'tmux ls | grep mineru-vllm'        # 없으면 GLG/nixos담당에게 요청
+# 1) 클라이언트 (없으면)
+./run.sh mineru-setup                          # uv sync 한 번, opencv-headless 자동
+# 2) 터널 자동 + 파싱 (한 장 범위부터)
+./run.sh mineru-parse <INPUT.pdf> mineru-client/out
+```
 
-- marker 정답/vision 오류: 93쪽(89 오기), 라세(라셰 정규화), 초래할(결정짓는), 필연적으로(구절환각), 대해(누락), 되냐고(추가) …
-- vision 정답/marker 오류(반증): 버금가는(marker 가→기 오독).
-- → **어느 엔진도 절대 권위 아님. 양방향 판정 필수.**
+서버 안 떠 있으면 `curl localhost:30000/health` 실패 → 먼저 서버부터.
 
-구축물(이번 세션):
+### 목표 워크플로 (장 단위 반복)
 
-- `./run.sh marker-pdf <pdf>` — 충실 OCR 전사. NixOS env 우회(PYTHONPATH 제거 + nix-ld libstdc++) 내장.
-- `./run.sh marker-diff <md> <org>` — 충돌점 추출(`marker/scripts/diff_review.py`, stdlib).
-- `marker/` uv 프로젝트(pyproject+`uv.lock`). 설치 `nix develop --command uv sync --directory marker`.
+1. **페이지 범위 추출**: `scanpdf/물질생명인간001.pdf`(261쪽)에서 장별 물리페이지로 잘라 `mutool clean -gggg`.
+   offset(하단 쪽번호 직접 확인): 1장 인쇄=물리+2, 2장=+4, 3장=+5, 4장=+6. (PROGRESS.md 참조)
+2. **MinerU 파싱**: `./run.sh mineru-parse <장.pdf>` → `out/<장>/vlm/<장>.md` (+ images/, content_list.json)
+3. **대조 QA**: `./run.sh marker-diff <mineru.md> <vision.org>` — `diff_review`는 엔진 무관.
+   vision본 = `scanpdf/work/물질생명인간/org/0N장-0M절.org` (Opus 5병렬 전사, 1~4장 완료).
+   충돌점만 페이지 이미지로 판정 → 원문 충실한 쪽 채택. (vision 환각/정규화 + MinerU 오독 둘 다 잡힘)
+4. **최종 org 병합** → `./run.sh org2epub-build` (ox-epub 포크).
 
-다음 (적용):
+### MinerU 품질 메모 (검수 포인트)
 
-1. **Mode B 즉시** — 1~4장 vision org를 `marker-pdf`+`marker-diff`로 QA, 충돌점 이미지 판정해 환각/탈자 정정. 가장 빠른 이득.
-2. **수식/표 smoke** — 산문만 검증됨. 4장/`물리의정석`으로 marker LaTeX·표 평가(Mode A 관문).
-3. **marker 본격 전사는 GPU/서버 오버나잇** — CPU ~4분/쪽(261쪽 ~17h). flake portable → NUC/Oracle tmux.
-4. marker 신뢰도 점수 활용한 자동 플래그 + heading/각주 구조 후처리 스크립트.
+- 대체로 원문 충실(라세프스키·되냐고 정확). 단 소소 오독: `# 2`(절번호가 헤더로), 탈자(사람들이었다/갖),
+  장식 헤더 오독(막간2→막강2). → diff_review로 잡는다.
+- **그림 `<details>` 데이터표는 VLM 추정치** — 비검증, 본문 채택 금지. 그림은 `images/*.jpg` 파일만 신뢰.
+- 헤딩 레벨/각주 위치는 후처리 필요(MinerU는 `#`만, org 위계는 따로).
 
-기준선/준비(유지):
+### 결정 남은 것
 
-- vision-only Opus 5병렬 1~4장 전사 완료. 단 환각/정규화 주의 — Mode B QA 대상.
-- flake dev shell: `tesseract(eng+kor+osd)`, `ocrmypdf`, `mupdf`, `poppler-utils`, `epubcheck`, `uv`.
-- `marker/`: `.venv`/`out`/`smoke` gitignore, 추적은 pyproject+lock+scripts+문서만. venv 5.1G.
-- `scanpdf` private Forgejo `glg-bot/scanpdf`. work server rsync 완료.
+- 참고문헌/찾아보기 전사 여부(듣기용 EPUB면 생략 가능 — 기존 NEXT 판단 유지).
+- 책 전체를 한 번에 `mineru-parse`(261쪽, 분 단위) vs 장별. 한 번에가 빠름.
+- MinerU md → org 정규화 스크립트(heading/각주/인용괄호) 만들지.
+
+### 인프라 (의존)
+
+- **서버(외부 의존)**: gpu2i tmux `mineru-vllm`, vllm 0.11.2, `MinerU2.5-Pro-2605-1.2B`, port 30000, served `mineru`. nixos 담당 영역. 영구화(systemd) 여부 미정.
+- 클라이언트(memex-kb): `./run.sh mineru-setup`/`mineru-parse` 완비. thinkpad는 SSH 터널(자동).
+- 클러스터: gpu2i 기존 `default` 채팅모델 내리고 MinerU로 swap함(nixos담당). gpu3i는 임베딩 튜닝용(vllm off).
+
+---
+
+## 품질 가드 도구 (marker → 검수 레이어로 강등, 유지)
+
+`marker/STRATEGY.md` / `marker/SMOKE-RESULTS.md`. 핵심: **어느 엔진도 절대 권위 아님 →
+diff로 충돌점만 LLM이 이미지 판정**. MinerU 시대에도 `diff_review`가 그대로 QA 도구.
+
+- `./run.sh marker-diff <md> <org>` = `marker/scripts/diff_review.py`(stdlib, 엔진 무관).
+- `./run.sh marker-pdf` = marker surya OCR(CPU 4분/쪽). 이제 1차본 아님, 교차검증용 보조.
+- 근거(2장2절 6쪽): marker 정답례(93쪽·라세·초래할·필연적으로·대해·되냐고) / vision 정답례(버금가는).
 
 ---
 

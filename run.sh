@@ -382,6 +382,58 @@ cmd_marker_diff() {
     fi
 }
 
+# ── MinerU (VLM, 원격 vLLM) — 충실 전사 + 수식/그림 추출 ──────────────
+#
+# 추론은 gpu2i RTX 5080의 vLLM이 한다(served-name: mineru). 로컬은 얇은 클라이언트.
+# - 서버: nixos 담당이 gpu2i tmux로 vllm 0.11.2 서빙 (MinerU2.5-Pro-2605-1.2B).
+# - thinkpad는 10G망 직접 못 닿아 SSH 터널로 붙는다(자동 보장).
+# - 로컬 NixOS 우회: PYTHONPATH 제거(nix Pillow 충돌) + opencv-python-headless.
+#   추론이 원격이라 로컬엔 torch/CUDA/triton 불필요(클라 venv ~480M).
+# 설치: nix develop --command uv sync --directory mineru-client
+#       그 뒤 opencv-python → headless 로 교체(uv pip).
+
+MINERU_VENV="mineru-client/.venv"
+MINERU_NIXLD="/run/current-system/sw/share/nix-ld/lib"
+MINERU_TUNNEL_HOST="${MINERU_TUNNEL_HOST:-gpu2i}"   # ssh alias (ProxyJump 포함)
+MINERU_PORT="${MINERU_PORT:-30000}"
+
+cmd_mineru_setup() {
+    # DESC: MinerU 클라이언트 설치(재현). uv sync 한 번 — opencv는 pyproject override로 headless 자동.
+    # USAGE: mineru-setup
+    # NOTE: 추론 원격이라 로컬 torch/CUDA/vLLM 불필요. venv ~480M.
+    ensure_project_dir
+    run_cmd "nix develop --command uv sync --directory mineru-client"
+    info "임포트 검증..."
+    if env -u PYTHONPATH LD_LIBRARY_PATH="${MINERU_NIXLD}" "${MINERU_VENV}/bin/python" -c "import cv2, magika" 2>/dev/null; then
+        success "mineru 클라이언트 준비됨. 사용: ./run.sh mineru-parse <pdf>"
+    else
+        error "임포트 실패. LD_LIBRARY_PATH(nix-ld) 또는 opencv-headless 확인"
+        return 1
+    fi
+}
+
+cmd_mineru_parse() {
+    # DESC: PDF/이미지 → Markdown+LaTeX+그림추출 (MinerU VLM, 원격 gpu2i 5080)
+    # USAGE: mineru-parse <INPUT.pdf|DIR> [OUTPUT_DIR]
+    # EXAMPLE: mineru-parse marker/smoke/물질생명인간-p86-91.pdf mineru-client/out
+    # ENV: MINERU_TUNNEL_HOST(기본 gpu2i) MINERU_PORT(기본 30000)
+    # NOTE: 터널 자동 보장. 클러스터 내부(192.168.2.x)면 MINERU_TUNNEL_HOST 비우고 직접 URL도 가능.
+    ensure_project_dir
+    local input="${1:?입력 PDF/이미지/디렉토리 필요}"
+    local outdir="${2:-mineru-client/out}"
+    if [[ ! -x "${MINERU_VENV}/bin/mineru" ]]; then
+        error "mineru 클라이언트 없음. 설치: nix develop --command uv sync --directory mineru-client (이후 opencv-headless 교체)"
+        return 1
+    fi
+    # 터널 보장: localhost:PORT 헬스 안 되면 ssh -fN 으로 띄운다
+    if ! curl -sf -m 3 "http://localhost:${MINERU_PORT}/health" >/dev/null 2>&1; then
+        info "터널 띄움: localhost:${MINERU_PORT} → ${MINERU_TUNNEL_HOST}:${MINERU_PORT}"
+        ssh -fN -o ExitOnForwardFailure=yes -L "${MINERU_PORT}:localhost:${MINERU_PORT}" "${MINERU_TUNNEL_HOST}" || {
+            error "터널 실패. ssh ${MINERU_TUNNEL_HOST} 확인"; return 1; }
+    fi
+    run_cmd "env -u PYTHONPATH LD_LIBRARY_PATH='${MINERU_NIXLD}' ${MINERU_VENV}/bin/mineru -p '${input}' -o '${outdir}' -b vlm-http-client -u http://localhost:${MINERU_PORT}"
+}
+
 # ── Org→EPUB (org-mode → clean EPUB 3.0) ─────────────────────────────
 
 cmd_org2epub_build() {
@@ -603,6 +655,8 @@ COMMANDS=(
     "scanpdf2org-render:cmd_scanpdf2org_render"
     "marker-pdf:cmd_marker_pdf"
     "marker-diff:cmd_marker_diff"
+    "mineru-setup:cmd_mineru_setup"
+    "mineru-parse:cmd_mineru_parse"
     "--- Org→EPUB"
     "org2epub-build:cmd_org2epub_build"
     "--- Utility"

@@ -1,0 +1,14 @@
+[project]
+name = "memex-mineru-client"
+version = "0.1.0"
+description = "MinerU vlm-http-client (remote vLLM on gpu2i). No local GPU/torch."
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "mineru",
+    "opencv-python-headless",   # 헤드리스 NixOS: full opencv는 libxcb 부재로 크래시
+]
+
+# mineru가 끌어오는 full opencv-python을 설치하지 않도록 막는다(headless가 cv2 제공).
+# → `uv sync` 한 번으로 headless-only 가 되어 별도 교체 단계가 필요 없다.
+[tool.uv]
+override-dependencies = ["opencv-python ; sys_platform == 'never'"]

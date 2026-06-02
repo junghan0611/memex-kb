@@ -4,46 +4,95 @@
 
 ---
 
-## ★ 다음 작업 — MinerU로 《물질, 생명, 인간》 풀가동 (2026-06-02)
+## ★★★ MinerU→후처리→org→EPUB 파이프라인 완성 (2026-06-02 15:10)
 
-**엔진 확정: MinerU VLM (원격 vLLM, gpu2i RTX 5080).** marker(CPU 4분/쪽)는 검수용으로
-강등. MinerU는 6쪽 2초 + **수식 LaTeX·그림 자동 추출** — 산문/수식그림 둘 다 검증됨.
+**vision/Opus 전사 완전 은퇴. 풀 사이클 동작.** `MinerU → mineru2org.py(후처리) → org(이미지/수식/각주) → ox-epub`.
+물질생명인간 EPUB 생성 성공(epubcheck 통과 목표). 다음은 물리학강의(수식 많음).
 
-### 새 세션 시작 체크리스트 (이 순서로)
+### 파이프라인 구성요소
 
-```bash
-# 0) 서버 살아있나 (nixos 담당이 gpu2i tmux 'mineru-vllm' 으로 띄움)
-ssh gpu2i 'tmux ls | grep mineru-vllm'        # 없으면 GLG/nixos담당에게 요청
-# 1) 클라이언트 (없으면)
-./run.sh mineru-setup                          # uv sync 한 번, opencv-headless 자동
-# 2) 터널 자동 + 파싱 (한 장 범위부터)
-./run.sh mineru-parse <INPUT.pdf> mineru-client/out
-```
+- **변환기**: `scripts/mineru2org.py` (v2 = 구조 복원기). 책 config + content_list 구동.
+- **책 config**: `scripts/corrections/물질생명인간.json` — meta(epub 헤더) + structure(장 목록) + 교정사전 + candidate.
+- **QA**: `scripts/diff_review.py` (`./run.sh diff-review <a> <b>`, 엔진무관).
+- **산출**: `scanpdf/work/물질생명인간/mineru/` 아래 org + epub + .changes.log + .candidates.log.
 
-서버 안 떠 있으면 `curl localhost:30000/health` 실패 → 먼저 서버부터.
+### v2 후처리가 하는 일 (GPT 리뷰 REVIEW-gpt.md 반영)
 
-### 목표 워크플로 (장 단위 반복)
+| 패스 | 내용 |
+|------|------|
+| 표면변환 | 이미지 `![]()`→`[[file:]]`, 블록수식 `$$`→`\[\]`, 인라인 `$$`→`\(\)`, 각주 `$^{n}$`+유니코드위첨자(⁵⁸²³)→`[fn:n]` |
+| HTML정리 | `<details>`(7) 제거, mermaid 제거, `<table>`(4)→org 표 |
+| **구조복원** | 장 `*`(4) / 절 `**`(번호+제목 병합) / 소절 `***` / **가짜헤딩 강등**(①②, 〈도식〉, A B C, 10건). front-matter/TOC 컷, 책머리에 보존 |
+| **각주정의** | content_list `page_footnote`(20) → `* 각주` 섹션에 `[fn:n]` 정의 연결. 본문 떠도는 각주(1/2/19) 흡수. ref↔def 21 해소 |
+| 교정 | 안전 regex/literal 자동, 애매는 후보 로그 |
+| epub헤더 | config meta → `#+title/author/date/language/publisher/uid` + `#+options: ^:{} tex:dvisvgm` |
 
-1. **페이지 범위 추출**: `scanpdf/물질생명인간001.pdf`(261쪽)에서 장별 물리페이지로 잘라 `mutool clean -gggg`.
-   offset(하단 쪽번호 직접 확인): 1장 인쇄=물리+2, 2장=+4, 3장=+5, 4장=+6. (PROGRESS.md 참조)
-2. **MinerU 파싱**: `./run.sh mineru-parse <장.pdf>` → `out/<장>/vlm/<장>.md` (+ images/, content_list.json)
-3. **대조 QA**: `./run.sh marker-diff <mineru.md> <vision.org>` — `diff_review`는 엔진 무관.
-   vision본 = `scanpdf/work/물질생명인간/org/0N장-0M절.org` (Opus 5병렬 전사, 1~4장 완료).
-   충돌점만 페이지 이미지로 판정 → 원문 충실한 쪽 채택. (vision 환각/정규화 + MinerU 오독 둘 다 잡힘)
-4. **최종 org 병합** → `./run.sh org2epub-build` (ox-epub 포크).
+### 검증 (diff-review vs vision본)
 
-### MinerU 품질 메모 (검수 포인트)
+- **앎 오독 163 → 37건**(교정 마무리 후). 후보 97건 로그.
+- 수식 12개 LaTeX→SVG 렌더, 이미지 8개 임베드, 헤딩 계층 정연(장4/절/소절).
 
-- 대체로 원문 충실(라세프스키·되냐고 정확). 단 소소 오독: `# 2`(절번호가 헤더로), 탈자(사람들이었다/갖),
-  장식 헤더 오독(막간2→막강2). → diff_review로 잡는다.
+### 교정 전략 — 핵심 설계 결정 (영속 가치)
+
+- **단순 정규식 전수 치환 위험**: `앉은/않은/읽은`=정상어, `앞의`=정상어, `암`=暗/癌.
+  안전 규칙 = "오독 글자 + 그 글자가 동사어미로 못 받는 조사". 애매는 후보 로그 → LLM/사람.
+- **범용 해법 = LLM 경량 교정 패스**(MinerU 95% 위 5% 문맥교정). vision Opus 전체전사의 경량화.
+- 이 책 한정 검증: `암+조사`는 전수 검증 후 자동(暗/癌 부재). 다른 책은 그대로 쓰면 안 됨 → candidate부터.
+
+### ✅ EPUB 검증 완료
+
+`물질생명인간-mineru.epub` (241KB) — **epubcheck 0 fatals / 0 errors / 0 warnings**.
+수식 12개 SVG 임베드, 이미지 8개, toc.ncx 정상. 구조: 장4 / 절26 / 소절62 / 가짜헤딩강등10 / 찾아보기구분자드롭.
+(빌드 중 발견·수정: `\leqq`→`\leq` 비표준LaTeX, 찾아보기 자모구분자(7/□/人/⇒)가 수식-헤딩 돼 패키징 실패 → 색인 내부 헤딩 드롭.)
+
+### 남은 단계
+
+1. **잔여 교정 37 + 후보 97**: LLM 경량 패스(나/분신1) 또는 사람. 특히 `앉은/앞` 문맥 애매건. 각주 ref 7/11 미포착(정의는 있음).
+3. **용어집**: `mineru/split/찾아보기.md`(560항목) → org 용어집. 참고문헌도 citar 재료.
+4. **다음 책 물리학강의**: 같은 파이프라인. config 새로 작성(structure/meta). 수식 많음 → `text_image` 억제(GPT P4) 필요.
+5. **mineru2org.py 추가 개선**(GPT 우선순위): footnote stable id(page 기반), `text_image` 수식 격리, TOC 완전 분리.
+6. **커밋**: scanpdf(포지깃) + memex-kb(github). 둘 다 GLG 최종 결정.
+
+> GPT 후처리 리뷰 전문: `scanpdf/work/물질생명인간/mineru/REVIEW-gpt.md` (충돌 유형표 + P0~P5 개선안 + epub blocker).
+
+---
+
+## (이전) 판정 완료 — MinerU 단번 vs Opus5 병렬 (2026-06-02 12:40)
+
+**전체 261쪽 MinerU 파싱 1회 완료.** `mineru-client/out/물질생명인간001/vlm/물질생명인간001.md`
+(3,612줄, 헤딩 140, **이미지 24개 추출**). 소요 **약 3분**(12:35→12:38).
+분리본: `out/물질생명인간001/split/{본문1-4장,참고문헌,찾아보기}.md`.
+
+### 효율 판정 — 역할 분담이 정답 (둘 다 단독은 아님)
+
+| 축 | MinerU 단번 | Opus5 병렬(vision) |
+|----|------------|---------------------|
+| 속도 | **261쪽 3분, 전자동** | 한 세션 전체(병렬 분신 오케스트레이션) |
+| 커버리지 | **본문+참고문헌+찾아보기+이미지24** | 1~4장 본문만 |
+| 본문 문자 정확도 | △ — 핵심어 `앎` 광범위 오독 | **○ — `앎` 정확** |
+
+→ **결론: Opus5 병렬은 비효율 → 은퇴.** 단, MinerU 단독도 `앎` 문제로 본문 그대로 못 씀.
+**역할 분담**:
+- **1~4장 본문 → vision본 그대로 사용** (이미 정확, 재작업 불필요). diff 유사도 0.953.
+- **참고문헌·찾아보기·책머리에 → MinerU 채택** (vision이 안 한 영역. 단 `앎`류 후처리 필요).
+- **그림 24개 → MinerU `images/*.jpg` 사용.**
+- 향후 다른 책: **MinerU 1차 + 겹받침 후처리 사전 + diff QA**. Opus 병렬 안 씀.
+
+### ⚠️ MinerU 치명 약점 — 겹받침 `앎` 오독 (이 책 핵심어!)
+
+겹받침 ㄻ(`앎`)을 VLM이 못 읽어 **`암/앉/않/읽/앞`으로 ~160회 오독**. 목차·헤딩·찾아보기까지 전염:
+- 목차 "4장 …삶과 **암**"(←앎), 헤딩 "(1) 과학과 **않**의 틀"(←앎), 찾아보기 "객관적인 **암**·236"(←앎).
+- 다른 오독: `되↔뇌`, `펴↔피`, `렸↔렀`, `착상↔작성`, `버금기는`(←버금가는), `은생명`(←온생명), `바ächt다`(깨짐).
 - **그림 `<details>` 데이터표는 VLM 추정치** — 비검증, 본문 채택 금지. 그림은 `images/*.jpg` 파일만 신뢰.
-- 헤딩 레벨/각주 위치는 후처리 필요(MinerU는 `#`만, org 위계는 따로).
 
-### 결정 남은 것
+### 남은 한 걸음 (힣 복귀 후)
 
-- 참고문헌/찾아보기 전사 여부(듣기용 EPUB면 생략 가능 — 기존 NEXT 판단 유지).
-- 책 전체를 한 번에 `mineru-parse`(261쪽, 분 단위) vs 장별. 한 번에가 빠름.
-- MinerU md → org 정규화 스크립트(heading/각주/인용괄호) 만들지.
+1. **용어집 만들기** — `찾아보기.md`(560항목, 용어·쪽번호) 기반. `앎`류 받침 오독만 교정하면 골격 완성.
+   참고문헌(`참고문헌.md`, 1~4장별 분류 깔끔)도 용어집/citar 재료로 합류.
+2. **`앎` 후처리 사전** 만들지 결정 — 가변 오독(암/앉/않/읽)이라 단순 치환 위험(`암`=癌/暗 정상어).
+   1~4장은 vision본이 정확하니, `앎` 교정은 참고문헌/찾아보기/front-matter 소수 항목만 수동이면 충분.
+3. **최종 org 병합** → vision 1~4장 본문 + MinerU 참고문헌/찾아보기/이미지 → `./run.sh org2epub-build`.
+4. MinerU md → org 정규화 스크립트(heading 레벨/각주/인용괄호) 만들지.
 
 ### 인프라 (의존)
 

@@ -341,45 +341,20 @@ cmd_scanpdf2org_render() {
     run_cmd "nix develop --command python ${PROJECT_DIR}/scanpdf2org/scripts/pdf_to_images.py ${args}"
 }
 
-# ── marker (surya OCR) — 충실 전사 + 품질 가드 ───────────────────────
+# ── diff QA (엔진 무관) — 두 전사본 충돌점 추출 ──────────────────────
 #
-# NixOS + PyPI wheel 충돌 우회를 명령에 박는다:
-#   - PYTHONPATH 제거: nix develop 셸이 nix python Pillow를 주입해 _imaging 충돌.
-#   - LD_LIBRARY_PATH=nix-ld: PyPI numpy/torch가 찾는 libstdc++.so.6 공급.
-#     nix-ld 경로는 하드코딩 store hash 없이 머신 간 재현 가능.
-# 설치: nix develop --command uv sync --directory marker  (venv ~5G, torch+surya)
+# marker(surya OCR) 엔진은 은퇴(2026-06-02): MinerU VLM이 속도/정확도 둘 다 우위.
+# diff_review.py(stdlib)만 QA 도구로 보존 — MinerU md ↔ 기준본(vision/원본) 대조.
 
-MARKER_VENV="marker/.venv"
-MARKER_NIXLD="/run/current-system/sw/share/nix-ld/lib"
-
-cmd_marker_pdf() {
-    # DESC: 스캔 PDF → Markdown (marker/surya OCR, CPU). OCR 충실본 — 품질 가드용 1차본.
-    # USAGE: marker-pdf <INPUT.pdf> [OUTPUT_DIR]
-    # EXAMPLE: marker-pdf marker/smoke/물질생명인간-p86-91.pdf marker/out
-    # NOTE: CPU ~4분/쪽. 책 단위는 GPU/서버 권장. 환경 우회는 명령에 내장됨.
+cmd_diff_review() {
+    # DESC: 두 전사본(md/org) 충돌점만 추출. 페이지 전체 재독 없이 갈린 곳만 판정.
+    # USAGE: diff-review <a.md|org> <b.md|org>
+    # EXAMPLE: diff-review scanpdf/work/물질생명인간/mineru/split/본문1-4장.md scanpdf/work/물질생명인간/org/물질생명인간-epub.org
+    # NOTE: 엔진 무관 stdlib. 충돌점은 페이지 이미지로 판정 → 원문 충실한 쪽 채택.
     ensure_project_dir
-    local input="${1:?입력 PDF 경로 필요}"
-    local outdir="${2:-marker/out}"
-    if [[ ! -x "${MARKER_VENV}/bin/marker_single" ]]; then
-        error "marker venv 없음. 설치: nix develop --command uv sync --directory marker"
-        return 1
-    fi
-    run_cmd "env -u PYTHONPATH LD_LIBRARY_PATH='${MARKER_NIXLD}' TORCH_DEVICE=cpu ${MARKER_VENV}/bin/marker_single '${input}' --output_dir '${outdir}' --output_format markdown"
-}
-
-cmd_marker_diff() {
-    # DESC: marker(OCR 충실본) ↔ vision(구조본) 충돌점 추출. 페이지 전체 재독 없이 갈린 곳만 판정.
-    # USAGE: marker-diff <marker.md> <vision.org>
-    # EXAMPLE: marker-diff marker/out/물질생명인간-p86-91/물질생명인간-p86-91.md scanpdf/work/물질생명인간/org/02장-02절.org
-    # NOTE: 충돌점은 이미지로 판정. 숫자/고유명사/구절은 marker, 애매문자/탈자는 vision이 강한 편(양방향).
-    ensure_project_dir
-    local mk="${1:?marker Markdown 경로 필요}"
-    local vi="${2:?vision Org/텍스트 경로 필요}"
-    if [[ -x "${MARKER_VENV}/bin/python" ]]; then
-        run_cmd "env -u PYTHONPATH ${MARKER_VENV}/bin/python marker/scripts/diff_review.py '${mk}' '${vi}'"
-    else
-        run_cmd "nix develop --command python marker/scripts/diff_review.py '${mk}' '${vi}'"
-    fi
+    local a="${1:?기준본 A 경로 필요}"
+    local b="${2:?기준본 B 경로 필요}"
+    run_cmd "python3 scripts/diff_review.py '${a}' '${b}'"
 }
 
 # ── MinerU (VLM, 원격 vLLM) — 충실 전사 + 수식/그림 추출 ──────────────
@@ -415,7 +390,7 @@ cmd_mineru_setup() {
 cmd_mineru_parse() {
     # DESC: PDF/이미지 → Markdown+LaTeX+그림추출 (MinerU VLM, 원격 gpu2i 5080)
     # USAGE: mineru-parse <INPUT.pdf|DIR> [OUTPUT_DIR]
-    # EXAMPLE: mineru-parse marker/smoke/물질생명인간-p86-91.pdf mineru-client/out
+    # EXAMPLE: mineru-parse scanpdf/물질생명인간001.pdf mineru-client/out
     # ENV: MINERU_TUNNEL_HOST(기본 gpu2i) MINERU_PORT(기본 30000)
     # NOTE: 터널 자동 보장. 클러스터 내부(192.168.2.x)면 MINERU_TUNNEL_HOST 비우고 직접 URL도 가능.
     ensure_project_dir
@@ -653,8 +628,7 @@ COMMANDS=(
     "arxiv-build:cmd_arxiv_build"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
-    "marker-pdf:cmd_marker_pdf"
-    "marker-diff:cmd_marker_diff"
+    "diff-review:cmd_diff_review"
     "mineru-setup:cmd_mineru_setup"
     "mineru-parse:cmd_mineru_parse"
     "--- Org→EPUB"

@@ -1,6 +1,0 @@
-.venv/
-__pycache__/
-*.pyc
-models/
-out/
-smoke/

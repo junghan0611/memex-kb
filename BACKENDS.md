@@ -21,6 +21,77 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
 | GitHub Stars | ✅ 구현됨 | `gh_starred_to_bib.sh` | gh CLI + jq → BibTeX |
 | Dooray Wiki | 🔧 개발 중 | - | - |
+| Scan PDF / OCR | 🔧 실험 중 | `scanpdf2org/`, `ocrmypdf`, `marker-pdf`(예정) | vision transcription + OCR/ML 검증 |
+
+---
+
+## 문서 OCR / PDF 변환 툴체인
+
+이 섹션은 스캔 책 → Org/Markdown/EPUB 변환을 위한 재현 가능한 도구 경계를 정리한다.
+`nixos-config`에는 편의상 PDF/EPUB/OCR 도구가 전역 설치되어 있지만, memex-kb 자체도
+다른 머신에서 같은 작업을 재현할 수 있어야 하므로 `flake.nix`에 CLI 도구를 포함한다.
+
+### flake.nix에 포함한 경량/중간급 도구
+
+| 도구 | 역할 | 메모 |
+|------|------|------|
+| `mupdf` / `mutool` | PDF 조작·추출·점검 | CLI 작업면. GUI 뷰어는 전역 `zathura` 사용 가능 |
+| `poppler_utils` | `pdfinfo`, `pdftotext`, `pdfimages` fallback | 구조 점검/추출 보조 |
+| `tesseract` | OCR 엔진 | `eng`, `kor`, `osd`만 enable |
+| `ocrmypdf` | 스캔 PDF → searchable PDF | overridden `tesseractKor`를 공유해 전체 언어팩 중복 방지 |
+| `epubcheck` | EPUB 검증 | `./run.sh org2epub-build` 검증에도 사용 |
+| `uv` | PyPI ML 도구 잠금/venv 관리 | `marker-pdf` 등 nixpkgs 미패키징 도구용 |
+
+Tesseract override 패턴:
+
+```nix
+let
+  tesseractKor = pkgs.tesseract.override {
+    enableLanguages = [ "eng" "kor" "osd" ];
+  };
+  ocrmypdfKor = pkgs.ocrmypdf.override {
+    tesseract = tesseractKor;
+  };
+in [ tesseractKor ocrmypdfKor ]
+```
+
+`osd`는 `ocrmypdf --rotate-pages` / `--deskew`가 사용한다. `ocrmypdf`는 내부 경로에
+`tesseract`를 박기 때문에 반드시 override로 같은 엔진을 넘겨야 전체 언어팩 closure가
+중복으로 들어오지 않는다.
+
+### OCR의 역할 — 전사 대체가 아니라 검증/부담 절감
+
+현재 《물질, 생명, 인간》 실험에서는 Opus vision transcription 품질이 매우 높았다.
+따라서 일반 본문 전사에서는 OCR을 필수로 보지 않는다. 다만 더 적극적인 자동화에서는:
+
+1. `ocrmypdf` / `tesseract`로 searchable text와 page orientation을 얻고,
+2. `marker-pdf` 같은 ML PDF→Markdown 모델로 수식·표·레이아웃 후보를 만들고,
+3. 에이전트 vision이 OCR/marker 결과를 대조·수정하며,
+4. 최종 Org/EPUB을 빌드한다.
+
+즉 목표는 “OCR만으로 끝내기”가 아니라 **에이전트가 직접 읽어야 할 일을 줄이는 것**이다.
+
+### 수식 OCR 한계
+
+- `tesseract`의 `equ.traineddata`는 존재하지만 품질이 낮아 수식 영역 감지 수준에 가깝다.
+- 책 수식 변환에는 부적합하므로 전역/flake override에서 `equ`를 제외한다.
+- 수식·표가 많은 책은 `tesseract/ocrmypdf`가 아니라 `marker-pdf` / `nougat` 계열로 보낸다.
+
+### nixpkgs에 없는 무거운 ML 도구 — 별도 트랙
+
+nixpkgs 25.11 기준 `marker-pdf`, `pix2tex`, `texify`는 미패키징이다.
+현재 memex-kb에서는 **marker-pdf만 우선** 별도 관리한다. `nougat`은 당장 넣지 않는다.
+
+1. **marker-pdf** — 1순위. PDF 전체 → Markdown+LaTeX, 표·수식 인식. CPU 가능하지만 무거움.
+2. **pix2tex / texify** — 단일 수식 이미지 → LaTeX. 필요 시 부분 도구로 도입.
+3. **nougat** — 보류. 학술 PDF 전용 대안이지만 현재 closure/운영 복잡도를 늘리지 않는다.
+
+결정 대기:
+
+- `marker-pdf`를 uv-managed venv/lockfile로 pin할지, 별도 flake input으로 감쌀지 결정.
+- `memex-kb` flake.lock의 nixpkgs rev는 `nixos-config` lock에 맞춰 store path 중복을 줄인다.
+- thinkpad에는 GPU가 없다고 보고 CPU 추론을 전제한다.
+- 배치 변환은 `tmux` 장시간 작업으로 실행한다.
 
 ---
 

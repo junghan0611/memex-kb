@@ -102,6 +102,27 @@
 
 ---
 
+## OCR / marker 툴체인 후속
+
+nixos-config에는 편의상 PDF/EPUB/OCR 도구가 전역 설치되어 있지만, memex-kb도
+자기 flake에서 재현 가능해야 한다. 현재 반영한 방향:
+
+- flake에 `mupdf`, `poppler_utils`, `tesseract(eng+kor+osd)`, `ocrmypdf`, `epubcheck`, `uv` 추가.
+- `ocrmypdf`는 override된 `tesseractKor`를 공유해 전체 언어팩 중복을 피한다.
+- `./run.sh ocr-pdf <INPUT.pdf> [OUTPUT.pdf] [LANGS]` 추가 예정/유지: OCR은 전사 대체가 아니라 searchable PDF·검증·에이전트 부담 절감용.
+- `tesseract equ`는 품질 낮아 제외. 수식/표 책은 marker/nougat 계열로 보낸다.
+
+다음 결정:
+
+1. `marker-pdf`를 uv-managed venv/lockfile로 pin할지, 별도 flake input으로 감쌀지 결정.
+   - `uv`는 시스템에도 있지만 marker lock runner로 flake에 둘 수 있다. nixos-config와 lock을 맞추면 store path 중복은 없다.
+2. `nougat`은 당장 넣지 않는다. marker 우선.
+3. marker CPU 추론 성능을 thinkpad에서 작은 PDF로 smoke test.
+4. marker output → Org 정규화 → ox-epub 빌드까지 연결하는 명령을 run.sh에 추가할지 결정.
+5. 배치 변환은 `tmux` 장시간 작업으로 운용.
+
+---
+
 ## 다른 책 scanpdf2org
 
 이번 실험으로 “Opus 병렬팀” 패턴이 검증됨. 다른 책도 같은 방식으로 갈 수 있다.

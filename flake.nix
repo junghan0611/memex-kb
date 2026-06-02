@@ -11,6 +11,16 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
+        # OCR/PDF toolchain: keep the same lightweight Tesseract language set as nixos-config.
+        # `osd` is needed by ocrmypdf --rotate-pages/--deskew.  Pass the overridden
+        # engine into ocrmypdf so Nix does not pull a second all-language Tesseract closure.
+        tesseractKor = pkgs.tesseract.override {
+          enableLanguages = [ "eng" "kor" "osd" ];
+        };
+        ocrmypdfKor = pkgs.ocrmypdf.override {
+          tesseract = tesseractKor;
+        };
+
         # PyPI에만 있는 python-hwpx (nixpkgs에 없음)
         python-hwpx = pkgs.python312Packages.buildPythonPackage rec {
           pname = "python-hwpx";
@@ -63,6 +73,14 @@
             pkgs.jq
             pkgs.gitleaks  # 비밀 유출 탐지
             pkgs.quarto    # 문서/프레젠테이션 도구
+
+            # PDF / EPUB / OCR CLI surface for reproducible memex-kb work.
+            pkgs.mupdf      # mutool: PDF inspect/extract/manipulate
+            pkgs.poppler-utils # pdftotext/pdfinfo/pdfimages fallback helpers
+            tesseractKor    # OCR engine: eng+kor+osd only
+            ocrmypdfKor     # searchable PDF verification path, shares tesseractKor
+            pkgs.epubcheck  # EPUB validation
+            pkgs.uv         # marker-pdf venv/lock runner; same nixpkgs lock as nixos-config avoids duplicate store paths
             # asciidoctor는 nixos-config에서 시스템 전역 설치됨
           ];
 
@@ -72,6 +90,9 @@
             echo "Python: $(python --version)"
             echo "Pandoc: $(pandoc --version | head -1)"
             echo "Gitleaks: $(gitleaks version)"
+            echo "Tesseract: $(tesseract --version | head -1)"
+            echo "OCRmyPDF: $(ocrmypdf --version)"
+            echo "EPUBCheck: $(epubcheck --version 2>/dev/null || echo available)"
             echo ""
             echo "HWPX 변환:"
             echo "  ./hwpx2asciidoc/hwpx2asciidoc.sh input.hwpx   # HWPX → AsciiDoc"

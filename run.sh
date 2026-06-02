@@ -341,6 +341,18 @@ cmd_scanpdf2org_render() {
     run_cmd "nix develop --command python ${PROJECT_DIR}/scanpdf2org/scripts/pdf_to_images.py ${args}"
 }
 
+cmd_ocr_pdf() {
+    # DESC: 스캔 PDF → searchable PDF (검증/보조 OCR, 기본 kor+eng)
+    # USAGE: ocr-pdf <INPUT.pdf> [OUTPUT.pdf] [LANGS]
+    # EXAMPLE: ocr-pdf scanpdf/물질생명인간001.pdf /tmp/물질생명인간-ocr.pdf
+    # NOTE: flake의 ocrmypdf는 eng+kor+osd tesseract override를 공유한다. 전사 대체가 아니라 검증/보조용.
+    ensure_project_dir
+    local input="${1:?입력 PDF 경로 필요}"
+    local output="${2:-${input%.pdf}.ocr.pdf}"
+    local langs="${3:-kor+eng}"
+    run_cmd "nix develop --command ocrmypdf -l '${langs}' --rotate-pages --deskew --skip-text '${input}' '${output}'"
+}
+
 # ── Org→EPUB (org-mode → clean EPUB 3.0) ─────────────────────────────
 
 cmd_org2epub_build() {
@@ -560,6 +572,7 @@ COMMANDS=(
     "arxiv-build:cmd_arxiv_build"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
+    "ocr-pdf:cmd_ocr_pdf"
     "--- Org→EPUB"
     "org2epub-build:cmd_org2epub_build"
     "--- Utility"

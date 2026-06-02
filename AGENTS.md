@@ -131,8 +131,9 @@ Google Docs → Markdown → Org-mode → ODT → DOC/HWP-oriented deliverables
 #### `scanpdf2org/`, `ox-epub`, and `epub2org/`
 Scan-to-ebook pipeline surfaces.
 
-- `scanpdf2org/` — scanned PDF → page PNG → agent **vision transcription** → Org
-  (no OCR; the agent reads page images directly). See `scanpdf2org/README.org`.
+- `scanpdf2org/` — scanned PDF → page PNG → agent **vision transcription** → Org.
+  OCR-less vision remains the primary transcription path; `./run.sh ocr-pdf` is an
+  auxiliary verification/searchable-PDF path, not a replacement. See `scanpdf2org/README.org`.
 - `~/repos/gh/ox-epub` — maintained local fork for Org → **clean EPUB 3.0**.
   It now emits EPUB3 natively and handles headless export, so memex-kb should not
   reintroduce an internal `epub_upgrade.py` / `org2epub.el` post-processing stack.

@@ -49,7 +49,9 @@
 
 1. **잔여 교정 37 + 후보 97**: LLM 경량 패스(나/분신1) 또는 사람. 특히 `앉은/앞` 문맥 애매건. 각주 ref 7/11 미포착(정의는 있음).
 3. **용어집**: `mineru/split/찾아보기.md`(560항목) → org 용어집. 참고문헌도 citar 재료.
-4. **다음 책 물리학강의**: 같은 파이프라인. config 새로 작성(structure/meta). 수식 많음 → `text_image` 억제(GPT P4) 필요.
+4. **다음 책 물리학강의**: → **`.claude/skills/scanbook/SKILL.md` "New book checklist" 따라가면 됨.**
+   같은 파이프라인. config 새로 작성(structure/meta). 수식 많음 → `text_image` 억제(GPT P4) 필요.
+   새 세션은 run.sh가 아니라 **scanbook 스킬**부터 읽어라 — 원격 gpu2i 서버·교정전략·함정이 거기 있다.
 5. **mineru2org.py 추가 개선**(GPT 우선순위): footnote stable id(page 기반), `text_image` 수식 격리, TOC 완전 분리.
 6. **커밋**: scanpdf(포지깃) + memex-kb(github). 둘 다 GLG 최종 결정.
 

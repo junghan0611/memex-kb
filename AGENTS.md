@@ -128,20 +128,26 @@ Used for proposal documents that move through:
 
 Google Docs → Markdown → Org-mode → ODT → DOC/HWP-oriented deliverables
 
-#### `scanpdf2org/`, `ox-epub`, and `epub2org/`
-Scan-to-ebook pipeline surfaces.
+#### Scan-to-EPUB pipeline — **see the `scanbook` skill**
 
-- `scanpdf2org/` — scanned PDF → page PNG → agent **vision transcription** → Org.
-  OCR-less vision remains the primary transcription path; `./run.sh ocr-pdf` is an
-  auxiliary verification/searchable-PDF path, not a replacement. See `scanpdf2org/README.org`.
-- `~/repos/gh/ox-epub` — maintained local fork for Org → **clean EPUB 3.0**.
-  It now emits EPUB3 natively and handles headless export, so memex-kb should not
-  reintroduce an internal `epub_upgrade.py` / `org2epub.el` post-processing stack.
-- `./run.sh org2epub-build <book.org>` is only a thin convenience wrapper that
-  loads the local ox-epub fork directly and optionally runs `epubcheck`.
+Primary path (2026-06): **MinerU VLM → `scripts/mineru2org.py` → Org → ox-epub**.
+The full operating procedure (remote gpu2i MinerU server, per-book config authoring,
+correction strategy, gotchas, new-book checklist) lives in the repo-local skill
+**`.claude/skills/scanbook/SKILL.md`** — read it before any scanbook work. run.sh alone
+does not cover the remote server orchestration or the correction judgment.
 
-Together they form: scanned PDF → Org → EPUB. `epub2org/` is the reverse
-(EPUB → Org, conventions in its `PATTERNS.org`).
+- **MinerU** is the primary transcription engine. Vision/Opus full transcription is **retired**
+  (kept only as a gold oracle for books that already have a `scanpdf/work/<book>/org/` vision draft).
+  The marker (surya OCR) engine is removed; `scripts/diff_review.py` (`./run.sh diff-review`) is
+  the engine-agnostic QA tool that survived it.
+- `scanpdf2org/` — older scanned PDF → page render → vision transcription surface (`README.org`).
+- `~/repos/gh/ox-epub` — maintained local fork for Org → **clean EPUB 3.0** (EPUB3 native + headless).
+  memex-kb must not reintroduce an internal `epub_upgrade.py` / `org2epub.el` post-processing stack.
+- `./run.sh org2epub-build <book.org>` is a thin wrapper that loads the ox-epub fork directly
+  and runs `epubcheck`.
+- Book data + outputs live in the nested private repo `scanpdf/` (Forgejo `glg-bot/scanpdf`).
+
+Together: scanned PDF → Org → EPUB. `epub2org/` is the reverse (EPUB → Org, conventions in `PATTERNS.org`).
 
 #### `hwpx2org/` and `orgadoc2odt/`
 Lower-level conversion tooling and experiments related to HWPX, AsciiDoc, Org, and ODT workflows.

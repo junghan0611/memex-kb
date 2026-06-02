@@ -23,12 +23,42 @@
 - 산출: `scanpdf/work/물리학강의/mineru/{물리학강의-mineru.org, .epub, README.md, *.log}`.
 - 재현 3-command + 구조 특이점 = `mineru/README.md`.
 
-### 남은 단계 (text-accuracy만, 구조/EPUB는 끝)
+### ★ 다음 작업 — 본문 교열 (GPT-5.4 entwurf 권장)
 
-1. **candidates.log 858건 LLM 경량 패스**: Latin 혼입(`나/ns지요`, `손 pop히는`, `바(pr)`, `von리학`) + 깨진 어절. **보오손은 책 의도 표기**(찾아보기 `보오손(boson)`) — 고치지 말 것.
-2. LLM 패스 후 안전 분류는 config literal 승격 → 재변환 → EPUB 재빌드.
-3. 어제 vision seed(`org/01강-seed.org`, `org/물리학강의.org` 골격)는 **은퇴**. 골격은 config 작성 재료로 소진됨. MinerU 산출이 primary.
-4. 다음 책: 자연철학강의 / 물리의정석 / 인공지능시대.
+**원칙: 정보 가치가 우선.** 구조/EPUB는 끝났다(0/0/0). 남은 건 본문 글자 정확도뿐인데,
+**정규식 박박 긁기 < LLM 문맥 교열**이다. 깨진 어절은 1:1 규칙이 없다
+(`되.sql기`→`되돌리기` / `되.sql어`→`되돌려` 로 갈림). 문장을 읽어야 정확하다.
+
+#### 에러 지형 (8,526줄 스캔, 2026-06-02)
+
+| 부류 | 규모 | 판정 |
+|------|------|------|
+| **A류** 물리변수+조사 (`x가`,`v로`,`c보다`,`t에`,`m인`…) | ~480 | **오류 아님**. 듣기/읽기용 EPUB엔 그대로 OK. 변수 `\(x\)` 수식화는 v2 별건(전수 래핑 위험) |
+| **B류** OCR 깨짐 (`sql`×19,`eeds`,`growing`,`ma라는`,`들;d`,`von리학`,`나/ns지요`,`손 pop히는`,`바(pr)`) | ~50–100 span | **실제 교열 대상**. 의미를 망가뜨리는 깨짐. LLM이 문장 읽고 복원 |
+| 단어 오독 | 산발 | 반복형은 이미 config literal(힉스/쿼크/렙톤/페르미온/빛알/겹실틈). 신규는 추가 |
+
+#### GPT-5.4 entwurf 위임안 (힣 승인 시)
+
+- **입력**: `scanpdf/work/물리학강의/mineru/물리학강의001.md`(원본) + `물리학강의-mineru.org`(현 산출) +
+  페이지 이미지(`scanpdf/work/물리학강의/pages_hi/`, 애매할 때 대조).
+- **작업**: B류 깨진 span을 문맥으로 복원. **A류(물리변수+조사)는 건드리지 말 것.**
+  **보오손 금지**(찾아보기 `보오손(boson)` = 책 의도 표기).
+- **출력 형식 결정 필요** (org은 빌드 산출물 ↔ 재현성):
+  - (a) **config literal 배치** `{from,to}` → 재변환해도 교정 survive (권장, 재현성 유지).
+  - (b) GPT가 교정한 org 직접 산출 → 빠르지만 md+config 재생성 불가(파이프라인 깨짐).
+  - → **(a) 권장**. GPT가 문맥 읽되 출력은 `물리학강의.json` literal 항목으로.
+- 처리 후: 재변환 → EPUB 재빌드 → diff 확인 → 힣 커밋.
+
+#### 엔진 후속 (candidate_regex 노이즈)
+
+- 현 `candidate_regex` 의 "한글 속 라틴자" 패턴이 844건 잡는데 **대부분 A류(false alarm)**.
+  → 단일문자 변수+조사 제외하도록 좁혀 candidates.log를 actionable하게. (mineru2org 개선 X, config만)
+
+#### 기타
+
+- 어제 vision seed(`org/01강-seed.org`, `org/물리학강의.org` 골격) **은퇴** — 골격은 config 재료로 소진. MinerU 산출이 primary.
+- 무거운 `mineru-client/out/물리학강의001/` (origin/layout PDF ~750MB) 정리 가능.
+- 다음 책: 자연철학강의 / 물리의정석 / 인공지능시대.
 
 ---
 

@@ -4,7 +4,48 @@
 
 ---
 
-## ★ 퇴근 HANDOFF — 2026-06-01
+## ★ 다음 작업 — OCR + marker + 에이전트 파이프라인 검증 (2026-06-02)
+
+목표: 《물질, 생명, 인간》을 기준으로 **OCR / marker / 에이전트 vision**을 엮어
+동일한 EPUB급 결과물을 더 낮은 비용·시간으로 만들 수 있는지 검증한다.
+
+현재 기준선:
+
+- Opus vision-only 5병렬로 1~4장 전사 성공.
+- `scanpdf/work/물질생명인간/org/물질생명인간-epub.epub`는 폰에서 확인한 결과 퀄리티 높음.
+- 이 결과가 품질 baseline이다. marker/OCR 경로는 이 baseline 대비 비용·시간·수정량을 비교한다.
+
+검증 가설:
+
+- OCR/marker가 초안을 제공하면 에이전트가 직접 읽어야 할 분량이 줄어든다.
+- 최종 품질이 vision-only baseline에 근접하면서 wall time/API cost가 줄면 성공.
+- 성공하면 다른 책(`물리학강의`, `자연철학강의`, `물리의정석`, `인공지능시대와 철학의 쓸모`)로 확장한다.
+
+준비 완료:
+
+- `memex-kb` flake는 `nixos-config`와 nixpkgs lock을 맞춤(`0c88e1f...`) — store path 중복 최소화.
+- dev shell 도구: `tesseract(eng+kor+osd)`, `ocrmypdf`, `mupdf/mutool`, `poppler-utils`, `epubcheck`, `uv`.
+- `./run.sh ocr-pdf <INPUT.pdf> [OUTPUT.pdf] [LANGS]` 추가.
+- `nougat`은 당장 넣지 않음. marker 우선.
+- `scanpdf` private Forgejo repo: work Forgejo `glg-bot/scanpdf`.
+- work server의 같은 repo 경로에 `scanpdf` 포함 rsync 완료. 서버에서 바로 이어갈 수 있음.
+
+다음 순서:
+
+1. marker 설치 방식 결정: 우선 `uv` lock/venv 방식으로 작은 smoke를 시도한다.
+2. 《물질, 생명, 인간》의 짧은 범위(예: 2장 2절 또는 4장 일부)를 marker로 Markdown+LaTeX 변환.
+3. 같은 범위에 `ocr-pdf`/tesseract searchable text를 생성해 marker 결과와 비교.
+4. 에이전트가 marker/OCR 출력 + page image를 대조해 Org 정규화.
+5. 기존 vision-only 전사와 비교:
+   - 누락/오독/수식·표 처리
+   - 사람/에이전트 수정량
+   - wall time
+   - API cost
+6. 통과하면 `marker → Org 정규화 → ox-epub build` 명령을 `run.sh`에 추가한다.
+
+---
+
+## 완료/기준선 — OCR-less Opus 5병렬 전사 (2026-06-01)
 
 ### 1. 오늘 핵심 성과: OCR-less Opus 5병렬 전사 성공
 
@@ -69,17 +110,12 @@
    - `./run.sh org2epub-build <book.org>`로 검증한다. 이 명령은 memex-kb 내부 후처리 없이 `~/repos/gh/ox-epub/ox-epub.el`을 직접 load한다.
 5. scanpdf nested repo는 `7c2297a feat(transcription): add material life human chapters 1-4`로 커밋 완료. 푸시는 아직 하지 않음.
 
-### 5. 현재 git 상태 주의
+### 5. 현재 git / 서버 상태
 
-루트 `memex-kb`에는 전부터 이어진 별도 변경이 staged 상태로 남아 있다:
-
-- `AGENTS.md`, `README.md`, `run.sh`, `NEXT.md`
-- `samples/org-to-odt/` → `org2odtdoc/` rename
-- `org2epub/` 내부 구현은 제거함. EPUB 빌드는 `~/repos/gh/ox-epub` 포크를 직접 사용.
-
-`scanpdf/`는 nested private repo이며 현재 clean. 전사 결과는 로컬 커밋 `7c2297a`에 들어갔고 푸시는 아직 하지 않음.
-
-커밋/푸시는 GLG 판단 후 별도 진행.
+- `memex-kb` GitHub main: `f0f248c feat(ocr): add reproducible PDF toolchain` push 완료.
+- `scanpdf` Forgejo work main: `9d293df feat(epub): add material life human draft` push 완료.
+- `scanpdf/`는 nested private repo이며 remote는 `work` Forgejo `glg-bot/scanpdf`.
+- work server의 같은 repo 경로에 `scanpdf` 포함 rsync 완료.
 
 ---
 
@@ -92,7 +128,7 @@
 - `./run.sh org2epub-build <book.org>`는 thin wrapper다.
 - wrapper는 `OX_EPUB_REPO`(기본 `~/repos/gh/ox-epub`)의 `ox-epub.el`을 직접 load한다.
 - `epub_upgrade.py`, `org2epub.el` 같은 memex-kb 내부 후처리 레이어는 재도입하지 않는다.
-- 다음 검증 대상: 《물질, 생명, 인간》 1~4장 마스터 org를 만든 뒤 첫 EPUB 빌드.
+- 《물질, 생명, 인간》 1~4장 마스터 org → EPUB 빌드 완료. `epubcheck` 0 errors / 0 warnings.
 
 남은 책 단위 결정:
 
@@ -107,10 +143,10 @@
 nixos-config에는 편의상 PDF/EPUB/OCR 도구가 전역 설치되어 있지만, memex-kb도
 자기 flake에서 재현 가능해야 한다. 현재 반영한 방향:
 
-- flake에 `mupdf`, `poppler_utils`, `tesseract(eng+kor+osd)`, `ocrmypdf`, `epubcheck`, `uv` 추가.
+- flake에 `mupdf`, `poppler-utils`, `tesseract(eng+kor+osd)`, `ocrmypdf`, `epubcheck`, `uv` 추가.
 - `ocrmypdf`는 override된 `tesseractKor`를 공유해 전체 언어팩 중복을 피한다.
-- `./run.sh ocr-pdf <INPUT.pdf> [OUTPUT.pdf] [LANGS]` 추가 예정/유지: OCR은 전사 대체가 아니라 searchable PDF·검증·에이전트 부담 절감용.
-- `tesseract equ`는 품질 낮아 제외. 수식/표 책은 marker/nougat 계열로 보낸다.
+- `./run.sh ocr-pdf <INPUT.pdf> [OUTPUT.pdf] [LANGS]` 유지: OCR은 전사 대체가 아니라 searchable PDF·검증·에이전트 부담 절감용.
+- `tesseract equ`는 품질 낮아 제외. 수식/표 책은 우선 marker 계열로 보낸다.
 
 다음 결정:
 

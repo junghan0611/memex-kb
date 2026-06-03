@@ -212,13 +212,26 @@ is unchanged until a book is validated. Mechanism:
 
 1. Re-run detection over `content_list` for the configured `categories` (`page_boundary`,
    `samepage_break` only — never eq/image/table).
-2. For each candidate, locate `tail\n\nhead` in the md and join it, deciding the seam:
-   tail ends with josa/verb-ending → **space**; tail ends mid-어절 → **no space**;
-   digit/latin/symbol/unknown → **skip (leave split) + CONFLICT flag**.
-3. `paragraph_merge.overrides` force a seam for a tail suffix
-   (`{"tail":"그것을","seam":"space"}` / `"nospace"` / `"skip"`).
-4. Every action → **`.merges.log`**: page, tail, head, seam, source (auto/override),
-   CONFLICT / MISS (pattern not found). This log is the review surface.
+2. For each candidate, locate `tail\n\nhead` in the md and join it, deciding the seam. The
+   `_seam_for()` rule order in `mineru2org.py` is the **SSOT** (refined book-by-book); current:
+   override → **digit-head skip** → comma→space → non-hangul tail skip → **josa-head**(head is a
+   bare josa → no space, `사이`+`에`=사이에) → **latin-head**→space → **conj-head**(및/또는)→space →
+   **adv-tail**(물론/특히)→space → **jeok-tail**(X적 + noun)→space → **이-fusion**(이+란/며/든/었/는/
+   들/라/러/루/른/렇/를)→no space → josa/ending suffix→space → else mid-어절→no space.
+3. **digit-head skip is load-bearing** (hard-won, caused a build failure): a footnote-definition
+   orphan (`19 이러한…` paragraph) merged into the prior paragraph becomes `…그19…`, so
+   `footnote_defs` can no longer absorb it as a standalone `^\d+ ` line → `[fn:19]` loses its
+   definition → ox-epub export errors `Definition not found for footnote 19`. Any digit-starting
+   head (footnote def / numbered list / ⑦) is left split.
+4. Heading guard: a candidate whose head OR tail (≤40 chars) is a plain chapter/section marker
+   (NUMHEAD regex `제?N[부강장절편]` or an exact `structure` title / section_marker) is skipped —
+   else the merge swallows a plain-text 강 marker and the heading vanishes (was: 4·13·18강).
+5. `paragraph_merge.overrides` force a seam for a tail suffix
+   (`{"tail":"그것을","seam":"space"|"nospace"|"skip"}`). Surgical one-off glues (관형형 `된 연유`,
+   의존명사 `세계 안에는` — too ambiguous to generalize) go in `literal` instead (runs after merge).
+6. Every action → **`.merges.log`**: `MERGE(seam,reason)` / `SKIP(reason)` / `MISS(n=…)` with
+   page + tail + head. This log is the review surface. MISS (joint not unique in md, e.g. a
+   repeated diagram label) is a safe refusal.
 
 **Workflow (list → apply → grow the logic, repeated):**
 

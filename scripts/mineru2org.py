@@ -638,32 +638,60 @@ _SEAM_SPACE_SUFFIX = sorted([
     "든", "든지", "라도", "밖에", "뿐", "께", "한테", "에게", "으로서", "로서", "으로써", "로써",
     "다", "요", "죠", "지요", "네요", "습니다", "했다", "된다", "한다", "진다", "이다",
     "거나", "면서", "면", "지만", "는데", "은데", "으며", "며", "고", "어서", "아서", "자",
-    "라", "겠다", "였다",
+    "라", "겠다", "였다", "게",   # 게 = 부사형 어미(심각하게/분명하게)
 ], key=len, reverse=True)
+
+# tail의 마지막 어절이 완결 부사/접속사면(조사 없이 끝나 휴리스틱이 못 잡음) → 공백.
+_SPACE_TAIL_WORDS = {
+    "물론", "특히", "또한", "다만", "만일", "비록", "즉", "또", "곧", "결국", "과연",
+    "대체로", "오히려", "이른바", "이를테면", "그러나", "그리고", "그런데", "따라서",
+    "하지만", "그러므로", "왜냐하면", "예컨대", "가령",
+}
+# head가 접속사/나열어로 시작하면 → 공백.
+_SPACE_HEAD_RE = re.compile(r"^(및|또는|혹은|그리고|그러나|그런데|즉|또|및는)(?=\s)")
 
 
 # 융합 보정(보수적): tail이 '이'로 끝나는데 head 첫 글자가 '단어 첫음절로는 거의 안 오는'
 # 음절이면 한 어절(이란/이며/이든/이었/이는/이들/이라)이 쪼개진 것 → 무공백.
-#   '아름다움이'+'란'=이란(무공백). 단 '고/다/나/지/면'은 단어 시작 가능(나오다/다음/지금)이라 제외
-#   → 그 경우는 조사 규칙으로 공백(붙여 깨는 것보다 띄우는 오류가 읽기 안전).
-_FUSION = {"이": set("란며든었는들라")}
+#   '아름다움이'+'란'=이란(무공백), '표면을 이'+'루는'=이루는. 단 '고/다/나/지/면'은
+#   단어 시작 가능(나오다/다음/지금)이라 제외 → 조사 규칙으로 공백(붙여 깨는 것보다 띄움이 읽기 안전).
+#   러/루(이러/이루)는 ~95% 안전, 른/렇/를(이른/이렇/이를)은 단어 첫음절로 거의 안 와 안전.
+_FUSION = {"이": set("란며든었는들라러루른렇를")}
+
+# head가 '맨조사 토큰'(뒤에 공백)으로 시작 = 단어가 조사 직전에서 쪼개짐 → 조사가 앞에 붙음 → 무공백.
+#   '…사이'+'에 전이'→'사이에'. 공백 lookahead로 '에너지'(에+너) 같은 단어시작은 제외.
+#   이/와/로/나는 관형사·동사·명사 시작과 모호해 제외('이 가운데', '와 보니', '로마').
+_JOSA_HEAD_RE = re.compile(
+    r"^(에서|에게|한테|부터|까지|보다|처럼|마다|조차|마저|밖에|을|를|은|는|의|가|도|만|과|께|에)(?=\s)")
 
 
 def _seam_for(tail: str, head: str, overrides: list):
-    """봉합부 공백 결정 → ('space'|'nospace'|'skip', reason). head도 본다(융합 보정)."""
+    """봉합부 공백 결정 → ('space'|'nospace'|'skip', reason). head도 본다."""
     t = tail.rstrip()
+    h = head.lstrip()
     for ov in overrides:                       # config override(접미사 매칭) 우선
         if ov.get("tail") and t.endswith(ov["tail"]):
             return ov.get("seam", "skip"), "override"
     if not t:
         return "skip", "empty"
+    if h[:1].isdigit():                         # head가 숫자 시작 = 각주정의/번호목록 orphan → 봉합 금지
+        return "skip", "digit-head"             #   (footnote_defs가 standalone 줄로 흡수해야 함)
     last = t[-1]
-    h0 = head.lstrip()[:1]
     if last == ",":                            # 나열/절 연속 → 공백 (`A, B`)
         return "space", "comma"
     if not ("가" <= last <= "힣"):             # 그 외 digit/latin/symbol/`:` → 모호, 보류
         return "skip", "non-hangul"
-    if last in _FUSION and h0 in _FUSION[last]:  # 융합형이 쪼개짐 → 무공백
+    if _JOSA_HEAD_RE.match(h):                  # head가 맨조사로 시작 → 앞 단어에 붙음 → 무공백
+        return "nospace", "josa-head"
+    if h[:1].isascii() and h[:1].isalpha():     # head가 라틴(병기 entropy 등) → 공백
+        return "space", "latin-head"
+    if _SPACE_HEAD_RE.match(h):                 # head가 접속사/나열어 → 공백 (`위치 및`)
+        return "space", "conj-head"
+    if (t.split() or [""])[-1] in _SPACE_TAIL_WORDS:  # tail이 완결 부사/접속사 → 공백 (`물론 칸트`)
+        return "space", "adv-tail"
+    if t.endswith("적"):                        # X적(的) 형용사 + 명사 → 공백 (`개인적 차원`)
+        return "space", "jeok-tail"
+    if last in _FUSION and h[:1] in _FUSION[last]:  # 융합형이 쪼개짐 → 무공백
         return "nospace", "fusion"
     for suf in _SEAM_SPACE_SUFFIX:
         if t.endswith(suf):

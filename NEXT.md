@@ -4,11 +4,37 @@
 
 ---
 
-## ★★★ 물리학강의 본문 마무리 — 깨짐 토큰 전수 교정 ✅완료 (2026-06-03 22:xx, 작업 서버)
+## ★★★ 문단 잘림 봉합 — page-split paragraphs (진행중, 2026-06-04 시작)
+
+OCR로 못 잡는 **구조 결함**: MinerU가 페이지를 독립적으로 읽어, 페이지 경계/그림·표·수식 끼임으로
+한 문단이 별개 문단으로 쪼개진다(`물\n\n리과학`). 세 책 공통. 글자는 맞고 문단 경계만 틀어짐.
+
+### 이번 세션 완료 ✅
+
+- **`scripts/detect_para_splits.py` + `./run.sh para-splits <book>`** — 탐지·리스트 전용(본문 미변경).
+  content_list.json + 한국어 종결부호 휴리스틱으로 5분류. front/back matter 제외.
+- **본문 실측**: 물리학강의 701(page 392/image 130/eq 58/table 17/samepage 104),
+  자연철학강의 473, 물질생명인간 202.
+- **핵심 발견**: 봉합부 **공백 여부는 자동화 불가** — page_boundary 392건 측정상 ~65% 무공백(어절중간),
+  ~30% 공백(어절경계), ~5% 모호. 일괄 치환 시 30% 단어 붙음/띄움. → **탐지는 신뢰, 봉합은 검수**.
+- **scanbook SKILL.md 전면 재작성**(영어·토큰절약): 📐 Paragraph splits + 감독형 봉합 섹션 1급화.
+
+### 다음 한 걸음 — 감독형 봉합 구현
+
+- [ ] `mineru2org.py`에 `--merge-paragraphs` 패스 신설(기본 OFF, 재현성 보존).
+      page_boundary+samepage_break만, seam 휴리스틱(조사/어미→공백, 어절중간→무공백, 모호→skip+CONFLICT),
+      `.merges.log` 전수 기록.
+- [ ] config에 `paragraph_merge` 블록(enabled/categories/overrides). 책별 seam override.
+- [ ] 물리학강의 1책으로 먼저 돌려 `.merges.log` 검수 → 오탐 패턴을 휴리스틱에 환류 → epubcheck 0/0/0 유지.
+- [ ] eq/image_interrupt는 보류(수동). image 뒤 블록이 캡션/변수설명인 경우 구분 필요.
+
+---
+
+## ★★★ 물리학강의 본문 마무리 — 깨짐 토큰 전수 교정 ✅완료·푸시됨 (2026-06-03 22:xx → bbf13d9)
 
 A 블록 실행 완료. **MinerU 베이스 + DeepSeek 오라클 + vision 페이지 판독** 3단으로 잔존 깨짐 전수 해결.
 config `literal` **216 → 282** (+66). **EPUB epubcheck 0/0/0** (10.3MB). 구조 불변(부7/강27/소절129).
-**커밋 대기** (GLG 몫). 변경: `scripts/corrections/물리학강의.json`(+66 literal), `…/mineru/물리학강의-mineru.{org,epub}` 재생성.
+**커밋·푸시 완료**: memex-kb `bbf13d9`, scanpdf `93baa1f`(Forgejo).
 
 ### 해결 경로 (노하우 — 영속 가치)
 

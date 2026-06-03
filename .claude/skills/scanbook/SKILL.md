@@ -1,214 +1,311 @@
 ---
 name: scanbook
-description: "Turn a scanned Korean book PDF into a clean EPUB via the MinerU→post-process→org→ox-epub pipeline in ~/repos/gh/memex-kb. Use when working on any book under scanpdf/work/<book>/ — parsing a scan with MinerU, writing/extending a book correction config, fixing OCR misreads, reconstructing heading/footnote structure, building or validating the EPUB, or starting a NEW book (e.g. 물리학강의, 물리의정석, 자연철학강의, 인공지능시대). Triggers: 'scanbook', 'mineru', '물리학강의', '스캔책', '스캔북', 'epub 만들', 'epub 빌드', 'mineru-parse', 'mineru2org', '책 전사', 'OCR 책', 'org2epub', '용어집 만들', 'diff-review'. This skill carries the tribal knowledge that run.sh and docs cannot: the remote GPU server dependency, the correction strategy, and the hard-won gotchas."
+description: "Turn a scanned Korean book PDF into a clean EPUB via the MinerU→post-process→org→ox-epub pipeline in ~/repos/gh/memex-kb. Use when working on any book under scanpdf/work/<book>/ — parsing a scan with MinerU, writing/extending a book correction config, fixing OCR misreads, reconstructing heading/footnote/paragraph structure, merging page-split paragraphs, building or validating the EPUB, or starting a NEW book (e.g. 물리학강의, 물리의정석, 자연철학강의, 인공지능시대). Triggers: 'scanbook', 'mineru', '물리학강의', '스캔책', '스캔북', 'epub 만들', 'epub 빌드', 'mineru-parse', 'mineru2org', '책 전사', 'OCR 책', 'org2epub', '용어집 만들', 'diff-review', 'para-splits', '문단 잘림', '문단 봉합', '감독형 봉합'. This skill carries the tribal knowledge run.sh and docs cannot: the remote GPU dependency, the correction strategy, the paragraph-merge judgment, and the hard-won gotchas."
 user_invocable: true
 ---
 
 # scanbook — scanned book → EPUB pipeline
 
 Repo: `~/repos/gh/memex-kb`. Book data + outputs live in the **nested private repo**
-`scanpdf/` (Forgejo `glg-bot/scanpdf`). This skill is the operating surface for the
-whole pipeline. `run.sh` covers the *local* commands; this file covers everything else
-(remote GPU server, per-book config authoring, correction judgment, gotchas).
+`scanpdf/` (Forgejo `glg-bot/scanpdf`). This skill is the operating surface; `run.sh`
+covers the *local* commands, this file covers the rest (remote GPU server, per-book config,
+correction + paragraph-merge judgment, gotchas).
 
-## The pipeline (5 stages)
+Mental model: **MinerU lays down ~95% (chars + layout). The last 5% is judgment** — char
+misreads and **page-split paragraphs**. Both are fixed by *detect-then-supervise* tools,
+never by blind blanket automation.
+
+## Pipeline
 
 ```
 PDF ──①MinerU VLM (REMOTE gpu2i)──▶ md + content_list.json + images/
-    ──②mineru2org.py (post-process)─▶ clean .org (headings/footnotes/eq/images)
-    ──③ox-epub──────────────────────▶ .epub (epubcheck 0 errors)
-    QA: ④diff-review   config: ⑤scripts/corrections/<book>.json
+    ──②mineru2org.py (post-process)─▶ clean .org  (headings/footnotes/eq/images
+    │                                  + corrections + supervised paragraph-merge)
+    ──③ox-epub──────────────────────▶ .epub (epubcheck 0/0/0)
+    QA: ④diff-review · para-splits        config: ⑤scripts/corrections/<book>.json
 ```
 
-- **Stage ① is the only non-local part** and is NOT fully expressible in `run.sh`.
-- vision/Opus full transcription is **retired**. Do not spin parallel Opus agents to
-  transcribe page images. MinerU does 95%; a *light* correction pass does the last 5%.
+- **Stage ① is the only non-local part**, not fully expressible in `run.sh`.
+- vision/Opus full transcription is **retired**. Do not spin Opus agents on page images.
+- Two classes of last-5% work, each with a detect→supervise tool:
+  - char misreads → `corrections/<book>.json` (`safe_regex`/`literal`/`candidate_regex`)
+  - page-split paragraphs → `para-splits` detector + supervised merge (§Paragraph splits)
 
-## ⚠️ Stage ① — remote MinerU server (the part run.sh can't own)
+## ⚠️ Stage ① — remote MinerU server (run.sh can't own this)
 
 Inference runs on **gpu2i** (RTX 5080), a vLLM server serving `MinerU2.5-Pro` on port 30000.
 This is **nixos 담당's domain** — a tmux session, not a memex-kb artifact.
 
 ```bash
-# Is it alive?  (do this FIRST, every new session that needs to parse)
-ssh gpu2i 'tmux ls | grep mineru-vllm'
-# If missing → it is down. Ask GLG / nixos 담당 to bring it up. Do NOT try to start
-# the vLLM yourself from here — wrong repo, wrong machine.
+ssh gpu2i 'tmux ls | grep mineru-vllm'    # alive? do this FIRST every parse session
+# Missing → it is down. Ask GLG/nixos to bring it up. Do NOT start the vLLM from here.
 ```
 
-- `run.sh mineru-parse` **auto-creates the SSH tunnel** (`localhost:30000 → gpu2i:30000`)
-  and only needs the server to be already running. Health = `curl -sf localhost:30000/health`
-  (vLLM returns 200 with empty body — empty output is normal, the `-sf` exit code is truth).
-- Client install (one-time, reproducible): `./run.sh mineru-setup` (uv sync; opencv-headless
-  via pyproject override). The client (`mineru-client/`) is a thin http-client; the model
-  weights live on gpu2i.
-- A full 261-page book parses in **~3 minutes**. Run it backgrounded for big books.
+- `run.sh mineru-parse` **auto-tunnels** `localhost:30000 → gpu2i:30000`; only needs the
+  server already running. Health = `curl -sf localhost:30000/health` (vLLM returns 200 with
+  empty body — the `-sf` exit code is truth, not the empty output).
+- Client install (one-time): `./run.sh mineru-setup` (uv sync; opencv-headless override).
+  The client (`mineru-client/`) is a thin http-client; weights live on gpu2i.
+- A 261-page book parses in **~3 min**. Background it for big books.
 
 ```bash
-# Stage ① — parse the whole book at once (faster than chapter-by-chapter)
 ./run.sh mineru-parse scanpdf/<book>001.pdf mineru-client/out
 # → out/<book>001/vlm/{<book>001.md, _content_list.json, images/}
-# Then MOVE the useful artifacts under scanpdf/ so they can be committed (Forgejo):
-#   <book>001.md, _content_list.json, images/  →  scanpdf/work/<book>/mineru/
-#   (DROP the heavy redundant *_origin.pdf / *_layout.pdf / *_model.json / *_middle.json)
+# MOVE useful artifacts under scanpdf/ for commit (Forgejo):
+#   <book>001.md, _content_list.json, images/ → scanpdf/work/<book>/mineru/
+#   DROP heavy *_origin.pdf / *_layout.pdf / *_model.json / *_middle.json
 ```
 
 ## OCR engine choice — MinerU vs DeepSeek-OCR (measured, not predicted)
 
-There are **two OCR engines** now, each on its own RTX 5080 (so no model swap — run both):
+Two engines, each on its own RTX 5080 (no model swap — run both):
 
 | | MinerU (gpu2i:30000) | DeepSeek-OCR (gpu1i:8000) |
 |---|---|---|
 | client | `mineru-client/` (`-b vlm-http-client`) | `scripts/deepseek_ocr_client.py` |
 | run.sh | `mineru-parse` | `deepseek-parse <pdf> [out] -- [--first N --last M \| --pages 1,5,9]` |
-| output | `.md` **+ `content_list.json`** (footnotes/page_number/header class) + **image assets** | `.md` + `_blocks.json` (grounding labels). **NO image pixels** |
-| structure signal | content_list (rich) | grounding labels `text/equation/sub_title/title/image/image_caption` |
+| output | `.md` **+ content_list.json** (footnotes/page_number/header) + **image assets** | `.md` + `_blocks.json` (grounding labels). **NO image pixels** |
+| structure | content_list (rich) | grounding labels text/equation/sub_title/title/image/image_caption |
 
-**Measured on 물리학강의 5강 (PDF p121–137, 2026-06-03)** — `deepseek-parse` vs MinerU raw:
+**Measured on 물리학강의 5강 (PDF p121–137, 2026-06-03)**, `deepseek-parse` vs MinerU raw:
 
-- **Body char accuracy: DeepSeek wins big.** DeepSeek **0** garbled tokens vs MinerU **10** (uq은/mosaic/꺌岁月/궤岁月기/지焮지/propag/enver/ca니/eeds고… — exactly the 10 config `literal` fixes that section needed). DeepSeek's failure mode differs from MinerU's, so it nails spans MinerU breaks (e.g. 굽은, 톰슨, 찐빵).
-- **But DeepSeek is NOT a zero-cost drop-in.** Its cost moves elsewhere:
-  - **Spacing**: mostly fine (15/17 pages ~0.22 space ratio) but **occasional page collapses** (p121 → `하면물질이란질료…` no spaces). Check space ratio per page.
-  - **Structure**: catches *some* sub_titles, **misses some** + emits `## ##` doubling (DeepSeek sometimes includes `##` in the block text; client should strip leading `#`). MinerU's config-driven 소절 recovery is cleaner.
-  - **Image assets**: DeepSeek gives caption + bbox but **no pixels** → must crop from our own page render (bbox is in DeepSeek's processed space ≠ render px → needs scale calibration, unsolved). Caption text also has name OCR errors (돌탄=돌턴, 러디피드=러더퍼드).
+- **Body char accuracy: DeepSeek wins big** — 0 garbled tokens vs MinerU's 10 (exactly the
+  10 `literal` fixes that section needed). Different failure mode, so it nails spans MinerU
+  breaks (굽은, 톰슨, 찐빵).
+- **But not a zero-cost drop-in.** Cost moves: **spacing** mostly fine but occasional page
+  collapses (`하면물질이란질료…` no spaces — check per-page space ratio); **structure** catches
+  some sub_titles, misses some, emits `## ##` doubling; **image assets** = caption+bbox but no
+  pixels (must crop from our own render; bbox scale uncalibrated) + name OCR errors (돌탄=돌턴).
 
-**Decision rule (the know-how to carry forward):**
-- **Body-text-heavy book, few figures** → DeepSeek-OCR likely lowers total correction cost (far fewer char fixes). Worth it.
-- **Figure-heavy book** (물리학강의 has 200+ images) → MinerU still wins out-of-box (asset extraction + content_list). Until the DeepSeek image-bbox crop is calibrated, **MinerU stays the base** for figure books.
-- **Best of both**: keep MinerU as base (figures + structure + content_list), use **DeepSeek as a targeted oracle** for MinerU's broken spans — render the page, `deepseek-parse --pages N`, read the correct token, add to config. Proven: resolves Guq은→굽은, mosaic→톰슨, 짧빵→찐빵.
-- **Always MEASURE first** on one representative 강/chapter before committing a book to an engine. Predictions were wrong twice (DeepSeek looked like a clean win until the spacing/structure/image costs showed up).
+**Decision rule:**
+- Body-heavy, few figures → DeepSeek likely lowers total correction cost.
+- Figure-heavy (물리학강의: 200+ images) → **MinerU stays the base** (assets + content_list)
+  until DeepSeek's image-bbox crop is calibrated.
+- **Best of both**: MinerU base + **DeepSeek as targeted oracle** for MinerU's broken spans
+  (render page → `deepseek-parse --pages N` → read correct token → config). Proven on
+  Guq은→굽은, mosaic→톰슨, 짧빵→찐빵.
+- **MEASURE first** on one chapter before committing a book to an engine — predictions were
+  wrong twice.
 
-DeepSeek serving + tunnel: `ssh gpu1i 'tmux ls | grep deepseek-ocr'`; `deepseek-parse` auto-tunnels `localhost:8000 → gpu1i:8000`. grounding prompt = `<image>\n<|grounding|>Convert the document to markdown.`
+DeepSeek serving: `ssh gpu1i 'tmux ls | grep deepseek-ocr'`; `deepseek-parse` auto-tunnels
+`localhost:8000 → gpu1i:8000`. grounding prompt = `<image>\n<|grounding|>Convert the document to markdown.`
 
 ## Stage ② — post-process: `scripts/mineru2org.py`
 
-Deterministic structure-recovery converter (same input → byte-identical output).
-Driven by the per-book config (`--corrections`) and `--content-list`.
+Deterministic structure-recovery converter (same input → byte-identical output), driven by
+the per-book config (`--corrections`) + `--content-list`.
 
 ```bash
 python3 scripts/mineru2org.py scanpdf/work/<book>/mineru/<book>001.md \
   -o scanpdf/work/<book>/mineru/<book>-mineru.org \
   --corrections scripts/corrections/<book>.json \
   --content-list scanpdf/work/<book>/mineru/<book>001_content_list.json
-# Emits: <book>-mineru.org + .changes.log (every transform, counted)
-#                            + .candidates.log (uncertain corrections, NOT applied)
+# Emits: <book>-mineru.org + .changes.log    (every transform, counted)
+#                            + .candidates.log (uncertain char fixes, NOT applied)
+#                            + .merges.log     (paragraph-merge decisions; §Paragraph splits)
 ```
 
-What it does (passes, all logged): surface (image `![]()`→`[[file:]]`, block `$$`→`\[\]`,
-inline `$$`→`\(\)`, footnote `$^{n}$` + unicode superscript `⁵⁸²³`→`[fn:n]`); HTML cleanup
-(`<details>`/mermaid removed, `<table>`→org table); **structure recovery** (chapter `*` /
-section `**` merging number+title / subsection `***` / false-heading demotion / front-matter
-+ TOC cut / preface kept); **footnote definitions** from `content_list.page_footnote` collected
-into a `* 각주` section + orphan numeric paragraphs absorbed; corrections; epub header from config meta.
+Passes (all logged): surface (image `![]()`→`[[file:]]`, block `$$`→`\[\]`, inline `$$`→`\(\)`,
+footnote `$^{n}$` + unicode superscript `⁵⁸²³`→`[fn:n]`); HTML cleanup (`<details>`/mermaid
+removed, `<table>`→org table); **structure recovery** (chapter `*` / section `**` num+title
+merge / subsection `***` / false-heading demotion / front-matter+TOC cut / preface kept);
+**footnote defs** from `content_list.page_footnote` → `* 각주` section + orphan numeric
+paragraphs absorbed; **supervised paragraph-merge** (opt-in); corrections; epub header from meta.
 
 ## Stage ⑤ — the per-book config (the real per-book work)
 
-`scripts/corrections/<book>.json`. Copy `물질생명인간.json` as the template. Four blocks:
+`scripts/corrections/<book>.json`. Copy `물질생명인간.json` as template:
 
 ```jsonc
 {
-  "meta":   { title, author, date, language, publisher, subject, uid },   // → #+keywords for epub
+  "meta":   { title, author, date, language, publisher, subject, uid },   // → epub #+keywords
   "structure": {
-    "body_start": "<first chapter title text>",        // everything before = front matter, cut (preface kept)
+    "body_start": "<first chapter title>",      // everything before = front matter, cut (preface kept)
     "chapters": [ { "num": "1장", "title": "..." }, ... ],
     "chapter_title_variants": { "<ocr/dash variant>": "<canonical>" },
-    "back_matter": ["참고문헌", "찾아보기"]            // become * level; 찾아보기 internal headings dropped
+    "back_matter": ["참고문헌", "찾아보기"]      // become * level; 찾아보기 internal headings dropped
   },
-  "safe_regex":      [ { pattern, replace, desc } ],   // AUTO-applied. Must be PROVABLY safe (see strategy).
-  "literal":         [ { from, to, desc } ],           // AUTO-applied exact-string fixes (incl. heading OCR, LaTeX).
-  "candidate_regex": [ { pattern, desc } ]             // LOG ONLY (.candidates.log). Never edits the body.
+  "safe_regex":      [ { pattern, replace, desc } ],   // AUTO. Must be PROVABLY safe (see strategy).
+  "literal":         [ { from, to, desc } ],           // AUTO exact-string fixes (heading OCR, LaTeX).
+  "candidate_regex": [ { pattern, desc } ],            // LOG ONLY (.candidates.log). Never edits body.
+  "paragraph_merge": {                                 // OPT-IN supervised merge
+    "enabled": false,                                  // off until validated per book
+    "categories": ["page_boundary", "samepage_break"], // never eq/image/table by default
+    "overrides": [ { "tail": "<suffix>", "seam": "space|nospace|skip" } ]
+  }
 }
 ```
 
-To author it for a new book you must **read the parsed md** to learn that book's:
-heading layout (chapter title as heading vs plain `N장`+title line), section numbering,
-the recurring OCR misreads, and the index/reference layout.
+Author it by **reading the parsed md**: heading layout, section numbering, recurring OCR
+misreads, index/reference layout.
 
-## 🎯 Correction strategy (hard-won — do not regress this)
+## 🎯 Char-correction strategy (hard-won — do not regress)
 
-The book's central vocabulary is the highest-priority correction target: if a key term is
-mangled in the index/glossary, it is mangled in the body too.
+Central vocabulary is the highest-priority target: a key term mangled in the index is mangled
+in the body too.
 
-- **Blanket regex substitution is unsafe in general.** A misread char often collides with a
-  real word: `않은`/`앉은`/`읽은` are valid; `앞의` is valid; `암` can be 暗/癌.
-- **Safe rule** = "misread char + a particle that the misread char can NEVER take as a verb
-  ending." e.g. `(앉|않|읽|얇)(이|의|과|와|도|만|에|으로…)` → `앎`. Exclude `은/을/음` (valid endings).
-- **Everything ambiguous goes to `candidate_regex`** → `.candidates.log`, body untouched.
-- **The general finisher = a LIGHT LLM correction pass** (you, reading context). MinerU laid
-  down 95%; you fix the flagged 5% by reading the sentence. This is the lightweight replacement
-  for "torturing Opus with full vision transcription."
-- **Book-specific promotion**: only promote a candidate to `safe`/`literal` after verifying the
-  whole class in that book (e.g. 물질생명인간 has no 暗/癌, so `암+조사`→`앎` was verified safe — 22
-  occurrences all epistemic). Never copy that rule to another book blindly.
-- **Oracle**: if a vision transcription exists for this book (`scanpdf/work/<book>/org/`), use it
-  as the gold standard via `diff-review` to measure/drive corrections. New books have no oracle —
-  rely on the candidates log + LLM pass + spot-checking page images.
+- **Blanket regex is unsafe in general**: a misread char collides with real words (`않은`/`앉은`/
+  `읽은` are valid; `암` can be 暗/癌).
+- **Safe rule** = "misread char + a particle the misread char can NEVER take as a verb ending":
+  `(앉|않|읽|얇)(이|의|과|와|도|만|에|으로…)` → `앎`; exclude `은/을/음` (valid endings).
+- **Anything ambiguous → `candidate_regex`** → `.candidates.log`, body untouched.
+- **General finisher = a LIGHT LLM pass** (you, reading context). MinerU did 95%; you fix the
+  flagged 5% by reading the sentence. The lightweight replacement for full vision transcription.
+- **Book-specific promotion**: promote a candidate to `safe`/`literal` only after verifying the
+  whole class in that book (물질생명인간 has no 暗/癌, so `암+조사`→`앎` verified safe, 22 epistemic
+  occurrences). Never copy a rule across books blindly.
+- **OCR consistency ≠ accuracy**: a frequent term mis-read the *same way* by both engines
+  (물리학강의 `시간펼침`→`시간필침` ×14) won't show via engine comparison. Catch by vision
+  spot-check of one page, then one `literal` rule covers the class.
+- **Oracle**: if a vision transcription exists (`scanpdf/work/<book>/org/`), use it as gold via
+  `diff-review`. New books have no oracle → candidates log + LLM pass + page-image spot-checks.
 
-## GPT structure review (when you want post-process improvements)
+## 📐 Paragraph splits + supervised merge (감독형 봉합)
 
-Throw an entwurf to **gpt-5.4** with `cwd: ~/repos/gh/memex-kb` asking it to diff the
-post-processed org against the vision oracle (body region only) and classify the *structural*
-gaps (headings, footnotes, tables, paragraphs) — not the char typos. It writes a review md.
-This is how `mineru2org.py` grew from a string-replacer into a structure-recoverer.
-Reference output: `scanpdf/work/물질생명인간/mineru/REVIEW-gpt.md` (conflict-type table + P0–P5 plan).
+MinerU (every page-at-a-time OCR) reads **each page independently**, so a paragraph crossing a
+page boundary or interrupted by a figure/table/equation is emitted as **separate paragraphs**.
+This is **outside OCR accuracy** — chars are right, the boundary is wrong. Confirmed across
+물리학강의 · 자연철학강의 · 물질생명인간. Unavoidable; handled as know-how, never as a blind merge.
+
+### Detection is automatic; the seam is supervised (the core split)
+
+`scripts/detect_para_splits.py` (= `./run.sh para-splits <book>`) classifies candidates from
+`content_list.json` + a Korean terminal-punctuation heuristic, and **only lists** them (body
+untouched). Rule: a text block ending without terminal punctuation (`.?!…。`/closing quote or
+bracket) followed by a text block not starting a paragraph marker = continuation candidate.
+front matter (TOC) / back matter (찾아보기) excluded — their lines end in page numbers and flood
+false positives.
+
+```bash
+./run.sh para-splits <book>                                      # summary counts
+./run.sh para-splits <book> --category page_boundary --limit 0   # full target list
+./run.sh para-splits <book> --json                               # machine-readable
+```
+
+Measured (body region only, 2026-06-04):
+
+| book | total | eq | page_boundary | image | table | samepage |
+|---|---|---|---|---|---|---|
+| 물리학강의 | 701 | 58 | 392 | 130 | 17 | 104 |
+| 자연철학강의 | 473 | 101 | 198 | 40 | 0 | 134 |
+| 물질생명인간 | 202 | 11 | 139 | 0 | 0 | 52 |
+
+### Reliability tiers = how deep automation can safely go
+
+- **page_boundary / samepage_break** — detection HIGH; **the seam space is NOT auto-decidable.**
+  Measured on the 392 page-boundary cases: ~65% need **no space** (mid-어절 wrap, `물`+`리과학`→
+  `물리과학`), ~30% need **a space** (어절 boundary, `그것을`+`특별히`→`그것을 특별히`), ~5%
+  ambiguous (digit/latin/symbol). Collapsing one way breaks 30%. → merge the two `\n\n`-separated
+  blocks into one paragraph, decide the seam by heuristic **+ log every decision + review**.
+- **eq_interrupt** — text + display-equation + text. **Do NOT merge.** A display equation belongs
+  on its own line (current render is correct); only blemish is the continuation text looking
+  indented — low priority.
+- **image_interrupt / table_interrupt** — MEDIUM. The block after a figure may be a **caption /
+  variable legend** (text_image auto-OCR), not the prose continuation (`…이 크기에서` + `위쪽
+  왼편부터…` is a figure description; `…이것` + `m: 물체의 질량…` is a variable legend). Same vein
+  as GPT review P4 "suppress text_image". Judge by the page image.
+
+### The supervised merge pass in `mineru2org.py`
+
+Opt-in (`paragraph_merge.enabled: true`, or `--merge-paragraphs`). Default OFF so reproducibility
+is unchanged until a book is validated. Mechanism:
+
+1. Re-run detection over `content_list` for the configured `categories` (`page_boundary`,
+   `samepage_break` only — never eq/image/table).
+2. For each candidate, locate `tail\n\nhead` in the md and join it, deciding the seam:
+   tail ends with josa/verb-ending → **space**; tail ends mid-어절 → **no space**;
+   digit/latin/symbol/unknown → **skip (leave split) + CONFLICT flag**.
+3. `paragraph_merge.overrides` force a seam for a tail suffix
+   (`{"tail":"그것을","seam":"space"}` / `"nospace"` / `"skip"`).
+4. Every action → **`.merges.log`**: page, tail, head, seam, source (auto/override),
+   CONFLICT / MISS (pattern not found). This log is the review surface.
+
+**Workflow (list → apply → grow the logic, repeated):**
+
+1. `./run.sh para-splits <book> --category page_boundary --limit 0` — capture the full list.
+2. Enable merge for page_boundary + samepage_break; rebuild; **read `.merges.log` end to end.**
+3. Fix wrong seams via `overrides`, glued words via `literal`. Feed recurring mis-classes back
+   into the detector/merge logic. **Trust the detect list, review the seam.**
+4. Re-run; confirm `.merges.log` clean and epubcheck still 0/0/0. eq/image stay manual.
+
+> NEVER blanket-merge all 700 with one space policy — 30% would glue or split words. The detect
+> list is trusted; the seam is reviewed. That separation IS the know-how.
+
+## GPT structure review (for post-process improvements)
+
+Throw an entwurf to **gpt-5.4** (`cwd: ~/repos/gh/memex-kb`) to diff the post-processed org
+against the vision oracle (body region only) and classify *structural* gaps (headings,
+footnotes, tables, paragraphs) — not char typos. It writes a review md. This is how
+`mineru2org.py` grew from a string-replacer into a structure-recoverer. Reference:
+`scanpdf/work/물질생명인간/mineru/REVIEW-gpt.md` (conflict-type table + P0–P5 plan).
 
 ## Stage ③ — build + validate EPUB
 
 ```bash
 ./run.sh org2epub-build scanpdf/work/<book>/mineru/<book>-mineru.org
 # thin wrapper → loads ~/repos/gh/ox-epub/ox-epub.el directly (no in-repo post-proc).
-# Renders LaTeX → SVG (dvisvgm), embeds images, runs epubcheck (EPUBCHECK=1 default).
-# Goal: 0 fatals / 0 errors / 0 warnings.
+# LaTeX → SVG (dvisvgm), embeds images, runs epubcheck (EPUBCHECK=1). Goal: 0/0/0.
 ```
 
-## 🐛 Gotchas (the삽질, so you don't repeat it)
+ox-epub is a maintained local fork (`~/repos/gh/ox-epub`). memex-kb must NOT reintroduce an
+internal `epub_upgrade.py` / `org2epub.el` stack. Known fact: SVG sizing uses
+`max-width: 90%; height: auto` on `.org-svg` so inline math stays natural-size and only
+over-wide display math/figures cap at 90%.
 
-- **`ltximg/` is a build cache.** If epubcheck reports a missing SVG (`RSC-007`), the cache is
-  stale → `rm -rf <book-dir>/ltximg <book>.epub` and rebuild clean. `ltximg/` is gitignored.
-- **Non-standard LaTeX breaks dvisvgm silently.** MinerU emits `\leqq`/`\geqq` (needs amssymb) →
-  normalize to `\leq`/`\geq` via a `literal` rule. A failed equation = a missing SVG = epubcheck error.
-- **Index (찾아보기) 자모 dividers** (ㄱㄴㄷ…) come out of MinerU as garbage headings (`# 7`, `# □`,
-  `# 人`, `# $\Rightarrow$`). Inside 찾아보기 the converter drops all `#` headings. An equation-only
-  heading like `** \(\Rightarrow\)` will also fail epub packaging — must be dropped, not kept.
-- **Images are already inline** in the MinerU md at the right spot (`![](images/x.jpg)`), usually next
-  to their `<그림 N>` caption. You only convert the syntax; `content_list` page_idx is a backup.
-- **`content_list.json` is the structure SSOT**: `page_footnote` (footnote definitions, prefixed with
-  the number), `page_number` (page_idx→printed page), `list` (TOC + list items → spot false headings),
-  `table`, `image.sub_type` (text_image/flowchart/natural_image). Prefer it over guessing from md.
-- **Footnote refs MinerU misses** (e.g. 7, 11) end up as "definition without ref" — logged, acceptable;
-  flag for the human/LLM pass.
-- **`#+options: ^:{}`** in the header is required so a stray `^` (superscripts, 10^{10}) doesn't break export.
-- Use the EPUB header **`tex:dvisvgm`** so equations render to SVG (not MathML/png).
+## 🐛 Gotchas
+
+- **`ltximg/` is a build cache.** epubcheck missing-SVG (`RSC-007`) = stale cache →
+  `rm -rf <book-dir>/ltximg <book>.epub` and rebuild. `ltximg/` is gitignored.
+- **`zip`/`unzip` required** by ox-epub packaging (in flake devShell). Fresh box → run via
+  `nix develop --command ./run.sh org2epub-build …`.
+- **Non-standard LaTeX breaks dvisvgm silently.** MinerU emits `\leqq`/`\geqq` (needs amssymb)
+  → normalize to `\leq`/`\geq` via `literal`. Failed equation = missing SVG = epubcheck error.
+- **Index 자모 dividers (ㄱㄴㄷ…)** come out as garbage headings (`# 7`, `# □`, `# 人`,
+  `# $\Rightarrow$`). Inside 찾아보기 the converter drops all `#` headings; an equation-only
+  heading `** \(\Rightarrow\)` also fails packaging — drop, don't keep.
+- **Images are already inline** in the md at the right spot (`![](images/x.jpg)`), next to their
+  `<그림 N>` caption. Convert syntax only; `content_list` page_idx is a backup.
+- **`content_list.json` is the structure SSOT**: `page_footnote` (defs, number-prefixed),
+  `page_number` (page_idx→printed), `list` (TOC/list → spot false headings), `table`,
+  `image.sub_type` (text_image/flowchart/natural_image). Also SSOT for the paragraph-split
+  detector (page_idx + block-type adjacency).
+- **Footnote refs MinerU misses** (7, 11) → "definition without ref" — logged, acceptable; flag.
+- **`#+options: ^:{}`** in the header is required so a stray `^` (10^{10}) doesn't break export.
+- EPUB header **`tex:dvisvgm`** so equations render to SVG (not MathML/png).
+- **DeepSeek oracle `page` = page_idx (0-based)** = content_list. `--pages` is 1-based (page_idx+1).
+- **Don't touch intentional 병기 / coined terms.** Some `한자/latin`-glued tokens are deliberate
+  (물리학강의: `기氣차라`=Star-Trek "Energize!" pun, `훑기궤뚫기현미경`=STM coinage, `짝even`,
+  `보오손boson`). Verify against index/context before "fixing" — a wrong fix corrupts the voice.
 
 ## ✅ Reproducibility
 
-The set reproduces from committed files: from `<book>001.md` + `<book>.json` + `content_list.json`,
-stages ②③ regenerate the org and epub deterministically (epubcheck 0). Each book gets a
-`scanpdf/work/<book>/mineru/README.md` with the exact 3-command recipe + file inventory.
-Verify before committing: delete org/epub/ltximg, re-run ②③, confirm epubcheck 0.
+From `<book>001.md` + `<book>.json` + `content_list.json`, stages ②③ regenerate org and epub
+deterministically (epubcheck 0). Each book gets a `scanpdf/work/<book>/mineru/README.md` with
+the exact recipe + inventory. Before committing: delete org/epub/ltximg, re-run ②③, confirm 0.
 
 ## 🚀 New book checklist (e.g. 물리학강의 — equation-heavy)
 
-1. `ssh gpu2i 'tmux ls | grep mineru-vllm'` — server up? If not, ask GLG/nixos.
-2. `pdfinfo`/`mutool info scanpdf/<book>001.pdf` — page count, sanity.
-3. `./run.sh mineru-parse scanpdf/<book>001.pdf mineru-client/out` (background for big books).
-4. Move artifacts → `scanpdf/work/<book>/mineru/` (md + content_list + images; drop heavy pdfs/jsons).
-5. **Read the md** → write `scripts/corrections/<book>.json` (meta + structure.chapters + first corrections).
-6. `python3 scripts/mineru2org.py …` → inspect `.changes.log` (heading/footnote counts sane?) and `.candidates.log`.
-7. LLM light correction pass over candidates + remaining typos (read context; promote verified classes to config).
-8. (optional) GPT structure review if quality is unclear or the book is structurally complex.
-9. `./run.sh org2epub-build …` → fix any epubcheck error (see Gotchas) → 0 errors.
-10. Update `scanpdf/work/<book>/mineru/README.md` and the repo `NEXT.md`. Commit memex-kb (tooling/config)
-    + scanpdf (data); GLG approves push/tag.
+1. `ssh gpu2i 'tmux ls | grep mineru-vllm'` — server up? else ask GLG/nixos.
+2. `pdfinfo`/`mutool info scanpdf/<book>001.pdf` — page count sanity.
+3. `./run.sh mineru-parse scanpdf/<book>001.pdf mineru-client/out` (background big books).
+4. Move artifacts → `scanpdf/work/<book>/mineru/` (md + content_list + images; drop heavy files).
+5. **Read the md** → write `scripts/corrections/<book>.json` (meta + chapters + first corrections).
+6. `python3 scripts/mineru2org.py …` → inspect `.changes.log` (heading/footnote counts) + `.candidates.log`.
+7. LLM light correction pass over candidates + typos (promote verified classes to config).
+8. `./run.sh para-splits <book>` → assess split load → enable supervised merge, review `.merges.log`.
+9. (optional) GPT structure review if quality unclear / book structurally complex.
+10. `./run.sh org2epub-build …` → fix any epubcheck error → 0/0/0.
+11. Update per-book `README.md` + repo `NEXT.md`. Commit memex-kb (tooling/config) + scanpdf
+    (data); GLG approves push/tag.
 
-> 물리학강의 specifically: **many equations + figures**. Expect `image.sub_type == text_image` math
-> crops. Per GPT review (P4), low-confidence `text_image` OCR text should be *suppressed/isolated*
-> (don't dump it into body) — keep the image, drop the noisy auto-OCR. Extend `mineru2org.py` if needed.
+> 물리학강의: **many equations + figures**. Expect `image.sub_type == text_image` math crops.
+> Per GPT review P4, low-confidence `text_image` OCR should be *suppressed/isolated* (keep the
+> image, drop the noisy auto-OCR). Extend `mineru2org.py` if needed.
 
 ## Where the durable facts live (not docs that rot)
 
-- This skill = how to operate the pipeline.
+- This skill = how to operate the pipeline (incl. the two detect→supervise tools).
 - `NEXT.md` = the volatile next step.
 - `scanpdf/work/<book>/mineru/README.md` = per-book reproduce recipe + inventory.
-- `scripts/corrections/<book>.json` = per-book structure + correction SSOT.
+- `scripts/corrections/<book>.json` = per-book structure + char-correction + paragraph-merge SSOT.
 - `CHANGELOG.md` / commit history = what changed when.

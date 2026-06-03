@@ -357,6 +357,19 @@ cmd_diff_review() {
     run_cmd "python3 scripts/diff_review.py '${a}' '${b}'"
 }
 
+cmd_para_splits() {
+    # DESC: MinerU 페이지 OCR로 쪼개진 문단(페이지경계/그림·표·수식 끼임/오분할) 후보 리스트.
+    # USAGE: para-splits <book> [--category page_boundary] [--limit 0] [--json]
+    # EXAMPLE: para-splits 물리학강의 --category page_boundary --limit 0
+    # NOTE: 탐지·리스트 전용(본문 미변경). content_list.json + 종결부호 휴리스틱.
+    #       봉합부 공백 여부는 자동화 불가(~30% 어절경계) → 사람/LLM 패스로 판정.
+    ensure_project_dir
+    local book="${1:?책 디렉토리명 필요 (예: 물리학강의)}"; shift || true
+    local cl; cl=$(ls "scanpdf/work/${book}/mineru/"*content_list*.json 2>/dev/null | head -1)
+    [ -n "${cl}" ] || { error "content_list 없음: scanpdf/work/${book}/mineru/"; return 1; }
+    run_cmd "python3 scripts/detect_para_splits.py --content-list '${cl}' --corrections 'scripts/corrections/${book}.json' $*"
+}
+
 # ── MinerU (VLM, 원격 vLLM) — 충실 전사 + 수식/그림 추출 ──────────────
 #
 # 추론은 gpu2i RTX 5080의 vLLM이 한다(served-name: mineru). 로컬은 얇은 클라이언트.
@@ -659,6 +672,7 @@ COMMANDS=(
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
     "diff-review:cmd_diff_review"
+    "para-splits:cmd_para_splits"
     "mineru-setup:cmd_mineru_setup"
     "mineru-parse:cmd_mineru_parse"
     "deepseek-parse:cmd_deepseek_parse"

@@ -112,6 +112,31 @@ IBM, Granite-Docling-258M VLM, DoclingDocument(lossless JSON), MCP 서버. EPUB 
 → thin-client는 **grounding 모드** 채택, 블록 파서가 `sub_title→**`/`title→*` 힌트 담은 md로 조립.
 프로브 스크립트: `/tmp/dsocr/probe.py` (urllib만, 무의존). 향후 `scripts/`로 정식화.
 
+### ✅ 측정: 5강 전면 재파싱 DeepSeek vs MinerU (2026-06-03, PDF p121–137)
+
+GLG 가설 "DeepSeek로 다시 뽑으면 후처리 범위가 줄까?" → **본문 축에선 YES, 전체로는 분포가 바뀜.**
+
+| 축 | DeepSeek | MinerU raw |
+|---|---|---|
+| 본문 char 깨짐 | **0**(corpuscle=병기) | **10**(=그 구간 config literal 10개) |
+| 띄어쓰기 | 15/17쪽 정상, p121 붕괴 | 정상 |
+| 소절 헤딩 | 부분(누락+`## ##`중복=클라버그) | config로 10소절 완벽 |
+| 이미지 | 캡션+bbox만, asset 없음(인명 OCR오류) | asset crop O |
+
+**판정**: DeepSeek 본문 글자정확도 압도(깨짐 0 vs 10) → char교정 거의 0. 단 비용이
+**띄어쓰기·헤딩·이미지crop·캡션**으로 이동. **무비용 drop-in 아님.** scanbook SKILL.md「OCR engine choice」에 박음.
+**결정규칙**: 본문헤비책=DeepSeek 유리 / 그림헤비책(물리학강의 200+)=MinerU 베이스 + DeepSeek 오라클로 깨진 자리만 / **항상 1개 강 측정 먼저**.
+
+#### 후속 — DeepSeek 클라 개선 (필요시)
+- `## ##` 중복: sub_title/title 텍스트에 이미 `#` 있으면 strip 후 마커.
+- 이미지 bbox 좌표계 보정: DeepSeek bbox(x≤940,y≤873) ≠ 150dpi 렌더(849×1324) → 스케일 캘리브레이션해야 crop.
+- 띄어쓰기 붕괴 페이지(p121류) 탐지/재처리.
+
+#### 미커밋 변경 (이번 세션)
+- `scripts/mineru2org.py`: `num:t→num:nil`(헤딩 자동번호 끔, GLG 요청). 물리학강의/자연철학강의 재빌드 시 반영.
+- `scripts/deepseek_ocr_client.py`: `--pages` 옵션 추가(오라클용).
+- (자연철학강의 org는 GLG가 직접 손봄 — 에이전트 미변경)
+
 ### 다음 한 걸음
 
 - [완료] gpu1i DeepSeek-OCR 서빙·한국어 실측·API 계약 파악.
@@ -121,10 +146,24 @@ IBM, Granite-Docling-258M VLM, DoclingDocument(lossless JSON), MCP 서버. EPUB 
   (터널 자동 gpu1i:8000, mineru-parse 미러). 검증: 물리학강의 p490(수식 11블록 `\[\]`+인라인 `\(\)`) /
   p120(sub_title→`##`). 1.0~2.5s/page. 산출 `<OUT>/<doc>/{<doc>.md, <doc>_blocks.json}`.
   - ⚠️ OCR 변이 관찰: 렌더 경로(PyMuPDF vs pdftoppm)에 따라 `N_+`→`N_4`/`N₄` 미세차. 렌더 충실도가 OCR에 영향(저우선 튜닝).
-- [다음] **①트랙 1차 대결**: 같은 책 1권을 deepseek-parse → `mineru2org.py`(DeepSeek용 config) → org/EPUB →
-  MinerU 산출과 **총교정비용 비교**. DeepSeek md는 MinerU와 형태가 달라 전용 corrections config 필요.
-- [다음] image 블록 — DeepSeek는 asset 없음(주석만). 그림책은 bbox로 페이지렌더 crop 보강할지 판단(또는 MinerU 유지).
-- [가능·GPU 무관] `scanbook/eval/` 스캐폴딩 + 6종 샘플 페이지셋 컨벤션 + 총교정비용 점수표.
+### ▶▶▶ 다음 세션 시작점 = A (물리학강의 본문 마무리, MinerU 베이스 + DeepSeek 오라클)
+
+측정으로 길 확정: 물리학강의(그림 200+)는 **MinerU 베이스 유지**, DeepSeek는 깨진 자리 **오라클**로만.
+
+1. **깨진 토큰 대조표 완성** — 이미 오라클 배치 떠 있음: `/tmp/dsoracle2/물리학강의001/물리학강의001_blocks.json`
+   (30페이지). org의 깨짐 후보 ~40개(latin-glued + 한자 garbage; 의도병기 DNA/QCD/ma/八正道/半整數 등은 제외).
+   각 깨진 토큰 → content_list로 page_idx → DeepSeek 판독으로 올바른 토큰 확정 → 대조표.
+   - 반복 토큰은 **token 규칙 하나로**(예 `mosaic→톰슨` 본문+인덱스 3곳). NEXT 교훈: 반복깨짐=규칙 1개가 literal 수십 대체.
+   - ⚠️ `/tmp/`는 휘발 — 새 세션에선 `deepseek-parse --pages ...` 다시 떠야 할 수 있음(빠름, ~1분).
+2. **GLG 승인** 후 config `literal`/`token`에 일괄 적용.
+3. **재빌드**: `mineru2org.py`(num:nil 반영됨) → `nix develop --command ./run.sh org2epub-build …` → epubcheck 0/0/0.
+   (zip은 flake에 들어갔으니 nix develop 안에서 돌릴 것.)
+4. 의도병기(나노nano, F=ma, 짝even, 보오손boson, corpuscle)는 **건드리지 말 것**.
+
+### 그 외 백로그
+- image 블록 — DeepSeek asset 없음. 그림책은 MinerU crop 유지(DeepSeek bbox crop은 좌표보정 후 검토).
+- DeepSeek 클라 개선(위 "후속" 참조): `## ##` strip, bbox 캘리브레이션, 띄어쓰기 붕괴 탐지.
+- [가능·GPU 무관] `scanbook/eval/` 스캐폴딩 + 6종 샘플 페이지셋 + 총교정비용 점수표.
 
 ---
 

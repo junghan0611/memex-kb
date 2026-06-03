@@ -53,6 +53,33 @@ ssh gpu2i 'tmux ls | grep mineru-vllm'
 #   (DROP the heavy redundant *_origin.pdf / *_layout.pdf / *_model.json / *_middle.json)
 ```
 
+## OCR engine choice — MinerU vs DeepSeek-OCR (measured, not predicted)
+
+There are **two OCR engines** now, each on its own RTX 5080 (so no model swap — run both):
+
+| | MinerU (gpu2i:30000) | DeepSeek-OCR (gpu1i:8000) |
+|---|---|---|
+| client | `mineru-client/` (`-b vlm-http-client`) | `scripts/deepseek_ocr_client.py` |
+| run.sh | `mineru-parse` | `deepseek-parse <pdf> [out] -- [--first N --last M \| --pages 1,5,9]` |
+| output | `.md` **+ `content_list.json`** (footnotes/page_number/header class) + **image assets** | `.md` + `_blocks.json` (grounding labels). **NO image pixels** |
+| structure signal | content_list (rich) | grounding labels `text/equation/sub_title/title/image/image_caption` |
+
+**Measured on 물리학강의 5강 (PDF p121–137, 2026-06-03)** — `deepseek-parse` vs MinerU raw:
+
+- **Body char accuracy: DeepSeek wins big.** DeepSeek **0** garbled tokens vs MinerU **10** (uq은/mosaic/꺌岁月/궤岁月기/지焮지/propag/enver/ca니/eeds고… — exactly the 10 config `literal` fixes that section needed). DeepSeek's failure mode differs from MinerU's, so it nails spans MinerU breaks (e.g. 굽은, 톰슨, 찐빵).
+- **But DeepSeek is NOT a zero-cost drop-in.** Its cost moves elsewhere:
+  - **Spacing**: mostly fine (15/17 pages ~0.22 space ratio) but **occasional page collapses** (p121 → `하면물질이란질료…` no spaces). Check space ratio per page.
+  - **Structure**: catches *some* sub_titles, **misses some** + emits `## ##` doubling (DeepSeek sometimes includes `##` in the block text; client should strip leading `#`). MinerU's config-driven 소절 recovery is cleaner.
+  - **Image assets**: DeepSeek gives caption + bbox but **no pixels** → must crop from our own page render (bbox is in DeepSeek's processed space ≠ render px → needs scale calibration, unsolved). Caption text also has name OCR errors (돌탄=돌턴, 러디피드=러더퍼드).
+
+**Decision rule (the know-how to carry forward):**
+- **Body-text-heavy book, few figures** → DeepSeek-OCR likely lowers total correction cost (far fewer char fixes). Worth it.
+- **Figure-heavy book** (물리학강의 has 200+ images) → MinerU still wins out-of-box (asset extraction + content_list). Until the DeepSeek image-bbox crop is calibrated, **MinerU stays the base** for figure books.
+- **Best of both**: keep MinerU as base (figures + structure + content_list), use **DeepSeek as a targeted oracle** for MinerU's broken spans — render the page, `deepseek-parse --pages N`, read the correct token, add to config. Proven: resolves Guq은→굽은, mosaic→톰슨, 짧빵→찐빵.
+- **Always MEASURE first** on one representative 강/chapter before committing a book to an engine. Predictions were wrong twice (DeepSeek looked like a clean win until the spacing/structure/image costs showed up).
+
+DeepSeek serving + tunnel: `ssh gpu1i 'tmux ls | grep deepseek-ocr'`; `deepseek-parse` auto-tunnels `localhost:8000 → gpu1i:8000`. grounding prompt = `<image>\n<|grounding|>Convert the document to markdown.`
+
 ## Stage ② — post-process: `scripts/mineru2org.py`
 
 Deterministic structure-recovery converter (same input → byte-identical output).

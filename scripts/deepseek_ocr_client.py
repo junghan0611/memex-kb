@@ -125,6 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-o", "--out", default="deepseek-out", help="출력 디렉토리(기본 deepseek-out)")
     ap.add_argument("--first", type=int, default=1, help="시작 페이지(1-based, 포함)")
     ap.add_argument("--last", type=int, default=0, help="끝 페이지(포함, 0=끝까지)")
+    ap.add_argument("--pages", default="", help="특정 페이지만(1-based, 콤마): 오라클용. 예 16,36,128")
     ap.add_argument("--dpi", type=int, default=150, help="렌더 DPI(기본 150)")
     ap.add_argument("--url", default=DEFAULT_URL)
     ap.add_argument("--model", default=DEFAULT_MODEL)
@@ -143,26 +144,34 @@ def main(argv: list[str] | None = None) -> int:
     prompt = PLAIN_PROMPT if args.plain else GROUNDING_PROMPT
     doc = fitz.open(pdf_path)
     n = doc.page_count
-    last = args.last if args.last else n
-    first = max(1, args.first)
-    last = min(last, n)
-    if first > last:
-        LOG.error("페이지 범위 오류: %d..%d (문서 %d쪽)", first, last, n)
-        return 1
+    if args.pages:
+        pages = [int(x) for x in args.pages.split(",") if x.strip()]
+        pages = [p for p in pages if 1 <= p <= n]
+    else:
+        last = args.last if args.last else n
+        first = max(1, args.first)
+        last = min(last, n)
+        if first > last:
+            LOG.error("페이지 범위 오류: %d..%d (문서 %d쪽)", first, last, n)
+            return 1
+        pages = list(range(first, last + 1))
 
     stem = pdf_path.stem
     outdir = Path(args.out) / stem
     outdir.mkdir(parents=True, exist_ok=True)
 
-    LOG.info("DeepSeek-OCR: %s  p%d..%d / %d쪽  dpi=%d  %s",
-             stem, first, last, n, args.dpi,
+    if not pages:
+        LOG.error("파싱할 페이지 없음")
+        return 1
+    LOG.info("DeepSeek-OCR: %s  %d쪽 중 %d페이지  dpi=%d  %s",
+             stem, n, len(pages), args.dpi,
              "plain" if args.plain else "grounding")
 
     all_blocks: list[dict] = []
     md_pages: list[str] = []
     tot_prompt = tot_completion = 0
     t0 = time.time()
-    for pno in range(first, last + 1):
+    for pno in pages:
         page = doc[pno - 1]
         png = render_page_png(page, args.dpi)
         try:

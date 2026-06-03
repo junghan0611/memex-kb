@@ -666,7 +666,9 @@ def main() -> int:
     if meta.get("uid"):
         hdr.append(f"#+uid:        {meta['uid']}")
     # ^:{} — stray '^' 가 위첨자로 깨지지 않도록(수식/각주 안전). tex:dvisvgm — LaTeX→SVG.
-    hdr.append("#+options:    toc:t num:t H:4 tex:dvisvgm ^:{}")
+    # num:nil — 헤딩에 자동 번호(1, 1.1 …) 부착 안 함. 책 제목 헤딩(N장/N강)이 이미 번호를
+    #           품고 있어 중복/오염되므로 끈다(EPUB 헤딩 번호 이슈, 2026-06-03 GLG).
+    hdr.append("#+options:    toc:t num:nil H:4 tex:dvisvgm ^:{}")
     hdr.append("#+startup:    content")
     out_text = "\n".join(hdr) + "\n\n" + t
     Path(args.out).write_text(out_text, encoding="utf-8")

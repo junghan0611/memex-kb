@@ -102,8 +102,8 @@ def classify(blocks, si, ei):
         rec = {
             "page_a": a["page_idx"], "page_b": b["page_idx"],
             "inter": inter,
-            "tail": a["text"].rstrip()[-30:],
-            "head": b["text"].lstrip()[:30],
+            "tail": a["text"].rstrip(),     # FULL tail text (merge needs it)
+            "head": b["text"].lstrip(),     # FULL head text
         }
         if "image" in s:
             out["image_interrupt"].append(rec)
@@ -155,7 +155,7 @@ def main():
         for r in show:
             arrow = f"p{r['page_a']}->p{r['page_b']}" if r['page_a'] != r['page_b'] else f"p{r['page_a']}"
             inter = ("+[" + ",".join(r["inter"]) + "]") if r["inter"] else ""
-            print(f"{arrow} {inter}\n    …{r['tail']}\n  ++ {r['head']}…")
+            print(f"{arrow} {inter}\n    …{r['tail'][-30:]}\n  ++ {r['head'][:30]}…")
 
 
 if __name__ == "__main__":

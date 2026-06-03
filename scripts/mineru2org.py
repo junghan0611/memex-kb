@@ -25,6 +25,10 @@ import re
 import sys
 from pathlib import Path
 
+# 같은 scripts/ 디렉토리 — 문단 잘림 탐지기를 봉합 패스가 재사용한다.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import detect_para_splits as psplit  # noqa: E402
+
 ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6,
          "VII": 7, "VIII": 8, "IX": 9, "X": 10}
 SUP = {"⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
@@ -622,6 +626,125 @@ def footnote_defs(t: str, content_list: list, log: list, cand: list) -> str:
     return t
 
 
+# ───────────────── 문단 봉합 (감독형 page-split merge) ─────────────────
+# MinerU가 페이지를 독립적으로 읽어 쪼갠 문단을 다시 잇는다. 탐지는 detect_para_splits
+# (content_list 인접성), seam(공백 여부)은 휴리스틱 + config override + 전수 로그(.merges.log).
+# 원칙: 탐지는 신뢰, 봉합은 검수. eq/image/table은 기본 제외(캡션·디스플레이수식 오접합 위험).
+
+# tail이 이 접미사(조사/어미)로 끝나면 어절 경계 → 공백. 그 외 한글이면 어절 중간 → 무공백.
+_SEAM_SPACE_SUFFIX = sorted([
+    "을", "를", "은", "는", "이", "가", "도", "만", "의", "와", "과", "로", "으로", "서",
+    "에", "에서", "부터", "까지", "보다", "처럼", "마다", "조차", "마저", "나", "이나",
+    "든", "든지", "라도", "밖에", "뿐", "께", "한테", "에게", "으로서", "로서", "으로써", "로써",
+    "다", "요", "죠", "지요", "네요", "습니다", "했다", "된다", "한다", "진다", "이다",
+    "거나", "면서", "면", "지만", "는데", "은데", "으며", "며", "고", "어서", "아서", "자",
+    "라", "겠다", "였다",
+], key=len, reverse=True)
+
+
+# 융합 보정(보수적): tail이 '이'로 끝나는데 head 첫 글자가 '단어 첫음절로는 거의 안 오는'
+# 음절이면 한 어절(이란/이며/이든/이었/이는/이들/이라)이 쪼개진 것 → 무공백.
+#   '아름다움이'+'란'=이란(무공백). 단 '고/다/나/지/면'은 단어 시작 가능(나오다/다음/지금)이라 제외
+#   → 그 경우는 조사 규칙으로 공백(붙여 깨는 것보다 띄우는 오류가 읽기 안전).
+_FUSION = {"이": set("란며든었는들라")}
+
+
+def _seam_for(tail: str, head: str, overrides: list):
+    """봉합부 공백 결정 → ('space'|'nospace'|'skip', reason). head도 본다(융합 보정)."""
+    t = tail.rstrip()
+    for ov in overrides:                       # config override(접미사 매칭) 우선
+        if ov.get("tail") and t.endswith(ov["tail"]):
+            return ov.get("seam", "skip"), "override"
+    if not t:
+        return "skip", "empty"
+    last = t[-1]
+    h0 = head.lstrip()[:1]
+    if last == ",":                            # 나열/절 연속 → 공백 (`A, B`)
+        return "space", "comma"
+    if not ("가" <= last <= "힣"):             # 그 외 digit/latin/symbol/`:` → 모호, 보류
+        return "skip", "non-hangul"
+    if last in _FUSION and h0 in _FUSION[last]:  # 융합형이 쪼개짐 → 무공백
+        return "nospace", "fusion"
+    for suf in _SEAM_SPACE_SUFFIX:
+        if t.endswith(suf):
+            return "space", "josa/ending"
+    return "nospace", "mid-eojeol"
+
+
+# reconstruct()가 헤딩으로 승격할 '구조 마커 줄'(평문 N강/제N장/section_marker/장제목)을
+# 봉합이 문단에 흡수하면 헤딩이 사라진다(4·13·18강 실종 버그). 그런 줄은 봉합 경계로 본다.
+_NUMHEAD_RE = re.compile(r"^제?\s*\d+\s*[부강장절편](?:\s|$)")
+
+
+def _build_struct_markers(struct: dict) -> set:
+    # num('4강')은 제외 — 본문 '9강에서' 같은 참조와 충돌. 번호 헤딩은 _NUMHEAD_RE 로만.
+    titles = set()
+    for key in ("parts", "lectures", "chapters"):
+        for x in struct.get(key, []):
+            for f in ("title", "match"):
+                v = (x.get(f) or "").strip()
+                if v:
+                    titles.add(v)
+    for m in struct.get("section_markers", []):
+        titles.add(m.strip())
+    return {t for t in titles if t}
+
+
+# 헤딩 블록은 짧다(제목뿐). 긴 본문 문단은 '양자역학은…'처럼 제목으로 시작해도 헤딩이 아님.
+_STRUCT_MAXLEN = 40
+
+
+def _is_structural(text: str, markers: set) -> bool:
+    body = text.strip()
+    if not body or len(body) > _STRUCT_MAXLEN:   # 길면 본문 문단 — 헤딩 아님
+        return False
+    line = body.split("\n", 1)[0].strip()
+    if _NUMHEAD_RE.match(line):                   # '4강', '제2장 …', '15강 비선형동역학'
+        return True
+    # 제목-only 헤딩 블록은 마커와 '정확히' 일치. 본문 '고전역학에서…'는 시작만 같을 뿐 → 제외.
+    return line in markers
+
+
+def merge_paragraphs(md: str, content_list: list, struct: dict,
+                     pm_cfg: dict, log: list, merges: list) -> str:
+    """page-split 문단 봉합. raw md 위에서 (surface 변환 전) 동작 — content_list
+    텍스트가 md의 정확한 substring이므로 `tail\\n\\nhead` 를 찾아 seam으로 잇는다."""
+    if not pm_cfg.get("enabled") or not content_list:
+        return md
+    cats = pm_cfg.get("categories", ["page_boundary", "samepage_break"])
+    overrides = pm_cfg.get("overrides", [])
+    markers = _build_struct_markers(struct)
+    si, ei = psplit.body_bounds(content_list, {"structure": struct})
+    classified = psplit.classify(content_list, si, ei)
+    seam_char = {"space": " ", "nospace": ""}
+    applied = skipped = miss = 0
+    for cat in cats:
+        for r in classified.get(cat, []):
+            tail, head = r["tail"], r["head"]
+            if _is_structural(head, markers) or _is_structural(tail, markers):
+                seam, why = "skip", "heading-boundary"
+            else:
+                seam, why = _seam_for(tail, head, overrides)
+            tag = f"p{r['page_a']}" + (f"->p{r['page_b']}" if r["page_a"] != r["page_b"] else "")
+            label = f"[{cat} {tag}] …{tail[-24:]} ++ {head[:24]}…"
+            if seam == "skip":
+                merges.append(f"SKIP({why})    {label}")
+                skipped += 1
+                continue
+            joint = tail + "\n\n" + head
+            n = md.count(joint)
+            if n != 1:                          # 0=텍스트 불일치, 2+=모호 → 봉합 안 함
+                merges.append(f"MISS(n={n})     {label}")
+                miss += 1
+                continue
+            md = md.replace(joint, tail + seam_char[seam] + head, 1)
+            merges.append(f"MERGE({seam},{why}) {label}")
+            applied += 1
+    log.append(f"[P6-merge] 봉합 {applied} / skip {skipped} / miss {miss} "
+               f"(cats={','.join(cats)}, overrides={len(overrides)})")
+    return md
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="MinerU md → org 변환기 v2")
     ap.add_argument("md")
@@ -632,6 +755,8 @@ def main() -> int:
     ap.add_argument("--content-list", help="..._content_list.json (각주/구조)")
     ap.add_argument("--log")
     ap.add_argument("--candidates")
+    ap.add_argument("--merge-paragraphs", action="store_true",
+                    help="page-split 문단 봉합 강제 ON (config paragraph_merge.enabled 무시)")
     args = ap.parse_args()
 
     md = Path(args.md).read_text(encoding="utf-8")
@@ -640,6 +765,13 @@ def main() -> int:
     struct = corr.get("structure", {})
     log: list = []
     cand: list = []
+    merges: list = []
+
+    # 봉합은 raw md 위에서 먼저 (content_list 텍스트가 md의 정확한 substring일 때).
+    pm_cfg = dict(corr.get("paragraph_merge", {}))
+    if args.merge_paragraphs:
+        pm_cfg["enabled"] = True
+    md = merge_paragraphs(md, content_list, struct, pm_cfg, log, merges)
 
     t = surface(md, corr, log, cand)
     t = clean_html(t, log)
@@ -674,9 +806,13 @@ def main() -> int:
     Path(args.out).write_text(out_text, encoding="utf-8")
     Path(args.log or args.out + ".changes.log").write_text("\n".join(log) + "\n", encoding="utf-8")
     Path(args.candidates or args.out + ".candidates.log").write_text("\n".join(cand) + "\n", encoding="utf-8")
+    if merges:
+        Path(args.out + ".merges.log").write_text("\n".join(merges) + "\n", encoding="utf-8")
 
     print(f"✓ org: {args.out}  ({len(out_text.splitlines())} 줄)")
     print(f"✓ 후보: {len(cand)}건 (본문 미변경)")
+    if merges:
+        print(f"✓ 봉합 로그: {args.out}.merges.log ({len(merges)}건)")
     print("\n--- 변환 요약 ---")
     print("\n".join(log))
     return 0

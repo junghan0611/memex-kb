@@ -4,6 +4,125 @@
 
 ---
 
+## ★★★ 수식 "대문짝" 버그 수정 — ox-epub CSS (2026-06-03 20:59, 작업 서버) ✅검증
+
+GLG 보고: 자연철학강의 어제 EPUB에서 수식이 화면 가득 거대하게 나옴. **원인 = OCR 아님.**
+
+- **근본 원인**: `~/repos/gh/ox-epub/ox-epub.el:140` `.org-svg { width: 90%; }`. ox-epub는 수식·그림
+  SVG에 같은 `org-svg` 클래스를 붙임 → **인라인 수식 기호(13pt SVG)까지 컨테이너 폭 90%(~540px)로 강제 확대.**
+- **수정** (ox-epub 포크, **커밋은 GLG 몫**): `width: 90%` → **`max-width: 90%; height: auto;`**.
+  인라인=자연크기(~18px, 본문과 동일), 디스플레이=자연크기(폭 초과 시만 90% 캡), 그림=기존대로 90% 캡.
+- **검증**: 자연철학강의 재빌드 → epubcheck **0/0/0**(6.6MB). SVG 976/987 정상치수(인라인 8~55pt, 디스플레이 419~455pt). 0pt 11개는 기존 빈 fragment(무해).
+- ✅ **작업 서버 환경 갭 해결**: `zip`/`unzip` 미설치로 `org2epub-build`(emacs 내부 zip 호출) 실패했음 →
+  **flake.nix devShell에 `pkgs.zip`/`pkgs.unzip` 추가.** 이후 `nix develop --command ./run.sh org2epub-build …`로 실행.
+- **후속**: 다른 책(물리학강의 등)도 같은 CSS라 재빌드 시 자동 개선. 인라인 수식 baseline 정렬은 미세개선 여지(저우선).
+
+---
+
+## ★★★ OCR 다엔진 탐색 — "OCR을 어디까지 해볼 수 있는가" (2026-06-03 20:50, 작업 서버)
+
+이슈 #3의 실행 단계. **핵심 질문은 OCR 정확도 벤치마크가 아니라 "한국어 스캔책(수식 多) →
+clean org/EPUB까지의 총 교정비용 최소화."** 작업 디바이스는 노트북→**작업 서버**로 이전(상시 가동).
+
+### 인프라 현황 (검증 시점에 재확인할 것)
+
+| 서버 | 모델 | 포트 | 상태 |
+|------|------|------|------|
+| **gpu2i** (gpu-02, RTX5080 16GB) | `MinerU2.5-Pro-2605-1.2B` | `:30000` vLLM | ✅ tmux `mineru-vllm` 가동(Jun02~). 우리 기본 엔진 |
+| **gpu1i** (gpu-01, RTX5080 16GB) | `DeepSeek-OCR`(3B/BF16 6.7GB) | (세팅중) | 🔧 GLG가 `hf download`+vLLM 세팅 중. **검증 후 GLG가 알려줌**. 현재 VRAM은 기존 `default`(qwen2) vLLM `:8000`이 점유 → DeepSeek 서빙하려면 스왑 |
+
+→ **두 서버 분리 = 모델 스왑 없이 MinerU vs DeepSeek-OCR 동시 비교 가능.** 16GB 한 장에 둘이 동시 상주는 불가했는데 이게 풀림.
+
+### DeepSeek-OCR을 쓰는 두 갈래 + GLG 방침 결정 (2026-06-03)
+
+**→ ①이 메인. ②는 별도 평가 트랙(순차 조율).** (GLG 결정)
+
+1. **vLLM thin-client 패턴 ✅ 메인** — gpu1i가 DeepSeek-OCR을 OpenAI-compat로 서빙 → 우리가 얇은
+   클라이언트로 호출 → 산출 md를 후처리에 투입. **우리 org-메타포맷 유지.** 방침 "GPU 노드엔 로직 X,
+   vLLM 모델만"과 일치. **pdf-craft의 `lan="en"/"zh"` 제약을 우회** — 모델 순수 OCR 능력(한국어 포함)을 직접 씀.
+   - ⚠️ **mineru-client의 config 스왑이 아님.** MinerU 클라(`-b vlm-http-client`)는 PDF렌더+호출+
+     **`content_list.json` 구조 SSOT 조립**까지 해주지만, DeepSeek-OCR vLLM은 **순수 이미지→md 엔드포인트**.
+     → 미러는 `PDF→페이지이미지 + 페이지별 /v1/chat/completions + md 조립`의 **작은 커스텀 클라이언트**.
+   - ⚠️ **함의 = ①트랙의 실제 관문**: DeepSeek 경로엔 `content_list.json`이 없음 → `mineru2org.py`의
+     content_list 의존 패스(각주정의 수집·page_number·list 기반 가짜헤딩 탐지)가 SSOT를 잃음.
+     OCR 텍스트 품질이 좋아도 **구조 복원 비용**이 올라갈 수 있다 → 총 교정비용 메트릭으로 정확히 잡힌다.
+   - ⭐ "어디까지" 레버 = DeepSeek-OCR **멀티해상도 모드**(Tiny/Small/Base/Large/Gundam). vLLM 서빙 시
+     해상도/프롬프트가 노브. MinerU엔 없는 비교 차원.
+2. **pdf-craft 통짜 ⚠️ 별도 트랙** — `git@github.com:oomol-lab/pdf-craft.git` (clone됨: `~/repos/3rd/pdf-craft`, v1.0.13).
+   DeepSeek-OCR을 **in-process 로딩**(`doc-page-extractor==1.0.12`, 원격 vLLM 안 씀). PDF→MD/EPUB 자체 완결.
+   - 제약①: GPU 머신(gpu1i)에 **로직 설치** 필요 → GLG 방침("GPU 노드엔 로직 X") 충돌 + NixOS FHS 두더지잡기 재현.
+   - 제약②: gpu1i 16GB는 **vLLM 서빙과 배타** → ①(서빙)·②(in-process) 동시 불가, 순차. 하나 띄우면 다른 걸 내려야.
+   - → **pdf-craft 파이프라인 자체를 평가할 때만** 별도 트랙으로, GPU 점유 순차 조율. 선택적 `toc_llm`은 OpenAI-compat라 우리 vLLM 연결 가능.
+
+### pdf-craft 검토 결과 (1차, README 기준 — 미설치)
+
+- v1.0.13(2026-04), 18 릴리스. v1.0.0부터 DeepSeek-OCR 전면 채택(MIT), LLM 교정 의존 제거 → 오프라인.
+- API: `transform_markdown(pdf_path, markdown_path, markdown_assets_path)` / `transform_epub(pdf_path, epub_path, book_meta=BookMeta(...))`.
+- 수식 MathML/SVG/image-clip, 표 HTML/image-clip, 각주·이미지 보존, 헤더/푸터 자동 필터, 메타→EPUB, auto-TOC. 선택적 `toc_llm`(OpenAI-compat)로 챕터 제목 분석.
+- 의존성: Poppler + PyTorch/torchvision, CUDA 권장. 모델 HF 자동 다운로드.
+- ⚠️ **한국어 미명시**(`lan="en"/"zh"`만 문서화). DeepSeek-OCR 자체는 될 가능성 높으나 **검증 필수 — 1순위 평가 질문.**
+
+### 평가 레이어 설계 (이슈 #3 미구현 태스크 → 실행)
+
+- [ ] `scanbook/eval/` 신설 — 평가 docs + 점수표 템플릿. **메트릭 = org/EPUB까지 총 교정비용**, OCR 정확도 단독 아님.
+- [ ] **고정 샘플 페이지셋 컨벤션** — 6종(TOC / 본문 / 수식헤비 / 그림표 / 각주헤비 / 머리말꼬리말)을 기존 5권에서 발췌. 공정 비교 SSOT.
+- [ ] 측정 도구 = `diff_review.py`(`./run.sh diff-review`, 엔진무관) 재사용.
+- [ ] **1차 대결: MinerU(gpu2i) vs DeepSeek-OCR(gpu1i, vLLM thin-client)** — 같은 샘플셋, 한국어 본문 정확도부터.
+- [ ] **2차: pdf-craft 통짜** — gpu1i에 설치(Poppler+torch), 기존 책 1권 PDF→EPUB 직접 뽑아 우리 산출과 비교. 한국어 실측.
+- [ ] DeepSeek-OCR thin-client = `mineru-client/` 미러로 신설할지 판단(서빙 확정 후).
+
+### Docling — 알고만 있으면 됨 (이번 스코프 아님)
+
+IBM, Granite-Docling-258M VLM, DoclingDocument(lossless JSON), MCP 서버. EPUB 대체 후보 아님.
+중장기 memex-kb 공통 중간표현/에이전트 문서변환 표면 후보로만 기억. **이번 OCR 탐색에선 다루지 않음.**
+
+### ✅ DeepSeek-OCR 서빙 + 한국어 실측 완료 (2026-06-03 20:43)
+
+- **서빙**: gpu1i `:8000` OpenAI-compat, served-name `deepseek-ocr`, max_len 8192, tmux `deepseek-ocr`.
+  외부 접속 = `ssh -fN -L 8000:localhost:8000 gpu1i`(ProxyJump). gpu2i:30000(MinerU)와 **동시 가동 → 동시 비교 가능.**
+- **한국어 품질**: 실제 책 페이지(물질생명인간 p60 칸트 인용) 본문·한자병기(`지표指標`)·인용마커(`B 197-198`) 정확. **밀집 한글 완벽.** 0.9~2.0s/page.
+- **pdf-craft `lan` 제약은 파이프라인 설정일 뿐 — 모델 OCR 능력은 한국어 완전 지원**(①트랙으로 우회 확정).
+
+#### 수식 페이지 A/B — DeepSeek vs MinerU (물리학강의 p490, 2026-06-03 20:51)
+
+- DeepSeek grounding이 **`equation[[bbox]]` 블록을 별도 라벨**로 주고 `\[...\]` 디스플레이로 정확 출력.
+  인라인 `\(N_+\)`도 본문에 인라인 유지. **수식을 이미지로 안 박음** — 전부 LaTeX.
+- 품질: MinerU `(2N_+ - N)a`(물리 정합) vs DeepSeek `(2N_+ - N_-)a`(N→N_- 1토큰 오독). **둘 다 클린 LaTeX, 미세차.**
+- **"수식 대문짝" 문제(GLG, 자연철학강의 EPUB) = OCR 아님, EPUB CSS 버그로 확정·수정 완료.**
+
+#### 엔진 강점 (추려서 org SSOT에 응용 — 다 만들 필요 없음)
+
+| | MinerU | DeepSeek-OCR |
+|---|---|---|
+| 구조 | `content_list.json`(각주/페이지번호/헤더분류) | grounding **시맨틱 라벨**(text/equation/sub_title/title/image) |
+| 수식 | LaTeX(content_list 교차참조) | **인라인/디스플레이 자체 구분**, 클린 LaTeX |
+| 그림 asset | ✅ crop 저장 | ❌ 순수 OCR(asset 없음) — **그림책은 MinerU 강점 유지** |
+| 운영 | 성숙·서빙(gpu2i) | 단순 엔드포인트(gpu1i) |
+
+→ **우리가 만드는 것 = org SSOT 생산기. 이미 `mineru2org.py`가 그것.** DeepSeek 클라는 grounding 블록을
+**MinerU 호환 md로 정규화** → 기존 `mineru2org.py`가 org로 받음. **OCR 프론트만 스왑, SSOT 생산기 재사용.**
+
+#### API 계약 — 프롬프트 두 모드 (클라 설계 분기점)
+
+| 모드 | 출력 | 우리 파이프라인 적합성 |
+|------|------|------------------------|
+| `<image>\n<\|grounding\|>Convert the document to markdown.` ⭐ | `<label>[[x1,y1,x2,y2]]\n<text>` 블록. **`sub_title`/`text`/`title` 시맨틱 라벨 직접 부여** | **권장.** content_list.json 잃은 자리를 라벨+bbox가 부분 대체(헤딩힌트·읽기순서·false-heading). 좌표 prefix 파싱 필요 |
+| `<image>\nConvert the document to markdown.` | bbox 없는 깨끗한 md, 빈줄 문단 | 라벨 상실 + 헤더/푸터 분리 약함(러닝푸터 본문 혼입). 단순본문엔 OK |
+
+→ thin-client는 **grounding 모드** 채택, 블록 파서가 `sub_title→**`/`title→*` 힌트 담은 md로 조립.
+프로브 스크립트: `/tmp/dsocr/probe.py` (urllib만, 무의존). 향후 `scripts/`로 정식화.
+
+### 다음 한 걸음
+
+- [완료] gpu1i DeepSeek-OCR 서빙·한국어 실측·API 계약 파악.
+- [완료] pdf-craft clone `~/repos/3rd/pdf-craft`(v1.0.13) + 코드 정독(in-process 확인).
+- [다음·GLG go 대기] **DeepSeek-OCR thin-client 신설** — `scripts/deepseek_ocr_client.py`(PDF→pdf2image 페이지렌더
+  + 페이지별 grounding chat 호출 + 블록 파서로 헤딩힌트 md 조립) + `./run.sh deepseek-parse`(터널 자동, gpu2i 미러).
+- [다음] 수식 밀집 페이지 실측(물리학강의 진짜 수식 페이지) — DeepSeek LaTeX 품질 vs MinerU 비교.
+- [가능·GPU 무관] `scanbook/eval/` 스캐폴딩 + 6종 샘플 페이지셋 컨벤션 + 총교정비용 점수표.
+
+---
+
 ## ★★★ 자연철학강의 — 장/고정마커절/소절 EPUB 성공 (2026-06-02 17:25)
 
 **세 번째 책. 십우십도 구조 충실 복원 + 엔진 4번째 핸들러.**

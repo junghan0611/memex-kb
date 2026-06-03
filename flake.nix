@@ -71,6 +71,8 @@
             pkgs.mupdf      # mutool: PDF inspect/extract/manipulate
             pkgs.poppler-utils # pdftotext/pdfinfo/pdfimages (born-digital PDF helpers)
             pkgs.epubcheck  # EPUB validation
+            pkgs.zip        # ox-epub.el이 EPUB 패키징에 system zip 호출 (zip 미설치 환경 대비)
+            pkgs.unzip      # EPUB 내부 검사(압축 해제)
             pkgs.uv         # marker-pdf venv/lock runner; same nixpkgs lock as nixos-config avoids duplicate store paths
             # asciidoctor는 nixos-config에서 시스템 전역 설치됨
           ];

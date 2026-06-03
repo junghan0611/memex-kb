@@ -409,6 +409,36 @@ cmd_mineru_parse() {
     run_cmd "env -u PYTHONPATH LD_LIBRARY_PATH='${MINERU_NIXLD}' ${MINERU_VENV}/bin/mineru -p '${input}' -o '${outdir}' -b vlm-http-client -u http://localhost:${MINERU_PORT}"
 }
 
+# ── DeepSeek-OCR (VLM, 원격 vLLM) — OCR 다엔진 비교 (이슈 #3) ──────────
+#
+# 추론은 gpu1i RTX 5080의 vLLM(served-name: deepseek-ocr, OpenAI 호환)이 한다.
+# MinerU(gpu2i:30000)와 대칭이되, DeepSeek는 content_list.json을 안 준다 —
+# grounding 모드의 label[[bbox]] 시맨틱 블록으로 구조를 부분 복원해 MinerU 호환 md를 만든다.
+# 클라이언트는 scripts/deepseek_ocr_client.py (PyMuPDF + urllib, 로컬 torch 불필요).
+
+DEEPSEEK_TUNNEL_HOST="${DEEPSEEK_TUNNEL_HOST:-gpu1i}"   # ssh alias (ProxyJump 포함)
+DEEPSEEK_PORT="${DEEPSEEK_PORT:-8000}"
+
+cmd_deepseek_parse() {
+    # DESC: PDF → MinerU 호환 Markdown (DeepSeek-OCR grounding, 원격 gpu1i 5080)
+    # USAGE: deepseek-parse <INPUT.pdf> [OUTPUT_DIR] [-- EXTRA_ARGS...]
+    # EXAMPLE: deepseek-parse scanpdf/물리학강의001.pdf deepseek-out -- --first 489 --last 490
+    # ENV: DEEPSEEK_TUNNEL_HOST(기본 gpu1i) DEEPSEEK_PORT(기본 8000)
+    # NOTE: 터널 자동 보장. 산출 <OUT>/<doc>/{<doc>.md, <doc>_blocks.json}.
+    ensure_project_dir
+    local input="${1:?입력 PDF 필요}"; shift || true
+    local outdir="deepseek-out"
+    if [[ $# -gt 0 && "$1" != "--" && "$1" != --* ]]; then outdir="$1"; shift; fi
+    [[ "${1:-}" == "--" ]] && shift
+    # 터널 보장: localhost:PORT 모델 엔드포인트 안 되면 ssh -fN 으로 띄운다
+    if ! curl -sf -m 3 "http://localhost:${DEEPSEEK_PORT}/v1/models" >/dev/null 2>&1; then
+        info "터널 띄움: localhost:${DEEPSEEK_PORT} → ${DEEPSEEK_TUNNEL_HOST}:${DEEPSEEK_PORT}"
+        ssh -fN -o ExitOnForwardFailure=yes -L "${DEEPSEEK_PORT}:localhost:${DEEPSEEK_PORT}" "${DEEPSEEK_TUNNEL_HOST}" || {
+            error "터널 실패. ssh ${DEEPSEEK_TUNNEL_HOST} 확인"; return 1; }
+    fi
+    run_cmd "nix develop --command python3 scripts/deepseek_ocr_client.py '${input}' -o '${outdir}' --url 'http://localhost:${DEEPSEEK_PORT}/v1/chat/completions' $*"
+}
+
 # ── Org→EPUB (org-mode → clean EPUB 3.0) ─────────────────────────────
 
 cmd_org2epub_build() {
@@ -631,6 +661,7 @@ COMMANDS=(
     "diff-review:cmd_diff_review"
     "mineru-setup:cmd_mineru_setup"
     "mineru-parse:cmd_mineru_parse"
+    "deepseek-parse:cmd_deepseek_parse"
     "--- Org→EPUB"
     "org2epub-build:cmd_org2epub_build"
     "--- Utility"

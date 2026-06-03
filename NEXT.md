@@ -116,9 +116,14 @@ IBM, Granite-Docling-258M VLM, DoclingDocument(lossless JSON), MCP 서버. EPUB 
 
 - [완료] gpu1i DeepSeek-OCR 서빙·한국어 실측·API 계약 파악.
 - [완료] pdf-craft clone `~/repos/3rd/pdf-craft`(v1.0.13) + 코드 정독(in-process 확인).
-- [다음·GLG go 대기] **DeepSeek-OCR thin-client 신설** — `scripts/deepseek_ocr_client.py`(PDF→pdf2image 페이지렌더
-  + 페이지별 grounding chat 호출 + 블록 파서로 헤딩힌트 md 조립) + `./run.sh deepseek-parse`(터널 자동, gpu2i 미러).
-- [다음] 수식 밀집 페이지 실측(물리학강의 진짜 수식 페이지) — DeepSeek LaTeX 품질 vs MinerU 비교.
+- [✅완료] **DeepSeek-OCR thin-client 신설** — `scripts/deepseek_ocr_client.py`(PyMuPDF 페이지렌더 +
+  페이지별 grounding chat + 블록 파서 → MinerU 호환 md + `_blocks.json` 근거) + `./run.sh deepseek-parse`
+  (터널 자동 gpu1i:8000, mineru-parse 미러). 검증: 물리학강의 p490(수식 11블록 `\[\]`+인라인 `\(\)`) /
+  p120(sub_title→`##`). 1.0~2.5s/page. 산출 `<OUT>/<doc>/{<doc>.md, <doc>_blocks.json}`.
+  - ⚠️ OCR 변이 관찰: 렌더 경로(PyMuPDF vs pdftoppm)에 따라 `N_+`→`N_4`/`N₄` 미세차. 렌더 충실도가 OCR에 영향(저우선 튜닝).
+- [다음] **①트랙 1차 대결**: 같은 책 1권을 deepseek-parse → `mineru2org.py`(DeepSeek용 config) → org/EPUB →
+  MinerU 산출과 **총교정비용 비교**. DeepSeek md는 MinerU와 형태가 달라 전용 corrections config 필요.
+- [다음] image 블록 — DeepSeek는 asset 없음(주석만). 그림책은 bbox로 페이지렌더 crop 보강할지 판단(또는 MinerU 유지).
 - [가능·GPU 무관] `scanbook/eval/` 스캐폴딩 + 6종 샘플 페이지셋 컨벤션 + 총교정비용 점수표.
 
 ---

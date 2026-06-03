@@ -150,6 +150,21 @@
       "from": "다 omitted다",
       "to": "다녔다",
       "desc": "[TOK] 가지고 다녔다"
+    },
+    {
+      "from": "(3-16)식에 서 특히",
+      "to": "(3-16)식에서 특히",
+      "desc": "[SEAM] page-merge josa-completion 에+서→에서 (p176)"
+    },
+    {
+      "from": "동역학에 서 대상",
+      "to": "동역학에서 대상",
+      "desc": "[SEAM] page-merge josa-completion 에+서→에서 (p229)"
+    },
+    {
+      "from": "사람에 게만 들린다",
+      "to": "사람에게만 들린다",
+      "desc": "[SEAM] page-merge josa-completion 에+게→에게 (p335)"
     }
   ],
   "candidate_regex": [
@@ -157,5 +172,13 @@
       "pattern": "(앉|않|앞)(이|의|과|와|도|만|에서|에게|으로|라는|이라는|까지|부터)",
       "desc": "앎 오독(않/앉/앞)? 장회익 핵심어 — 문맥 판정(정상어 충돌 가능)"
     }
-  ]
+  ],
+  "paragraph_merge": {
+    "_doc": "page-split 문단 봉합(감독형). 이 책은 samepage_break 제외 — 십우도 운문·한문 인용·도식 박스 라벨([지식N]/처음·나중 상태)·수식 변수 범례가 samepage로 오염됨(264 dry-run 중 ~77건 구조요소 오봉합 확인). page_boundary만 평문 연속이라 안전(187봉합/0miss). seam 3건은 literal에서 josa-completion 교정.",
+    "enabled": true,
+    "categories": [
+      "page_boundary"
+    ],
+    "overrides": []
+  }
 }

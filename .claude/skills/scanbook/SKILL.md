@@ -192,11 +192,20 @@ Measured (body region only, 2026-06-04):
 
 ### Reliability tiers = how deep automation can safely go
 
-- **page_boundary / samepage_break** — detection HIGH; **the seam space is NOT auto-decidable.**
+- **page_boundary** — detection HIGH; **the seam space is NOT auto-decidable.**
   Measured on the 392 page-boundary cases: ~65% need **no space** (mid-어절 wrap, `물`+`리과학`→
   `물리과학`), ~30% need **a space** (어절 boundary, `그것을`+`특별히`→`그것을 특별히`), ~5%
   ambiguous (digit/latin/symbol). Collapsing one way breaks 30%. → merge the two `\n\n`-separated
   blocks into one paragraph, decide the seam by heuristic **+ log every decision + review**.
+  Cleanest category — only cross-page prose continuation lands here.
+- **samepage_break — PER-BOOK decision, NOT a default-on category.** Detection is HIGH but the
+  category conflates prose-continuation with *structured single-page blocks*: verse lines, classical
+  quotations (한문), diagram/schema box labels, formula variable legends, reproduced ads. A
+  prose-heavy book (물질생명인간) merges these safely; a structure-heavy book does NOT. **자연철학강의
+  (십우도 verse + 한문 + `[지식N]`/처음·나중 boxes + formula legends): samepage_break dry-run glued
+  ~77 of 264 wrongly** (`돌아와 보니`+`소는`→`보니소는`, `않습`+`人爲能知`). → for such books set
+  `categories: ["page_boundary"]` only. **Always read the full dry-run `.merges.log` first; if verse/
+  한문/diagram labels appear under samepage, drop the category** rather than fight it with overrides.
 - **eq_interrupt** — text + display-equation + text. **Do NOT merge.** A display equation belongs
   on its own line (current render is correct); only blemish is the continuation text looking
   indented — low priority.

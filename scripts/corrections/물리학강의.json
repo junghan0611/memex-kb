@@ -1616,5 +1616,14 @@
       "pattern": "[가-힣]*[a-zA-Z]+[가-힣]+",
       "desc": "한글 속 라틴자 혼입(OCR 깨짐: 나/ns는데, 바(pr) 등) — 문맥 판정"
     }
-  ]
+  ],
+  "paragraph_merge": {
+    "_doc": "page-split 문단 봉합(감독형). 이 책은 page_boundary+samepage_break 둘 다 켬 — samepage 오염 3클래스(그림 캡션 그림N:/ '더 알아보기 … NNN쪽' 교차참조 / '① 로렌츠 변환식' 박스 소제목)는 _seam_for의 caption-head·pageref-tail·enum-circled skip 규칙이 자동 제거(45건 skip). 남은 samepage 43건은 전부 평문 연속. dry-run merges.log 통독으로 검증.",
+    "enabled": true,
+    "categories": [
+      "page_boundary",
+      "samepage_break"
+    ],
+    "overrides": []
+  }
 }

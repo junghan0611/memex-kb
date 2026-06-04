@@ -203,9 +203,16 @@ Measured (body region only, 2026-06-04):
   quotations (한문), diagram/schema box labels, formula variable legends, reproduced ads. A
   prose-heavy book (물질생명인간) merges these safely; a structure-heavy book does NOT. **자연철학강의
   (십우도 verse + 한문 + `[지식N]`/처음·나중 boxes + formula legends): samepage_break dry-run glued
-  ~77 of 264 wrongly** (`돌아와 보니`+`소는`→`보니소는`, `않습`+`人爲能知`). → for such books set
-  `categories: ["page_boundary"]` only. **Always read the full dry-run `.merges.log` first; if verse/
-  한문/diagram labels appear under samepage, drop the category** rather than fight it with overrides.
+  ~77 of 264 wrongly** (`돌아와 보니`+`소는`→`보니소는`, `않습`+`人爲能知`). **Always read the full
+  dry-run `.merges.log` first.** Then the fork:
+  - **Verse/한문/free-form-label heavy → drop the category** (`categories: ["page_boundary"]`). The
+    contamination is too varied to detect cleanly. This is 자연철학강의.
+  - **Contamination falls into a few *regular* label shapes → keep samepage, add a skip rule** for
+    each shape in `_seam_for` (caption-head / pageref-tail / enum-circled cover 도판 캡션 / `…NNN쪽`
+    cross-refs / `①` box titles). This is 물리학강의 — 45 labels auto-skipped, 43 prose merges kept.
+    Prefer this when the labels are *systematic* (textbook callouts, figure captions), because it
+    rescues the genuine same-page prose the blanket drop would lose. **Verify zero regression on
+    already-committed books** (`_seam_for` is shared SSOT) before trusting a new skip rule.
 - **eq_interrupt** — text + display-equation + text. **Do NOT merge.** A display equation belongs
   on its own line (current render is correct); only blemish is the continuation text looking
   indented — low priority.
@@ -223,10 +230,19 @@ is unchanged until a book is validated. Mechanism:
    `samepage_break` only — never eq/image/table).
 2. For each candidate, locate `tail\n\nhead` in the md and join it, deciding the seam. The
    `_seam_for()` rule order in `mineru2org.py` is the **SSOT** (refined book-by-book); current:
-   override → **digit-head skip** → comma→space → non-hangul tail skip → **josa-head**(head is a
+   override → **digit-head skip** → **caption-head skip** → **pageref-tail skip** →
+   **enum-circled skip** → comma→space → non-hangul tail skip → **josa-head**(head is a
    bare josa → no space, `사이`+`에`=사이에) → **latin-head**→space → **conj-head**(및/또는)→space →
    **adv-tail**(물론/특히)→space → **jeok-tail**(X적 + noun)→space → **이-fusion**(이+란/며/든/었/는/
    들/라/러/루/른/렇/를)→no space → josa/ending suffix→space → else mid-어절→no space.
+   - **The 3 structural-label skips let a structure-heavy book KEEP samepage_break** (instead of
+     dropping the whole category like 자연철학강의). They suppress *labels masquerading as prose*:
+     **caption-head** (head = `그림/표/사진 N-N:` 도판 캡션), **pageref-tail** (tail ends `\d+쪽` —
+     a `더 알아보기 ① … 202쪽` cross-ref; `\d` before 쪽 so 왼쪽/양쪽 are exempt), **enum-circled**
+     (tail starts `①②③…` AND ≤24 chars = a box subtitle `① 로렌츠 변환식`). The ≤24 gate is
+     load-bearing: 물리학강의 box titles ≤21, but 물질생명인간's ①-prefixed Kant *quotation
+     paragraphs* are ≥27 and genuinely continue — so the gate skips titles, merges prose. Proven on
+     물리학강의 (45 samepage labels skipped, 43 prose merges kept; zero regression on the 2 committed books).
 3. **digit-head skip is load-bearing** (hard-won, caused a build failure): a footnote-definition
    orphan (`19 이러한…` paragraph) merged into the prior paragraph becomes `…그19…`, so
    `footnote_defs` can no longer absorb it as a standalone `^\d+ ` line → `[fn:19]` loses its

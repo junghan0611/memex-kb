@@ -664,6 +664,14 @@ _FUSION = {"이": set("란며든었는들라러루른렇를")}
 _JOSA_HEAD_RE = re.compile(
     r"^(에서|에게|한테|부터|까지|보다|처럼|마다|조차|마저|밖에|을|를|은|는|의|가|도|만|과|께|에)(?=\s)")
 
+# 본문 연속이 아닌 '구조 라벨'은 봉합 금지(특히 textbook/도해 책). 셋 다 자연철학강의/물리학강의에서 관측.
+_CAPTION_HEAD_RE = re.compile(r"^(그림|사진|표)\s*\d[\d.\-]*\s*[:：]")  # '그림 1-1: …' 도판 캡션
+_PAGEREF_TAIL_RE = re.compile(r"\d\s*쪽$")                            # '더 알아보기 … 202쪽' 교차참조(왼쪽/양쪽 제외: 숫자+쪽만)
+_CIRCLED = set("①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳")                       # '① 로렌츠 변환식' 박스 소제목/나열
+# 박스 소제목(①-시작, 짧음)만 봉합 금지. ①로 시작하는 '긴' 인용 문단(칸트 ④/⑦…, ≥27자)은 평문이라 제외.
+# 물리학강의 박스제목 ≤21자 / 물질생명인간 ①-인용 ≥27자 → 24자가 둘을 가른다.
+_ENUM_TITLE_MAXLEN = 24
+
 
 def _seam_for(tail: str, head: str, overrides: list):
     """봉합부 공백 결정 → ('space'|'nospace'|'skip', reason). head도 본다."""
@@ -676,6 +684,12 @@ def _seam_for(tail: str, head: str, overrides: list):
         return "skip", "empty"
     if h[:1].isdigit():                         # head가 숫자 시작 = 각주정의/번호목록 orphan → 봉합 금지
         return "skip", "digit-head"             #   (footnote_defs가 standalone 줄로 흡수해야 함)
+    if _CAPTION_HEAD_RE.match(h):               # head가 '그림/표/사진 N:' 캡션 → 본문 아님
+        return "skip", "caption-head"
+    if _PAGEREF_TAIL_RE.search(t):              # tail이 'NNN쪽' 교차참조 라벨('더 알아보기 … 202쪽')
+        return "skip", "pageref-tail"
+    if t.lstrip()[:1] in _CIRCLED and len(t.strip()) <= _ENUM_TITLE_MAXLEN:  # 짧은 박스 소제목 '① 로렌츠 변환식'
+        return "skip", "enum-circled"                                        #   (긴 ①-시작 인용 문단은 평문 연속 → 제외)
     last = t[-1]
     if last == ",":                            # 나열/절 연속 → 공백 (`A, B`)
         return "space", "comma"

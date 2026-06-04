@@ -571,10 +571,13 @@ def reconstruct(t: str, struct: dict, log: list):
             stats["subsection"] += 1
             i += 1
             continue
-        # 가짜 헤딩: ①②.., <..>/〈..〉, A B C 류 → 본문으로 강등
+        # 가짜 헤딩: ①②.., <..>/〈..〉, A B C 류, 단일 한글음절(찾아보기 자모 구분자
+        # 가/나/다/라…하 — 찾아보기가 러닝헤드라 in_index 가 안 켜지는 책에서 헤딩화됨;
+        # 어떤 책도 단일음절을 정당한 헤딩으로 쓰지 않으므로 일반규칙) → 본문으로 강등
         if (re.match(r"^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫]", text)
                 or re.match(r"^[<〈].*[>〉]$", text)
-                or re.match(r"^[A-Z]( [A-Z])+$", text)):
+                or re.match(r"^[A-Z]( [A-Z])+$", text)
+                or re.fullmatch(r"[가-힣]", text)):
             out.append(text)
             stats["false_demote"] += 1
             i += 1

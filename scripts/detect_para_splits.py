@@ -65,13 +65,31 @@ def body_bounds(blocks, cfg):
                 si = i
                 break
     ei = len(blocks)
+    found = False
     for i in range(si + 1, len(blocks)):
         b = blocks[i]
         if b.get("text_level") and any(
             b.get("text", "").strip().startswith(x) for x in bmat
         ):
             ei = i
+            found = True
             break
+    # Fallback: MinerU가 back_matter 표제를 헤딩(text_level)이 아니라 러닝헤드
+    # (type='header', text_level=None)로만 출력하는 책(예: 물리의정석 찾아보기)에서는
+    # 위 검색이 실패한다. 그 표제가 처음 등장하는 페이지의 첫 블록에서 컷 — 색인은
+    # 그 페이지 첫 블록부터 시작하므로 색인+판권이 통째로 본문 밖으로 빠진다.
+    if not found and bmat:
+        back_pages = sorted({
+            b.get("page_idx") for b in blocks[si + 1:]
+            if b.get("text", "").strip() in bmat
+            and b.get("page_idx") is not None
+        })
+        if back_pages:
+            bp = back_pages[0]
+            for i in range(si + 1, len(blocks)):
+                if blocks[i].get("page_idx") == bp:
+                    ei = i
+                    break
     return si, ei
 
 

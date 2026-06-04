@@ -149,6 +149,16 @@ in the body too.
 - **Safe rule** = "misread char + a particle the misread char can NEVER take as a verb ending":
   `(앉|않|읽|얇)(이|의|과|와|도|만|에|으로…)` → `앎`; exclude `은/을/음` (valid endings).
 - **Anything ambiguous → `candidate_regex`** → `.candidates.log`, body untouched.
+- **`candidate_regex` only sees its own pattern's blind spot.** The latin-in-hangul pattern
+  `[가-힣]*[a-zA-Z]+[가-힣]+` floods on legit physics-variable + 조사 (`H이다`, `Q라`, `t로`,
+  `σ가`) — 물리의정석 logged 547, ~all false. Narrow it to `[가-힣][a-zA-Z]{2,}[가-힣]` (2+ fused
+  latin = real garble). But the bigger lesson: **pure-hangul misreads carry no latin at all**
+  (`써으니까→썼으니까`, `무거위서→무거워서`, `묶이다→몫이다`, `범칙→법칙`) so NO latin regex catches
+  them. Two surfaces find these instead: (1) **`.merges.log`** — its clean page/para-joint prose
+  is the best window onto body garbles (the merge just surfaces them at the seam); (2) **active
+  suspect-syllable scan** for mid-page ones (`grep` non-word syllables like 쏸/위서/짧수, then
+  verify each in context). A whole non-word syllable (`쏸`, `멜타`) that is invalid Korean
+  everywhere → `safe_regex` after confirming every occurrence is the same fix (물리의정석 쏸→쓸 ×15).
 - **General finisher = a LIGHT LLM pass** (you, reading context). MinerU did 95%; you fix the
   flagged 5% by reading the sentence. The lightweight replacement for full vision transcription.
 - **Book-specific promotion**: promote a candidate to `safe`/`literal` only after verifying the
@@ -175,6 +185,17 @@ untouched). Rule: a text block ending without terminal punctuation (`.?!…。`/
 bracket) followed by a text block not starting a paragraph marker = continuation candidate.
 front matter (TOC) / back matter (찾아보기) excluded — their lines end in page numbers and flood
 false positives.
+
+> **`body_bounds` running-head fallback (hard-won, 물리의정석).** The back-matter cut is found by
+> the first block whose `text_level` is set AND text starts with a `back_matter` name. But MinerU
+> sometimes emits the index title **only as a running head** (`type:'header'`, `text_level:None`)
+> with no `#` heading at all — then `ei` stays at end-of-book and the **whole index + colophon get
+> merged** (판권 glued into one line `2018년…지은이…옵긴이…`). Fix already in `body_bounds`: if the
+> text_level search finds nothing, fall back to "first block of the first page that carries that
+> running head" (the index starts on that page). Same root cause makes the index 자모 dividers
+> become garbage `**` headings (the `in_index` drop also keys off a `#` 찾아보기 heading that
+> doesn't exist) — handled by the **single-syllable hangul heading demote** in `reconstruct`
+> (no real heading is one syllable). Both are shared SSOT → verify byte-identical on the other books.
 
 ```bash
 ./run.sh para-splits <book>                                      # summary counts

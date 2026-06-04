@@ -392,10 +392,11 @@ cmd_mineru_setup() {
     ensure_project_dir
     run_cmd "nix develop --command uv sync --directory mineru-client"
     info "임포트 검증..."
-    if env -u PYTHONPATH LD_LIBRARY_PATH="${MINERU_NIXLD}" "${MINERU_VENV}/bin/python" -c "import cv2, magika" 2>/dev/null; then
+    # LD_LIBRARY_PATH = flake shellHook 의 MINERU_LD_LIBRARY_PATH (manylinux 런타임 라이브러리).
+    if nix develop --command bash -c 'env -u PYTHONPATH LD_LIBRARY_PATH="$MINERU_LD_LIBRARY_PATH" mineru-client/.venv/bin/python -c "import cv2, magika"' 2>/dev/null; then
         success "mineru 클라이언트 준비됨. 사용: ./run.sh mineru-parse <pdf>"
     else
-        error "임포트 실패. LD_LIBRARY_PATH(nix-ld) 또는 opencv-headless 확인"
+        error "임포트 실패. flake MINERU_LD_LIBRARY_PATH 또는 opencv-headless 확인"
         return 1
     fi
 }
@@ -419,7 +420,8 @@ cmd_mineru_parse() {
         ssh -fN -o ExitOnForwardFailure=yes -L "${MINERU_PORT}:localhost:${MINERU_PORT}" "${MINERU_TUNNEL_HOST}" || {
             error "터널 실패. ssh ${MINERU_TUNNEL_HOST} 확인"; return 1; }
     fi
-    run_cmd "env -u PYTHONPATH LD_LIBRARY_PATH='${MINERU_NIXLD}' ${MINERU_VENV}/bin/mineru -p '${input}' -o '${outdir}' -b vlm-http-client -u http://localhost:${MINERU_PORT}"
+    # mineru 바이너리를 nix develop 안에서 실행 → flake 의 MINERU_LD_LIBRARY_PATH 상속(manylinux 런타임 라이브러리).
+    run_cmd "nix develop --command bash -c 'env -u PYTHONPATH LD_LIBRARY_PATH=\"\$MINERU_LD_LIBRARY_PATH\" ${MINERU_VENV}/bin/mineru -p \"\$1\" -o \"\$2\" -b vlm-http-client -u \"\$3\"' _ '${input}' '${outdir}' 'http://localhost:${MINERU_PORT}'"
 }
 
 # ── DeepSeek-OCR (VLM, 원격 vLLM) — OCR 다엔진 비교 (이슈 #3) ──────────

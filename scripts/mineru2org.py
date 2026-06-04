@@ -506,6 +506,7 @@ def reconstruct(t: str, struct: dict, log: list):
     out = list(preface)
     stats = {"chapter": 0, "section": 0, "subsection": 0, "false_demote": 0, "index_drop": 0}
     in_index = False  # 찾아보기 내부: 자모 구분자 헤딩은 노이즈 → 드롭
+    seen_chap = set()  # 같은 장 제목 두 번째 등장 = 내부 소절(막간 표지 뒤 동명 소절) → 절로 강등
     i = 0
     while i < len(lines):
         ln = lines[i]
@@ -532,10 +533,18 @@ def reconstruct(t: str, struct: dict, log: list):
             i += 1
             continue
         text = mh.group(1).strip()
-        # 장 제목
-        if text in chap_by_title:
+        # 강/막간 번호만 있는 표지 헤딩(# 2강, # 막간 2) → 드롭. config chapter 가 num 보유,
+        # 바로 다음 제목줄이 '* N강 제목' 을 만든다(강 표지 2형태 중 분리형). 본문 참조 '9강에서'는
+        # 헤딩이 아니라 영향 없음.
+        if re.match(r"^(제?\s*\d+강|막간\s*\d+)$", text):
+            stats["false_demote"] += 1
+            i += 1
+            continue
+        # 장 제목 (단, 같은 ctitle 두 번째 등장은 내부 소절 → 아래 절 처리로 흘려보냄)
+        if text in chap_by_title and chap_by_title[text][1] not in seen_chap:
             num, ctitle = chap_by_title[text]
             out.append(f"* {num} {ctitle}")
+            seen_chap.add(ctitle)
             stats["chapter"] += 1
             i += 1
             continue

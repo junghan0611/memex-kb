@@ -1,0 +1,57 @@
+{
+  "_doc": "물리의 정석: 고전 역학 편 (레너드 서스킨드/조지 라보프스키, 이종필 옮김) 교정/구조 사전. 4번째 구조 타입: 강(講)+막간(interlude) 최상위 + 소절. 부(parts) 없음. 1차 목표=콘텐츠 충실도(텍스트/이미지/수식)+페이지경계 문단봉합, 2차=TOC 정렬. 수식책이라 footnote_superscript:false(위첨자=지수). chapters는 TOC 정본 18개.",
+  "footnote_superscript": false,
+  "meta": {
+    "title": "물리의 정석: 고전 역학 편",
+    "author": "레너드 서스킨드, 조지 라보프스키",
+    "translator": "이종필",
+    "date": "2017",
+    "language": "ko",
+    "publisher": "사이언스북스",
+    "subject": "고전역학 라그랑지안 해밀토니안 최소작용 대칭성 보존법칙 물리의정석 서스킨드",
+    "uid": "urn:uuid:7a2c1e90-tpm-mineru-0001"
+  },
+  "structure": {
+    "body_start": "고전 물리학의 본성",
+    "chapters": [
+      { "num": "1강", "title": "고전 물리학의 본성" },
+      { "num": "막간 1", "title": "공간, 삼각법, 벡터" },
+      { "num": "2강", "title": "운동" },
+      { "num": "막간 2", "title": "적분법" },
+      { "num": "3강", "title": "동역학" },
+      { "num": "막간 3", "title": "편미분" },
+      { "num": "4강", "title": "하나 이상의 입자로 이루어진 계" },
+      { "num": "5강", "title": "에너지" },
+      { "num": "6강", "title": "최소 작용의 원리" },
+      { "num": "7강", "title": "대칭성과 보존 법칙" },
+      { "num": "8강", "title": "해밀토니안 역학과 시간 이동 불변" },
+      { "num": "9강", "title": "위상 공간 유체와 깁스-리우빌 정리" },
+      { "num": "10강", "title": "푸아송 괄호, 각운동량, 대칭성" },
+      { "num": "11강", "title": "전기력과 자기력" },
+      { "num": "부록", "title": "중심력과 행성 궤도" },
+      { "num": "옮긴이의 글", "title": "자연 원리 이해의 정석" }
+    ],
+    "chapter_title_variants": {
+      "막간 1 🌟 공간, 삼각법, 벡터": "공간, 삼각법, 벡터",
+      "막강2 ◎분법": "적분법",
+      "막간 3 🌟 평미분": "편미분",
+      "푸아송 괄호,각운동량,대칭성": "푸아송 괄호, 각운동량, 대칭성",
+      "위상 공간 유체와 김스-리우빌 정리": "위상 공간 유체와 깁스-리우빌 정리"
+    },
+    "back_matter": ["찾아보기"]
+  },
+  "safe_regex": [],
+  "literal": [],
+  "candidate_regex": [
+    {
+      "pattern": "[가-힣]*[a-zA-Z]+[가-힣]+",
+      "desc": "한글 속 라틴자 혼입(OCR 깨짐) — 문맥 판정"
+    }
+  ],
+  "paragraph_merge": {
+    "_doc": "page-split 문단 봉합(감독형). 수식책이라 eq_interrupt 보류, page_boundary+samepage_break만. samepage 오염은 _seam_for skip 규칙(caption-head/pageref-tail/enum-circled)이 자동 제거. dry-run merges.log 통독 후 결정.",
+    "enabled": true,
+    "categories": ["page_boundary", "samepage_break"],
+    "overrides": []
+  }
+}

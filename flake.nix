@@ -93,6 +93,11 @@
             echo ""
             export PYTHONPATH="$PWD:$PYTHONPATH"
             export TERM=xterm-256color
+
+            # MinerU 클라이언트(numpy/opencv manylinux wheel)가 런타임에 요구하는 라이브러리.
+            # programs.nix-ld.libraries 가 호스트마다 다르므로(최소 구성 호스트는 libcap 만) flake 가
+            # 자립적으로 제공한다. run.sh 의 mineru 명령이 nix develop 안에서 이 변수를 쓴다.
+            export MINERU_LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.zlib ]}:/run/current-system/sw/share/nix-ld/lib"
           '';
         };
 

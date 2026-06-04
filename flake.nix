@@ -75,12 +75,18 @@
             pkgs.unzip      # EPUB 내부 검사(압축 해제)
             pkgs.uv         # marker-pdf venv/lock runner; same nixpkgs lock as nixos-config avoids duplicate store paths
             # asciidoctor는 nixos-config에서 시스템 전역 설치됨
+
+            # 한글 textlint + kiwi(형태소) 작업축 (2026-06-04~). textlint 15.x = node>=20,
+            # CI 매트릭스 [20,22,24]. kiwi 연결은 kiwi-nlp(C++→WASM, JVM 불요)로 가볍게 —
+            # textlint/kiwi-nlp 자체는 npm으로 shell 안에서, nix엔 nodejs 런타임만 둔다.
+            pkgs.nodejs_24
           ];
 
           shellHook = ''
             echo "🚀 memex-kb 개발 환경 (flake)"
             echo "================================"
             echo "Python: $(python --version)"
+            echo "Node:   $(node --version)"
             echo "Pandoc: $(pandoc --version | head -1)"
             echo "Gitleaks: $(gitleaks version)"
             echo "EPUBCheck: $(epubcheck --version 2>/dev/null || echo available)"

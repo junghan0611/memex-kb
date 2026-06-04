@@ -1,0 +1,11 @@
+{
+  "name": "textlint-ko",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "한글 textlint + kime(Kiwi 형태소) 작업축 — memex-kb self-contained",
+  "dependencies": {
+    "kiwi-nlp": "^0.22.0",
+    "textlint": "^15.7.1"
+  }
+}

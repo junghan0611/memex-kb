@@ -607,7 +607,7 @@ def footnote_defs(t: str, content_list: list, log: list, cand: list) -> str:
     kept = []
     absorbed = 0
     for ln in lines:
-        m = re.match(r"^(\d+)\s+(\S.{15,})$", ln)
+        m = re.match(r"^(\d+)\s+(\S.{2,})$", ln)   # 미주(後注) 짧은 정의("같은 글,397.")도 흡수. ref 멤버십이 방어.
         if m and int(m.group(1)) in refs and int(m.group(1)) not in defs:
             defs[int(m.group(1))] = re.sub(r"\s+", " ", m.group(2)).strip()
             absorbed += 1

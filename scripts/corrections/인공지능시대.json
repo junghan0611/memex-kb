@@ -1,0 +1,62 @@
+{
+  "_doc": "인공지능시대와 철학의 쓸모(이기상) 교정 사전. WIP baseline. 핵심난제: heading 파편화(장 제목 일반텍스트 분리 + 소절 N개 # 파편) + 미주(後注, page_footnote=0, '# 후주' 텍스트 섹션). vision 스켈레톤(org/인공지능시대.org)이 정답 목차 보유.",
+  "meta": {
+    "title": "인공지능시대와 철학의 쓸모",
+    "author": "이기상",
+    "date": "2024",
+    "language": "ko",
+    "publisher": "정보와사람",
+    "subject": "인공지능 철학 하이데거 존재 다석 류영모 들뢰즈 김아타 생명",
+    "uid": "urn:uuid:9f3c1a70-aiph-mineru-0001"
+  },
+  "structure": {
+    "body_start": "1장",
+    "chapters": [
+      { "num": "1장", "title": "인공지능은 철학의 종말을 꿈꾸는가?" },
+      { "num": "2장", "title": "인류가 만든 새로운 존재의 집, 문화" },
+      { "num": "3장", "title": "글로벌 시대의 문화인이란?" },
+      { "num": "4장", "title": "일상과 과학, 그리고 실존" },
+      { "num": "5장", "title": "인간을 둘러싼 다양한 세계" },
+      { "num": "6장", "title": "21세기 철학의 디딤돌 — 들뢰즈와 하이데거" },
+      { "num": "7장", "title": "예술철학 — 사물, 인간, 자연의 어울림" },
+      { "num": "8장", "title": "한국인과 예술철학" },
+      { "num": "9장", "title": "지구 생명 관리인 — 인간" }
+    ],
+    "chapter_title_variants": {},
+    "back_matter": ["후주", "글쓴이의 저서·역서·논문 목록"]
+  },
+  "safe_regex": [],
+  "literal": [
+    { "from": "헤ゲ일은", "to": "헤겔은", "desc": "가나혼입 Hegel 오독(구체형 먼저)" },
+    { "from": "헤ゲßHegel", "to": "헤겔Hegel", "desc": "가나혼입 헤겔Hegel 병기" },
+    { "from": "헤ゲ", "to": "헤겔", "desc": "가나혼입 헤겔(ゲ→겔) 다수" },
+    { "from": "페ゲ러", "to": "페겔러", "desc": "O. Pöggeler 인명 가나혼입" },
+    { "from": "어ゼ밤", "to": "어젯밤", "desc": "가나혼입 어젯밤" },
+    { "from": "끝気が렸다", "to": "끝났다", "desc": "가나혼입 끝났다(気が→났)" },
+    { "from": "및の人것들", "to": "및 그것들", "desc": "가나혼입 그것들(の人→그)" },
+    { "from": "때の人들은", "to": "때 그들은", "desc": "가나혼입 그들은(の人→그)" },
+    { "from": "同類人の", "to": "同類人의", "desc": "가나혼입 의(の→의), 한자 병기는 보존" },
+    { "from": "ぬ대인간", "to": "늑대인간", "desc": "가나혼입 늑대인간(ぬ→늑)" },
+    { "from": "막힘과 거리くださいます。이", "to": "막힘과 거리가 없다. 이", "desc": "OCR 환각 일본어 제거(하이데거 둘러봄 — 거리가 없다)" },
+    { "from": "날말", "to": "낱말", "desc": "낱말(낱→날) 일관 오독 47곳 — 전수 '낱말'(word) 맥락 확인, 다석 고유어 아님" },
+    { "from": "늦대인간", "to": "늑대인간", "desc": "늑대인간(늑→늦) 4곳" },
+    { "from": "엉경퀴", "to": "엉겅퀴", "desc": "엉겅퀴(겅→경) 시 제목+본문 3곳" },
+    { "from": "이퇴게", "to": "이퇴계", "desc": "이퇴계(退溪 이황) 인명 오독" },
+    { "from": "근거울", "to": "근거율", "desc": "근거율(律) 논리학 용어 오독" },
+    { "from": "떠말을", "to": "떠맡을", "desc": "떠맡을(맡→말) 오독" },
+    { "from": "시인들이 을은", "to": "시인들이 읊은", "desc": "읊은(읊→을) 오독" },
+    { "from": "그RL더니", "to": "그러더니", "desc": "latin혼입 그러더니(RL→러)" },
+    { "from": "메를로 풍티", "to": "메를로 퐁티", "desc": "Merleau-Ponty 인명(풍→퐁)" },
+    { "from": "헐brief은", "to": "헐벗은", "desc": "latin혼입 헐벗은(brief 환각)" }
+  ],
+  "candidate_regex": [
+    { "pattern": "[ぁ-ゟァ-ヿ]", "desc": "가나 혼입 잔여(섬ピ) — reading 후 literal 승격" },
+    { "pattern": "[가-힣]WWW|WWW['’]|Mrkm", "desc": "본문 OCR 환각(바WWW하게 L476 / 'WWW'를 다했나 L556 / 되Mrkm되어). 교정어 미상 → oracle/reading-pass 대기. (목차의 'WWW: 반복은 body_start 컷이라 본문 무관; 소문자 병기 theoria/geosphere 는 정상)" }
+  ],
+  "paragraph_merge": {
+    "_doc": "page-split 문단 봉합. heading 복원 먼저 해결 후 활성화.",
+    "enabled": false,
+    "categories": ["page_boundary"],
+    "overrides": []
+  }
+}

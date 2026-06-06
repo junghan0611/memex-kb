@@ -56,36 +56,53 @@ ssh gpu2i 'tmux ls | grep mineru-vllm'    # alive? do this FIRST every parse ses
 #   DROP heavy *_origin.pdf / *_layout.pdf / *_model.json / *_middle.json
 ```
 
-## OCR engine choice — MinerU vs DeepSeek-OCR (measured, not predicted)
+## OCR engine choice — 4 engines, **model layer vs tool layer** (measured 2026-06)
 
-Two engines, each on its own RTX 5080 (no model swap — run both):
+The single most important frame: an engine is **two layers**. Compare *within* a layer.
 
-| | MinerU (gpu2i:30000) | DeepSeek-OCR (gpu1i:8000) |
-|---|---|---|
-| client | `mineru-client/` (`-b vlm-http-client`) | `scripts/deepseek_ocr_client.py` |
-| run.sh | `mineru-parse` | `deepseek-parse <pdf> [out] -- [--first N --last M \| --pages 1,5,9]` |
-| output | `.md` **+ content_list.json** (footnotes/page_number/header) + **image assets** | `.md` + `_blocks.json` (grounding labels). **NO image pixels** |
-| structure | content_list (rich) | grounding labels text/equation/sub_title/title/image/image_caption |
+- **Tool** (layout + **asset 픽셀 crop** + **formula LaTeX** + structure labels): MinerU pipeline,
+  PaddleOCR **PP-StructureV3**. These give what a pure OCR model cannot.
+- **Model** (page→text only): MinerU2.5-VLM, DeepSeek-OCR, PaddleOCR-VL.
 
-**Measured on 물리학강의 5강 (PDF p121–137, 2026-06-03)**, `deepseek-parse` vs MinerU raw:
+| | MinerU | PP-StructureV3 | DeepSeek-OCR | PaddleOCR-VL | GLM-OCR |
+|---|---|---|---|---|---|
+| layer | tool+model | **tool** | model | model | model |
+| serving | gpu2i:30000 | gpu3i:8118 (PaddleX `/layout-parsing`) | gpu1i:8000 | gpu3i:8000 | gpu3i:8101 |
+| run.sh | `mineru-parse` | `ppstructure-parse` | `deepseek-parse` | `paddleocr-parse` | (재측정: paddleocr 클라 `--url …:8101 --model glm-ocr --prompt "Text Recognition:"`) |
+| image px crop | ✓ 9 | ✓ 9 (크롭10) | bbox만 | ✗ | ✗ |
+| formula LaTeX | ✓ `\mathrm{}` | ✓ **inline까지** | ✓ `H_2` | ✗ 평문 `2H2` | ✗ |
+| structure | content_list | parsing_res_list (동급) | grounding(부분) | ✗ | ✗ |
+| spacing 공백비율 | 정상 | **0.12 붕괴** | 0.21 | 0.23 | 0.22 |
+| 한국어 글자 | mosaic/焮 환각 | 보통(mobile-rec) | 우수 | 우수 | **최악 + 한자환각(磊嚣螽)** |
 
-- **Body char accuracy: DeepSeek wins big** — 0 garbled tokens vs MinerU's 10 (exactly the
-  10 `literal` fixes that section needed). Different failure mode, so it nails spans MinerU
-  breaks (굽은, 톰슨, 찐빵).
-- **But not a zero-cost drop-in.** Cost moves: **spacing** mostly fine but occasional page
-  collapses (`하면물질이란질료…` no spaces — check per-page space ratio); **structure** catches
-  some sub_titles, misses some, emits `## ##` doubling; **image assets** = caption+bbox but no
-  pixels (must crop from our own render; bbox scale uncalibrated) + name OCR errors (돌탄=돌턴).
+**Measured on 물리학강의 5강 (PDF p121–137).** Proper-noun failures **DON'T overlap** —
+this is the key: 톰슨 = MinerU `톈슨`(+mosaic환각)·Paddle 4변형·PP `통슨`·GLM `통속` / **DeepSeek ✓**;
+돌턴 = **DeepSeek `돌탄`✗**·GLM✗전멸 / MinerU·Paddle·PP ✓; 찐빵 = MinerU 6변형·Paddle✗ / DeepSeek·PP ✓.
 
-**Decision rule:**
-- Body-heavy, few figures → DeepSeek likely lowers total correction cost.
-- Figure-heavy (물리학강의: 200+ images) → **MinerU stays the base** (assets + content_list)
-  until DeepSeek's image-bbox crop is calibrated.
-- **Best of both**: MinerU base + **DeepSeek as targeted oracle** for MinerU's broken spans
-  (render page → `deepseek-parse --pages N` → read correct token → config). Proven on
-  Guq은→굽은, mosaic→톰슨, 짧빵→찐빵.
-- **MEASURE first** on one chapter before committing a book to an engine — predictions were
-  wrong twice.
+**⚠️ GLM-OCR 함정**: OmniDocBench 94.6%(5엔진 중 SOTA 1등)인데 **한국어 스캔책에선 꼴찌** —
+돌턴/톰슨/볼츠만 정상표기 0건, 한자 환각. 띄어쓰기만 보존. **한국어 책 제외.** OmniDocBench
+점수 ≠ 한국어 충실도의 결정적 반례. 영문 문서엔 SOTA일 것.
+
+**★ PaddleOCR-VL has TWO serving modes** — 같은 모델, 다른 출력:
+- **모델 모드** (vLLM `/v1/chat/completions`, gpu3i:8000/8001): 순수 텍스트만. asset·구조·수식 없음.
+- **도구 모드** (PaddleX `/layout-parsing`, gpu3i:8119, `ppstructure_client.py --url …:8119`):
+  **모델+도구 동시** — 텍스트 우수+띄어쓰기 보존(0.202)+asset 12개+구조 9종(vision_footnote/
+  display_formula/reference_content). 돌턴·볼츠만·굽은 ✓(GLM/DeepSeek/MinerU가 깨먹은 곳 맞힘).
+  약점: 느림(8.5s/p), 톰슨→통슨. **현 시점 단일 최강 base.**
+
+**현재 최선 (decision rule, the method):**
+- **Tool base = PaddleOCR-VL 도구모드(:8119)** — MinerU 환각도 PP mobile-rec 띄어쓰기붕괴(0.12)도
+  둘 다 회피하는 단일 최강. **MinerU = 빠른 대안 base**(asset+content_list, 속도 ↑; 텍스트는
+  oracle 교정). PP-StructureV3(mobile-rec)는 **kime 띄어쓰기 복원 전제**라 후순위
+  (scanbook ↔ textlint-ko 연결점).
+- **Body char oracle = DeepSeek** (이 구간 garble 최소) 또는 PaddleOCR-VL(환각 없고 본문 깨끗).
+  MinerU 깨진 span만 `deepseek-parse --pages N` → 정확 토큰 → `corrections/<book>.json`.
+  Proven: Guq은→굽은, mosaic→톰슨, 짧빵→찐빵.
+- **고유명사 = multi-engine voting.** 엔진 불일치 토큰 = 오독 의심점 → 교정후보 자동생성
+  (차기 `engine_vote.py`). 한 엔진의 *반복* 오독은 못 잡지만(예: 시간펼침→시간필침 ×14),
+  엔진 *불일치* 는 그 자체로 신호. consistency≠accuracy 의 역(逆)활용.
+- **MEASURE first** on one chapter — predictions were wrong repeatedly. 점수표(OmniDocBench)
+  ≠ 한국어 스캔책 고유명사 충실도.
 
 DeepSeek serving: `ssh gpu1i 'tmux ls | grep deepseek-ocr'`; `deepseek-parse` auto-tunnels
 `localhost:8000 → gpu1i:8000`. grounding prompt = `<image>\n<|grounding|>Convert the document to markdown.`

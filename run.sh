@@ -454,6 +454,60 @@ cmd_deepseek_parse() {
     run_cmd "nix develop --command python3 scripts/deepseek_ocr_client.py '${input}' -o '${outdir}' --url 'http://localhost:${DEEPSEEK_PORT}/v1/chat/completions' $*"
 }
 
+# ── PaddleOCR-VL (원격 gpu3i:8000, served-name: paddleocr-vl, OpenAI 호환) ───────
+# 추론은 gpu3i RTX 5080의 vLLM 이 한다. 클라는 scripts/paddleocr_vl_client.py
+# (PyMuPDF + urllib, 로컬 torch 불필요). DeepSeek(gpu1i:8000)과 포트 충돌을 피해
+# 로컬 8001 → gpu3i:8000 으로 터널한다 → 4엔진 동시 비교 가능.
+PADDLE_TUNNEL_HOST="${PADDLE_TUNNEL_HOST:-gpu3i}"   # ssh alias (ProxyJump 포함)
+PADDLE_LOCAL_PORT="${PADDLE_LOCAL_PORT:-8001}"      # 로컬(8000=DeepSeek 점유 회피)
+PADDLE_REMOTE_PORT="${PADDLE_REMOTE_PORT:-8000}"    # 원격 gpu3i vLLM 포트
+
+cmd_paddleocr_parse() {
+    # DESC: PDF → raw Markdown (PaddleOCR-VL 순수 OCR, 원격 gpu3i 5080)
+    # USAGE: paddleocr-parse <INPUT.pdf> [OUTPUT_DIR] [-- EXTRA_ARGS...]
+    # EXAMPLE: paddleocr-parse scanpdf/물리학강의001.pdf paddleocr-out -- --first 121 --last 137 --strip-page-num
+    # ENV: PADDLE_TUNNEL_HOST(기본 gpu3i) PADDLE_LOCAL_PORT(8001) PADDLE_REMOTE_PORT(8000)
+    # NOTE: 터널 자동(로컬8001→gpu3i8000). 산출 <OUT>/<doc>/<doc>.md (raw, 라벨/asset 없음).
+    ensure_project_dir
+    local input="${1:?입력 PDF 필요}"; shift || true
+    local outdir="paddleocr-out"
+    if [[ $# -gt 0 && "$1" != "--" && "$1" != --* ]]; then outdir="$1"; shift; fi
+    [[ "${1:-}" == "--" ]] && shift
+    # 터널 보장: 로컬 PORT 모델 엔드포인트 안 되면 ssh -fN 으로 띄운다
+    if ! curl -sf -m 3 "http://localhost:${PADDLE_LOCAL_PORT}/v1/models" >/dev/null 2>&1; then
+        info "터널 띄움: localhost:${PADDLE_LOCAL_PORT} → ${PADDLE_TUNNEL_HOST}:${PADDLE_REMOTE_PORT}"
+        ssh -fN -o ExitOnForwardFailure=yes -L "${PADDLE_LOCAL_PORT}:localhost:${PADDLE_REMOTE_PORT}" "${PADDLE_TUNNEL_HOST}" || {
+            error "터널 실패. ssh ${PADDLE_TUNNEL_HOST} 확인"; return 1; }
+    fi
+    run_cmd "nix develop --command python3 scripts/paddleocr_vl_client.py '${input}' -o '${outdir}' --url 'http://localhost:${PADDLE_LOCAL_PORT}/v1/chat/completions' $*"
+}
+
+# ── PP-StructureV3 (원격 gpu3i:8118, PaddleX 서빙, /layout-parsing) ──────────────
+# vLLM 이 아니라 PaddleX 도구 스택(레이아웃+asset크롭+수식LaTeX+표+구조). OpenAI
+# 비호환 — base64 이미지 POST → markdown+images+prunedResult. MinerU pipeline 의
+# "도구 대 도구" 대조군. 텍스트 모델(korean_PP-OCRv5_mobile_rec)은 띄어쓰기 붕괴
+# 고질 → memex-kb 후처리(kime/textlint)가 복원. 서버 = nixos 담당(tmux:ppserve).
+PADDLEX_TUNNEL_HOST="${PADDLEX_TUNNEL_HOST:-gpu3i}"   # ssh alias (ProxyJump 포함)
+PADDLEX_PORT="${PADDLEX_PORT:-8118}"
+
+cmd_ppstructure_parse() {
+    # DESC: PDF → markdown + asset 크롭 + 구조 (PP-StructureV3 도구, 원격 gpu3i)
+    # USAGE: ppstructure-parse <INPUT.pdf> [OUTPUT_DIR] [-- --first N --last M --dpi 200]
+    # ENV: PADDLEX_TUNNEL_HOST(기본 gpu3i) PADDLEX_PORT(기본 8118)
+    # NOTE: 터널 자동. 산출 <OUT>/<doc>/{<doc>.md, images/, <doc>_structure.json}.
+    ensure_project_dir
+    local input="${1:?입력 PDF 필요}"; shift || true
+    local outdir="ppstructure-out"
+    if [[ $# -gt 0 && "$1" != "--" && "$1" != --* ]]; then outdir="$1"; shift; fi
+    [[ "${1:-}" == "--" ]] && shift
+    if ! curl -sf -m 3 "http://localhost:${PADDLEX_PORT}/" >/dev/null 2>&1; then
+        info "터널 띄움: localhost:${PADDLEX_PORT} → ${PADDLEX_TUNNEL_HOST}:${PADDLEX_PORT}"
+        ssh -fN -o ExitOnForwardFailure=yes -L "${PADDLEX_PORT}:localhost:${PADDLEX_PORT}" "${PADDLEX_TUNNEL_HOST}" || {
+            error "터널 실패. ssh ${PADDLEX_TUNNEL_HOST} 확인"; return 1; }
+    fi
+    run_cmd "nix develop --command python3 scripts/ppstructure_client.py '${input}' -o '${outdir}' --url 'http://localhost:${PADDLEX_PORT}/layout-parsing' $*"
+}
+
 # ── Org→EPUB (org-mode → clean EPUB 3.0) ─────────────────────────────
 
 cmd_org2epub_build() {
@@ -678,6 +732,8 @@ COMMANDS=(
     "mineru-setup:cmd_mineru_setup"
     "mineru-parse:cmd_mineru_parse"
     "deepseek-parse:cmd_deepseek_parse"
+    "paddleocr-parse:cmd_paddleocr_parse"
+    "ppstructure-parse:cmd_ppstructure_parse"
     "--- Org→EPUB"
     "org2epub-build:cmd_org2epub_build"
     "--- Utility"

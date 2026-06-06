@@ -87,6 +87,13 @@ office
 # 변환 도구만 여기 scanpdf2org/ 에 둔다. 두 리포를 나란히 클론해 쓴다.
 scanpdf/
 
+# OCR 멀티-엔진 평가 산출물 (루트 thin-client 출력 — 원자료는 scanpdf 리포에서 추적)
+deepseek-out/
+paddleocr-out/
+ppstructure-out/
+glm-out/
+vltool-out/
+
 # LaTeX build artifacts
 *.aux
 *.bbl

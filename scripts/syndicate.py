@@ -60,8 +60,8 @@ PLATFORMS = [
     },
     {
         "key": "linkedin", "name": "링크드인", "cls": RAW, "limit": 3000,
-        "lang": None, "link": "post",
-        "note": "원문 캡처면(여기가 출발점). 모바일 ~210자/'…더보기' 1300자에서 접힘. 링크는 본문에 직접.",
+        "lang": None, "link": "comment",
+        "note": "원문 캡처면(출발점). 모바일 ~210자/'…더보기' 1300자 접힘. **본문 외부링크 = 도달 -18~60%(2026.3 후 가팔라짐) → 가든 링크는 첫 댓글에.** 본문은 순수 날것(링크 없음), article 참조도 가든이 들고 있으니 뺄 수 있음.",
     },
     {
         "key": "naver", "name": "네이버블로그", "cls": FULL, "limit": None,
@@ -158,13 +158,18 @@ def _link_line(url: str) -> str:
     return f"→ 자세히(가든): {url}" if url else "→ 자세히(가든): (가든 링크 미입력)"
 
 
-def format_for(p: dict, data: dict) -> tuple[str, str | None]:
-    """(본문, 경고) 반환."""
+def format_for(p: dict, data: dict) -> tuple[str, str | None, str | None]:
+    """(본문, 경고, 첫댓글) 반환. 첫댓글은 link=comment 면(링크드인)만 채워진다."""
     url = data["garden_url"]
     cls = p["cls"]
+    comment = None
 
     if cls == RAW:
-        body = f'{data["원문"]}\n\n{_link_line(url)}'
+        if p["link"] == "comment":
+            body = data["원문"]            # 본문 = 순수 날것, 링크 없음 (도달 보호)
+            comment = _link_line(url)       # 가든 링크 = 첫 댓글로 따로
+        else:
+            body = f'{data["원문"]}\n\n{_link_line(url)}'
     elif cls == FULL:
         parts = []
         if data["해설"]:
@@ -186,7 +191,7 @@ def format_for(p: dict, data: dict) -> tuple[str, str | None]:
     warn = None
     if p["limit"] is not None and len(body) > p["limit"]:
         warn = f"⚠️ {len(body)}자 / 상한 {p['limit']}자 — {len(body) - p['limit']}자 초과. 줄여야 함."
-    return body, warn
+    return body, warn, comment
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -203,7 +208,7 @@ def build_bundle(data: dict, only: list[str] | None = None) -> str:
     ]
     cls_label = {RAW: "원문형", FULL: "전문형", SUMMARY: "요약형"}
     for p in targets:
-        body, warn = format_for(p, data)
+        body, warn, comment = format_for(p, data)
         limit = f"{p['limit']}자" if p["limit"] else "길이무제한"
         out.append(f"## {p['name']}  ·  {cls_label[p['cls']]}  ·  {limit}")
         if warn:
@@ -212,6 +217,11 @@ def build_bundle(data: dict, only: list[str] | None = None) -> str:
         out.append("```")
         out.append(body)
         out.append("```\n")
+        if comment:
+            out.append("↳ **첫 댓글로 따로 등록** (본문에 넣으면 도달 깎임):")
+            out.append("```")
+            out.append(comment)
+            out.append("```\n")
     return "\n".join(out)
 
 
@@ -233,7 +243,7 @@ def cmd_bundle(args) -> int:
     print(f"✅ {out}")
     # 경고 요약
     for p in (PLATFORMS if not only else [PLATFORM_BY_KEY[k] for k in only]):
-        _, warn = format_for(p, data)
+        _, warn, _ = format_for(p, data)
         if warn:
             print(f"   {p['name']}: {warn}")
     return 0

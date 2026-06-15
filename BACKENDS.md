@@ -22,6 +22,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | GitHub Stars | ✅ 구현됨 | `gh_starred_to_bib.sh` | gh CLI + jq → BibTeX |
 | Dooray Wiki | 🔧 개발 중 | - | - |
 | Scan PDF / EPUB | ✅ 활성 | `.claude/skills/scanbook/`, `mineru-client/`, `scripts/mineru2org.py`, `./run.sh mineru-*`, `./run.sh diff-review`, `./run.sh org2epub-build` | MinerU VLM → Org → EPUB. 새 세션은 scanbook 스킬부터 읽기 |
+| ROSSE 배포 (syndicate) | ✅ 활성 | `.claude/skills/syndicate/`, `scripts/syndicate.py`, `./run.sh syndicate`, `./run.sh syndicate-specs` | 가든 canonical 노트 → 매체별 복붙 묶음 1파일(원문형/전문형/요약형). 복붙·브라우저 1차, API 발행 후속. 새 세션은 syndicate 스킬부터 읽기. 이슈 #4 |
 
 ---
 

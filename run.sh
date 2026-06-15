@@ -299,6 +299,28 @@ cmd_naver_wordmap() {
 }
 
 
+# ── ROSSE 배포 (이슈 #4) ─────────────────────────────────────────────
+
+cmd_syndicate() {
+    # DESC: 가든 canonical 노트 → 매체별 복붙용 배포 묶음 1파일
+    # USAGE: syndicate <INPUT.md> [-o OUT.md] [--only key,key]
+    # EXAMPLE: syndicate samples/syndicate-sample.md
+    # EXAMPLE: syndicate note.md --only threads,bluesky
+    # NOTE: 면별 포맷 지식 SSOT = scripts/syndicate.py PLATFORMS. specs 표는 syndicate-specs.
+    local input="${1:?사용법: syndicate <INPUT.md> [-o OUT.md] [--only key,key]}"
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/syndicate.py bundle ${input} ${*:2}"
+}
+
+cmd_syndicate_specs() {
+    # DESC: 매체별 포맷 명세 표 출력 (글자수·클래스·링크규칙·함정)
+    # USAGE: syndicate-specs
+    # EXAMPLE: syndicate-specs
+    ensure_project_dir
+    run_cmd "python3 ${SCRIPTS_DIR}/syndicate.py specs"
+}
+
+
 # ── ArXiv Paper Template ─────────────────────────────────────────────
 
 cmd_arxiv_build() {
@@ -720,6 +742,9 @@ COMMANDS=(
     "naver-verify:cmd_naver_verify"
     "naver-retry:cmd_naver_retry"
     "naver-wordmap:cmd_naver_wordmap"
+    "--- ROSSE 배포"
+    "syndicate:cmd_syndicate"
+    "syndicate-specs:cmd_syndicate_specs"
     "--- 변환 도구"
     "md-to-gdocs:cmd_md_to_gdocs"
     "md-to-gdocs-html:cmd_md_to_gdocs_html"

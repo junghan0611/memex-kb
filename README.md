@@ -48,6 +48,7 @@ memex-kb is useful when you want to:
 | `templates/presentation/` | Quarto / Reveal.js HTML presentation template |
 | `templates/presentation-pptx/` | **org2pptx**: inject Org-mode content into an existing PPTX template while preserving layout/design |
 | `proposal-pipeline/` | Google Docs → Markdown → Org-mode → ODT/DOC proposal workflow |
+| `.claude/skills/syndicate/` + `scripts/syndicate.py` / `./run.sh syndicate` | **ROSSE syndication** (issue #4): one garden canonical note → one copy-paste bundle per surface (raw / full / summary classes) for Facebook, LinkedIn, Naver Blog, Tistory, Threads, X, Bluesky, Instagram. Copy-paste / browser-Claude first, not full API automation |
 | `.claude/skills/scanbook/` | Repo-local operating manual for scanned-book work. New agents should read this first for MinerU server checks, per-book config, correction strategy, and EPUB gotchas |
 | `./run.sh mineru-setup` / `mineru-parse` | Scanned PDF → MinerU VLM Markdown + `content_list.json` + images, using the remote gpu2i vLLM server through an SSH tunnel |
 | `scripts/mineru2org.py` + `scripts/corrections/*.json` | MinerU Markdown → clean Org: structure recovery, footnotes, images, LaTeX, EPUB metadata, and book-specific corrections |
@@ -68,6 +69,7 @@ memex-kb/
 ├── DENOTE-RULES.md
 ├── run.sh                         # Primary command entry point
 ├── flake.nix                      # Reproducible dev environment
+├── .claude/skills/syndicate/      # Repo-local ROSSE syndication operating manual
 ├── .claude/skills/scanbook/       # Repo-local scanned-book → EPUB operating manual
 ├── .pi/settings.json              # Loads repo-local skills for pi sessions
 ├── config/                        # Local env/config templates

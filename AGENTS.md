@@ -114,6 +114,7 @@ Important files include:
 - `md_to_gdocs.py`
 - `md_to_gdocs_html.py`
 - `naver_blog_crawler.py`
+- `syndicate.py` — ROSSE 배포 묶음 생성기 (이슈 #4). **`.claude/skills/syndicate/` 먼저 읽기.**
 
 #### `templates/`
 Reusable publishing starters.
@@ -211,6 +212,17 @@ Use `./run.sh` when possible.
 ./run.sh naver-verify
 ./run.sh naver-retry <BLOG_ID>
 ./run.sh naver-wordmap
+```
+
+### ROSSE 배포 (syndicate) — **see the `syndicate` skill**
+
+가든 canonical 노트 → 매체별 복붙 묶음 1파일. 면별 포맷 규칙·복붙 함정·워크플로는
+repo-local 스킬 `.claude/skills/syndicate/SKILL.md`가 SSOT (run.sh는 명령만 덮는다).
+전략 SSOT는 autholog 노트 `20250324T110312`. 이슈 #4.
+
+```bash
+./run.sh syndicate <INPUT.md>           # → out/syndicate/<name>.bundle.md
+./run.sh syndicate-specs                 # 매체 포맷 명세 표
 ```
 
 ### Other conversion helpers

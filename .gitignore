@@ -94,6 +94,9 @@ ppstructure-out/
 glm-out/
 vltool-out/
 
+# ROSSE syndicate 묶음 산출물 (생성물 — 입력 md만 추적)
+out/syndicate/
+
 # LaTeX build artifacts
 *.aux
 *.bbl

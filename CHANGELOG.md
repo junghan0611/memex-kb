@@ -4,6 +4,27 @@ All notable changes, tracked by CalVer date tags.
 
 ## Unreleased
 
+## v2026.7.7 — Anthropic paper2org exports + ROSSE handoff
+
+### Anthropic Distill papers
+
+- Added `paper2org`: Anthropic Distill HTML (`transformer-circuits.pub`) → reproducible Org capture with preserved LaTeX math, org-cite citations, footnotes, static PNG figures, and interactive-figure source links.
+- Added `paper2org-html`: Org → Pandoc citeproc HTML with rendered author-year citations, a CSL bibliography, MathJax, and static image references.
+- Added `paper2org-pdf`: Org → acmart PDF through an acmart bridge, Emacs batch export, TeX Live, BibTeX, and natbib citations.
+- Restored resolvable figure references from source `data-fignum` metadata before HTML/PDF export.
+- Added and hardened `.claude/skills/anthropic-paper2org/SKILL.md` as the operating guide for the proven command set and validation checks.
+- Verified the J-space paper end-to-end: Org capture with zero leftover sentinels, HTML with 173 CSL bibliography entries, and a 93-page acmart PDF.
+
+### ROSSE syndication
+
+- Added LinkedIn `link=comment` output so the garden link can be posted as a first-comment block while keeping the body link-free.
+- Documented the current hand-publishing mode and kept the existing syndication bundle generator ready for later reuse.
+
+### Docs
+
+- Updated README and AGENTS surfaces for the paper2org command set.
+- Trimmed completed paper2org work from NEXT while leaving only consumer handoff and optional follow-ups.
+
 ## v2026.6.15 — scanbook 5권 + OCR 멀티엔진 + ROSSE 배포
 
 ### ROSSE 배포 (syndicate, 이슈 #4)

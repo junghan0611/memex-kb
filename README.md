@@ -38,7 +38,7 @@ memex-kb is useful when you want to:
 | Confluence export (`.doc` MIME HTML) | Stable | `scripts/confluence_to_markdown.py` | Clean Markdown |
 | GitHub Stars | Stable | `scripts/gh_starred_to_bib.sh`, `./run.sh github-starred-export` | BibTeX |
 | Naver Blog | Active | `scripts/naver_blog_crawler.py`, `./run.sh naver-*` | Denote-style Org + assets |
-| Anthropic Distill HTML papers | Active | `scripts/anthropic_paper_to_org.py`, `./run.sh paper2org` / `paper2org-pdf` / `paper2org-html` | Org (math/figure/citation-aware) → ArXiv-style acmart PDF + pandoc-citeproc HTML |
+| Anthropic Distill HTML papers | Active | `scripts/anthropic_paper_to_org.py`, `./run.sh paper2org` / `paper2org-html` / `paper2org-pdf` | Org (math/figure/citation-aware) → citeproc HTML + ArXiv-style acmart PDF |
 | HWPX / OWPML related workflows | Active | `hwpx2org/`, `orgadoc2odt/`, `proposal-pipeline/` | Org, ODT, DOC, HWP-oriented outputs |
 
 ### Publishing / template workflows
@@ -72,6 +72,7 @@ memex-kb/
 ├── flake.nix                      # Reproducible dev environment
 ├── .claude/skills/syndicate/      # Repo-local ROSSE syndication operating manual
 ├── .claude/skills/scanbook/       # Repo-local scanned-book → EPUB operating manual
+├── .claude/skills/anthropic-paper2org/ # Anthropic Distill paper capture/export manual
 ├── .pi/settings.json              # Loads repo-local skills for pi sessions
 ├── config/                        # Local env/config templates
 ├── scripts/                       # Main backend and utility scripts
@@ -105,6 +106,7 @@ memex-kb/
 - **`templates/`**: reusable starter templates for papers and presentations
 - **`proposal-pipeline/`**: the most opinionated end-to-end workflow in the repo
 - **`.claude/skills/scanbook/`**: the durable operating guide for scanned-book → EPUB work; read before touching `scanpdf/work/<book>/`
+- **`.claude/skills/anthropic-paper2org/`**: the durable operating guide for Anthropic Distill HTML paper → Org / HTML / PDF work
 - **`mineru-client/`, `scripts/mineru2org.py`, `scripts/corrections/*.json`**: the current MinerU → Org → EPUB path
 - **`office/`**: practical working examples and proposal artifacts
 - **`hwpx2org/` and `orgadoc2odt/`**: lower-level format conversion experiments and tools
@@ -189,6 +191,15 @@ direnv allow
 ./run.sh arxiv-build templates/arxiv-acm/sample.org
 ```
 
+### 8) Capture an Anthropic Distill paper and export it
+
+```bash
+URL="https://transformer-circuits.pub/2026/workspace/index.html"
+./run.sh paper2org "$URL" --name jspace --fetch
+./run.sh paper2org-html "$URL" --name jspace
+./run.sh paper2org-pdf "$URL" --name jspace
+```
+
 ---
 
 ## Templates
@@ -233,6 +244,7 @@ See: [`templates/presentation-pptx/README.md`](templates/presentation-pptx/READM
 - Need **citation-ready GitHub Stars** → use `github-starred-export`
 - Need **proposal submission artifacts** → use `proposal-pipeline/`
 - Need **a paper PDF from Org** → use `templates/arxiv-acm/`
+- Need **an Anthropic Distill paper in Org/HTML/PDF** → use `paper2org`, `paper2org-html`, and `paper2org-pdf`
 - Need **HTML slides** → use `templates/presentation/`
 - Need **content injected into an existing company PPTX** → use `templates/presentation-pptx/`
 
@@ -253,56 +265,12 @@ See: [`templates/presentation-pptx/README.md`](templates/presentation-pptx/READM
 
 ## Changelog
 
-### 2026-04-03 — org2pptx presentation template added
+See [`CHANGELOG.md`](CHANGELOG.md) for CalVer snapshots. Recent highlights include:
 
-- Added `templates/presentation-pptx/`
-- Introduced an Org-mode → PPTX template injection workflow using `python-pptx`
-- Preserves branded PowerPoint templates instead of recreating slides from scratch
-
-### 2026-04-02 — ArXiv ACM paper template added
-
-- Added `templates/arxiv-acm/`
-- Added Org-mode → `acmart` → PDF sample pipeline
-- Exposed `./run.sh arxiv-build`
-
-### 2026-03-31 — Markdown to Google Docs helpers expanded
-
-- Added `md_to_gdocs.py` and `md_to_gdocs_html.py`
-- Optimized the Markdown → Org/HTML/Docx path for Google Docs import workflows
-
-### 2026-03-31 — Naver Blog crawler expanded
-
-- Added listing, crawling, verification, retry, title-fix, and wordmap commands
-- Improved image handling, slug normalization, and title cleanup
-
-### 2026-02-15 — GitHub Stars backend added
-
-- Added `scripts/gh_starred_to_bib.sh`
-- Added `./run.sh github-starred-export`
-- Preserved `starred_at`, `pushed_at`, and `updated_at` metadata for BibTeX output
-
-### 2026-02-03 — format conversion toolkit broadened
-
-- Added HWPX/AsciiDoc-related tooling
-- Added EPUB → Org workflows
-- Added HTML → EPUB → Org experiments
-
-### 2026-01-29 — Confluence conversion pipeline stabilized
-
-- Added MIME-aware Confluence export parsing
-- Normalized UTF-8/NFC issues and cleaned noisy markup
-
-### 2026-01-21 — development environment modernized
-
-- Migrated from `shell.nix` to `flake.nix`
-- Added `direnv` integration
-- Replaced secretlint with gitleaks
-- Improved Threads OAuth token management
-
-### Earlier foundation
-
-- Project began as a Google Docs → Denote knowledge base converter
-- Evolved toward a multi-backend, template-oriented, AI-friendly document workflow toolkit
+- Anthropic Distill paper capture: HTML → Org → citeproc HTML / acmart PDF
+- ROSSE syndication bundles for copy-paste publishing surfaces
+- MinerU / OCR scanned-book pipelines and clean EPUB generation
+- Template workflows for acmart papers, Reveal.js presentations, and PPTX injection
 
 ---
 

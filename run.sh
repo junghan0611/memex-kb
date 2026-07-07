@@ -321,6 +321,20 @@ cmd_syndicate_specs() {
 }
 
 
+# ── Anthropic HTML 논문 → Org ────────────────────────────────────────
+
+cmd_paper2org() {
+    # DESC: Anthropic Distill(transformer-circuits.pub) HTML 논문 → Org (수식/그림/인용/각주 보존)
+    # USAGE: paper2org <URL> [--name NAME] [--outdir DIR] [--fetch]
+    # EXAMPLE: paper2org https://transformer-circuits.pub/2026/workspace/index.html --name jspace --fetch
+    # NOTE: Anthropic Distill <d-article> 전용(범용 HTML 아님). 첫 실행은 자동 다운로드, --fetch 는 재다운로드.
+    # NOTE: 로직 SSOT = scripts/anthropic_paper_to_org.py + skill `anthropic-paper2org`. 산출물 out/anthropic-paper/.
+    local url="${1:?사용법: paper2org <URL> [--name NAME] [--outdir DIR] [--fetch]}"
+    ensure_project_dir
+    run_cmd "nix develop --command python ${SCRIPTS_DIR}/anthropic_paper_to_org.py --url '${url}' ${*:2}"
+}
+
+
 # ── ArXiv Paper Template ─────────────────────────────────────────────
 
 cmd_arxiv_build() {
@@ -750,6 +764,8 @@ COMMANDS=(
     "md-to-gdocs-html:cmd_md_to_gdocs_html"
     "--- ArXiv Paper"
     "arxiv-build:cmd_arxiv_build"
+    "--- Anthropic 논문→Org"
+    "paper2org:cmd_paper2org"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
     "diff-review:cmd_diff_review"

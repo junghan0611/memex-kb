@@ -258,7 +258,13 @@ def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
         "",
     ]
     head = [h for h in head if h != ""] + [""]
-    return "\n".join(head) + body
+    # 참고문헌 섹션(ox-html + oc-basic 이 [cite:@k] 와 함께 렌더). pandoc 은 이 키워드 무시(무해).
+    foot = (
+        "\n* References\n:PROPERTIES:\n:CUSTOM_ID: references\n:END:\n#+print_bibliography:\n"
+        if has_bib
+        else ""
+    )
+    return "\n".join(head) + body.rstrip() + "\n" + foot
 
 
 def assemble_acmart(fm: dict, body: str, source_url: str) -> str:

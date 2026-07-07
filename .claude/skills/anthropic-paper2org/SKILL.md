@@ -66,12 +66,18 @@ Distill 논문은 그림이 두 종류다. **개수를 반드시 검수**한다(
   → **캡션 + `원문#앵커` 라이브 링크로 대체**. 각 `<figure id="fig-…">`의 id 가 앵커. 이게 "못 담는 건
   대체" 규칙(scanbook 과 같은 철학). 스크린샷이 꼭 필요하면 브라우저로 따로 떠서 붙인다(수동, 스킬 밖).
 
-## org → HTML 왕복 (2단계)
+## org → HTML — `paper2org-html` (프로덕션)
 
-`pandoc -f org -t html5 --mathjax --standalone` 로 구조·수식(MathJax)·이미지·헤딩앵커 전부 생존 확인됨
-= "논문 쓰기 포맷 = org" 성립. **단 pandoc org 리더는 `[cite:@key]`/`#+bibliography` 를 못 읽는다**(평문으로 남음).
-→ 인용까지 제대로 렌더하려면 **ox-html + org-cite/citeproc**(Emacs)이 프로덕션 경로. 왕복 "증명"은 pandoc,
-"출판"은 ox-html.
+**증명(pandoc) vs 프로덕션(ox-html)** 두 경로, 프로덕션 구현됨:
+- **증명**: `pandoc -f org -t html5 --mathjax --standalone` 로 구조·수식·이미지·앵커 생존 = "논문 쓰기 포맷 = org"
+  성립. 단 pandoc org 리더는 `[cite:@key]`/`#+bibliography` 를 **못 읽는다**(평문으로 남음) → 증명용.
+- **프로덕션**: `./run.sh paper2org-html <URL> --name <name>` → `scripts/paper_html_build.el`(emacs ox-html + `oc-basic`).
+  **인용까지 렌더**: `[cite:@key]` → (Author Year), `#+print_bibliography:` → 참고문헌 목록. 수식 MathJax(CDN),
+  이미지 `png/` 동반. **texlive 불필요 = emacs 만, 빠름**. 검증(J-space): raw `[cite:` 0, 참고문헌 목록 생성, 수식·이미지 정상.
+
+이를 위해 web org(`assemble`)는 끝에 `* References` + `#+print_bibliography:` 를 붙이고 `#+cite_export: basic` 를 둔다.
+`paper_html_build.el` 도 `org-export-with-broken-links t`(원문 미해결 `??` 참조) + backtrace 억제를 켠다.
+(더 예쁜 CSL 서지가 필요하면 `#+cite_export: csl` + citeproc-el + `.csl` — 현재는 의존성 0 인 `basic`.)
 
 ## org → ArXiv급 PDF (acmart) — `paper2org-pdf`
 
@@ -113,15 +119,27 @@ Distill 논문은 그림이 두 종류다. **개수를 반드시 검수**한다(
 
 ## jacobian-lens 담당자 워크플로 (로드맵 4단계)
 
-`~/repos/gh/jacobian-lens`(GLG fork `junghan0611/*`, public)에 담당자를 세워 org 산출물을 담을 때:
+`~/repos/gh/jacobian-lens`(public fork)에 담당자를 세워 org 산출물을 담을 때는 **그 repo의 `AGENTS.md`가 소비자용 절차**다.
+핵심은 "로직은 memex-kb, 산출물은 jacobian-lens" 분리:
 
-1. 담당자는 이 스킬을 읽고 `run.sh paper2org <URL> --name jspace --fetch` 실행.
-2. `out/anthropic-paper/jspace/`(org+png+bib) 를 jacobian-lens repo 로 옮긴다.
-3. **⚠️ identity 훅**: jacobian-lens 는 public `junghan0611/*` → 커밋 diff 에 GLG 식별자(이름/블로그/가든 URL)가
-   들어가면 훅이 **차단**한다. 논문 org 본문엔 GLG 식별자 없음(안전)이나, 담당자가 붙이는 핸드오프/서문 메모엔
-   식별자 넣지 말 것. 넣어야 하면 `PRIVATE.md`(gitignore) 로.
-4. 원문 저작권 존중: jacobian-lens(Anthropic 코드의 fork)에 논문 org 를 담는 건 GLG 판단 — 재배포 성격이면
-   `#+source` 링크 + "개인 아카이브" 명시 유지.
+```bash
+cd ~/repos/gh/jacobian-lens
+MEMEX_KB="${MEMEX_KB:-$HOME/repos/gh/memex-kb}"
+URL="https://transformer-circuits.pub/2026/workspace/index.html"
+OUT="$PWD/papers/anthropic"
+"$MEMEX_KB/run.sh" paper2org "$URL" --name jspace --outdir "$OUT" --fetch
+"$MEMEX_KB/run.sh" paper2org-pdf "$URL" --name jspace --outdir "$OUT"    # → jspace.acmart.pdf
+"$MEMEX_KB/run.sh" paper2org-html "$URL" --name jspace --outdir "$OUT"   # → jspace.html (인용/수식 렌더)
+```
+
+1. 담당자는 먼저 `jacobian-lens/AGENTS.md` + 이 스킬을 읽는다.
+2. `--outdir "$PWD/papers/anthropic"` 로 **처음부터 jacobian-lens 안에** `papers/anthropic/jspace/` 를 만든다
+   (옛 memex-kb 버전에서 `paper2org-pdf --outdir` 이 없으면 기본 outdir 에서 빌드 후 검수된 산출물만 복사).
+3. 검수: `jspace.org`, `bibliography.bib`, `png/`, `jspace.acmart.pdf` 존재 + PDF 93쪽 + 잔여 sentinel 0.
+4. **⚠️ public repo 훅**: 커밋 diff 에 개인 식별자/개인 URL/비공개 핸드오프 메모를 넣지 말 것. 논문 org 본문 자체는
+   보통 안전하지만, 담당자가 붙이는 서문·작업메모가 위험하다. 필요한 사적 메모는 gitignore 된 `PRIVATE.md` 로.
+5. 원문 저작권 존중: jacobian-lens(Anthropic 코드의 fork)에 논문 org/pdf/html 을 담는 건 maintainer 판단 — 재배포 성격이면
+   `#+source` 링크 + provenance 를 유지하고, memex-kb 에는 산출물을 커밋하지 않는다.
 
 ## 검수 (실행 후 자동 리포트 + 눈검수)
 

@@ -203,6 +203,121 @@ J-space baseline:
 
 This restoration is applied before both HTML and PDF export.
 
+## Interactive capsule — `paper2org-capsule`
+
+The static `paper2org` path preserves the paper **text**. Distill papers also ship
+**interactive JS figures** — `public/bundle.js` hydrates empty `<figure data-fignum=N>`
+containers by fetching `parquet` / `json` data at runtime. The capsule path recovers that
+**web-document liveness** into a local, reproducible mirror so a reader hydrates the paper
+**offline, without crossing back to the original URL**.
+
+```bash
+./run.sh paper2org-capsule https://transformer-circuits.pub/2026/workspace/index.html \
+  --name jspace
+```
+
+Output:
+
+```text
+out/anthropic-paper/jspace/capsule/
+├── 2026/workspace/          # paper-specific: index.html, public/(bundle.js, per-figure css), data/, png/
+├── anthropic-serve/         # shared runtime: distill template + KaTeX (generic across Distill papers)
+└── capsule-manifest.json    # provenance + per-asset sha256/bytes/content-type
+```
+
+How it works (`scripts/paper_capsule_sweep.mjs`):
+
+- Headless Chrome via **CDP directly** — no Playwright, no npm deps. Uses the flake's
+  `nodejs_24` (global `WebSocket`/`fetch`/`crypto`) plus the host `google-chrome-stable`
+  (override with `CHROME_BIN`).
+- **load + full-scroll network sweep** enumerates every asset the runtime actually fetches
+  (including runtime-assembled URLs like `data/lens-slice-ranks-s2/count_introspect_ranks/*.parquet`
+  that static grep cannot find).
+- Downloads **same-origin** assets preserving server paths; records everything in the manifest.
+- Default `--serve-check` re-sweeps the local docroot and **asserts zero external requests**
+  (the offline-completeness guarantee). Use `--no-verify` to skip.
+
+Two-layer runtime (confirmed for J-space):
+
+- `/anthropic-serve/` — generic shared runtime (distill template + KaTeX fonts). Same for
+  every `transformer-circuits.pub` Distill paper.
+- `/2026/workspace/` — paper-specific: `bundle.js` (jspace lens/jlens/modulation logic),
+  per-figure `public/*/style.css`, and the `data/` + `png/` assets.
+
+J-space capsule baseline:
+
+- assets: **219 files / ~11.3 MB**
+- sweep request count: about `220`
+- `external_requests`: `[]`
+- `failed_requests`: `[]`
+- offline re-sweep: **PASS** (0 external, 0 4xx/5xx)
+
+Serve + inspect manually:
+
+```bash
+python3 -m http.server 8877 --bind 127.0.0.1 \
+  --directory out/anthropic-paper/jspace/capsule
+# open http://localhost:8877/2026/workspace/index.html
+```
+
+Copyright: the capsule is Anthropic source material and stays under `out/` (gitignored).
+Only the sweep logic (`scripts/paper_capsule_sweep.mjs`) and `run.sh` wiring are durable repo
+assets. This must **not** be widened into a general web-archiver; it targets Distill papers.
+
+## Interactive HTML from Org — `paper2org-interactive`
+
+Proves GLG's thesis: **Org is the SSOT, and an interactive scientific document is generated with
+`pandoc -f org` alone — no LaTeX, no Typst, no Quarto.** The paper's live JS figures hydrate offline
+from the capsule.
+
+```bash
+./run.sh paper2org-interactive https://transformer-circuits.pub/2026/workspace/index.html \
+  --name jspace
+```
+
+Pipeline:
+
+1. `anthropic_paper_to_org.py --interactive` → `<name>.interactive.org`. Interactive (img-less) figures
+   are protected **before** math/cite so their `<figcaption>` `<d-cite>`/`<d-math>` stay pristine, then
+   restored as `#+begin_export html` blocks holding the **verbatim original `<figure data-fignum=N>`
+   outerHTML**. The original head runtime (`distill.template`, `d3`, `bundle.js`, css) is emitted as
+   single-line `#+HTML_HEAD_EXTRA:` tags (redirect/JSON-config inline scripts skipped). The
+   `<d-article>`/`<d-contents>` wrapper is itself an Org raw block — so no pandoc template file is needed.
+2. If the capsule is missing, it is built first (`paper2org-capsule`).
+3. `pandoc -f org -t html5 -s --citeproc --bibliography=bibliography.bib --katex=/anthropic-serve/katex/`
+   writes `<name>.interactive.html` **inside the capsule tree** at the paper's original URL path
+   (`capsule/2026/workspace/jspace.interactive.html`). Local KaTeX (not the MathJax CDN) keeps external
+   requests at zero and matches the paper's own math engine.
+
+Serve and open:
+
+```bash
+cd out/anthropic-paper/jspace/capsule && python3 -m http.server 8877
+# open http://localhost:8877/2026/workspace/jspace.interactive.html
+```
+
+J-space interactive baseline (proven):
+
+- raw figure export blocks: `84` (== source interactive figures == exported `figure[data-fignum]`)
+- HTML_HEAD_EXTRA: `11` (10 original runtime script/link tags + 1 layout reset `<style>`)
+- browser: **external requests 0, 4xx/5xx 0** (favicon excepted), **39 parquet fetched locally**,
+  math via local KaTeX, no console errors, prose column full width (`d-article` ≈ viewport).
+
+Design notes / SSOT terminology (per GPT review):
+
+- SSOT = `interactive.org` (structure/placement) + `capsule-manifest.json` (runtime bytes/provenance).
+  The capsule is a **resource bundle**, not the SSOT.
+- Round-trip that matters = `original interactive HTML → Org capture → pandoc export → offline hydrate`.
+  Lossless `html → org` reverse parsing of raw blocks is **not** a v1 requirement.
+- Prose layout: pandoc's default `body{max-width:36em}` (≈576px) traps distill's `d-article` grid and
+  clips the prose column. The converter appends a final `#+HTML_HEAD_EXTRA` reset `<style>`
+  (`_INTERACTIVE_RESET_STYLE`) that removes only the document-width constraint and returns the viewport
+  width to the grid — distill grid/figure CSS is left intact. This keeps the "Org-only, no template" path.
+- Keep raw figure `outerHTML` verbatim — do not rewrite figcaption or mount `div` classes (mount-class
+  mismatch is the main hydration risk). Do not send raw DOM into the acmart PDF path.
+- Math must stay local: use `--katex=/anthropic-serve/katex/` (capsule KaTeX), never plain `--mathjax`
+  (it injects a jsdelivr CDN script and breaks the external-requests-zero guarantee).
+
 ## jacobian-lens consumer workflow
 
 For `~/repos/gh/jacobian-lens`, the consumer-facing procedure belongs in that repo's `AGENTS.md`. The division of responsibility is:
@@ -210,46 +325,70 @@ For `~/repos/gh/jacobian-lens`, the consumer-facing procedure belongs in that re
 - `memex-kb`: conversion logic and reproducible commands
 - `jacobian-lens`: stored paper artifacts near the companion code
 
-Run from the `jacobian-lens` repo root:
+**Protect the destination first.** The consumer writes into a tracked git repo, and the artifacts are
+Anthropic source material (paper text, PNGs, the ~13 MB capsule). Before running anything, gitignore them:
 
 ```bash
 cd ~/repos/gh/jacobian-lens
+grep -qxF 'papers/anthropic/' .gitignore || echo 'papers/anthropic/' >> .gitignore
+```
+
+Then run from the repo root:
+
+```bash
 MEMEX_KB="${MEMEX_KB:-$HOME/repos/gh/memex-kb}"
 URL="https://transformer-circuits.pub/2026/workspace/index.html"
 OUT="$PWD/papers/anthropic"
 
-"$MEMEX_KB/run.sh" paper2org "$URL" --name jspace --outdir "$OUT" --fetch
-"$MEMEX_KB/run.sh" paper2org-pdf "$URL" --name jspace --outdir "$OUT"
-"$MEMEX_KB/run.sh" paper2org-html "$URL" --name jspace --outdir "$OUT"
+# static archive (Org SSOT + HTML + acmart PDF)
+"$MEMEX_KB/run.sh" paper2org       "$URL" --name jspace --outdir "$OUT" --fetch
+"$MEMEX_KB/run.sh" paper2org-html  "$URL" --name jspace --outdir "$OUT"
+"$MEMEX_KB/run.sh" paper2org-pdf   "$URL" --name jspace --outdir "$OUT"
+
+# interactive: offline-hydrating capsule + Org-derived interactive HTML (the live figures)
+"$MEMEX_KB/run.sh" paper2org-capsule     "$URL" --name jspace --outdir "$OUT"
+"$MEMEX_KB/run.sh" paper2org-interactive "$URL" --name jspace --outdir "$OUT"
 ```
 
 Expected destination layout:
 
 ```text
 papers/anthropic/jspace/
-├── jspace.org
-├── jspace.acmart.org
-├── jspace.acmart.pdf
-├── jspace.html
+├── jspace.org                 # static archive (SSOT for text/math/cite)
+├── jspace.acmart.pdf          # ArXiv-style PDF
+├── jspace.html                # static HTML (citations + math)
+├── jspace.interactive.org     # interactive SSOT (raw figure blocks + head runtime)
 ├── bibliography.bib
 ├── paper.html
-└── png/
+├── png/
+└── capsule/                   # offline runtime bundle (Anthropic assets; do NOT commit)
+    ├── anthropic-serve/…       # distill template + KaTeX (shared runtime)
+    └── 2026/workspace/
+        ├── jspace.interactive.html   # ← open this to see the live figures offline
+        ├── public/ data/ png/ …
+        └── capsule-manifest.json
+```
+
+View the interactive document (no boundary crossing, no external requests):
+
+```bash
+cd papers/anthropic/jspace/capsule && python3 -m http.server 8877
+# open http://localhost:8877/2026/workspace/jspace.interactive.html
 ```
 
 Consumer validation:
 
-- `jspace.org` exists
-- `bibliography.bib` exists
-- `png/` exists and contains the static figures
-- `jspace.acmart.pdf` exists and has 93 pages
-- `jspace.html` exists and has `csl-entry` bibliography entries
-- leftover sentinels / Distill tags in Org: 0
+- `jspace.org`, `bibliography.bib`, `png/` exist; `jspace.acmart.pdf` has 93 pages; `jspace.html` has `csl-entry`.
+- `capsule/capsule-manifest.json` shows `external_requests: []` and `failed_requests: []`.
+- `jspace.interactive.html` under the capsule tree opens and hydrates figures with **zero external requests**.
+- Sentinel check `rg 'ZZ(MB|MI|CI|FN)[0-9]+ZZ|<d-[a-z]+'` applies to **`jspace.org` only** — the
+  interactive Org legitimately contains `<d-…>` custom elements inside raw figure blocks.
 
 Public repo safety:
 
 - Do not add private handoff notes, secrets, tokens, or local-only details to tracked files.
 - Preserve source links and provenance.
-- Commit generated paper artifacts only when explicitly requested.
+- Keep `papers/anthropic/` gitignored; commit generated paper artifacts only when explicitly requested.
 
 ## Copyright and artifact policy
 

@@ -25,6 +25,96 @@ Open follow-ups:
 
 ---
 
+## 🔨 작업축 — 인터랙티브 캡슐 (paper2org-capsule / -interactive) — 2026-07-07
+
+목표: 논문 **텍스트 보존**(paper2org)에서 **웹논문 생명성 보존**으로. Anthropic Distill 논문의
+인터랙티브 figure(bundle.js가 parquet/json을 런타임 fetch)를 로컬 재현 캡슐로 회수 →
+jacobian-lens 담당자가 원본 URL(경계) 없이 오프라인에서 동일 hydrate. org→html 단일 경로
+(Quarto 폐기, GLG 확정). 방향·검토는 Opus×GPT 세션(2026-07-07).
+
+### ✅ CMD1 완료 — `paper2org-capsule`
+
+- `scripts/paper_capsule_sweep.mjs` — headless Chrome **CDP 직접**(Playwright 없음, npm 의존 0;
+  flake nodejs_24 + 호스트 google-chrome-stable). load+scroll 네트워크 스윕 → same-origin 자산
+  서버경로 미러 → `capsule-manifest.json`(provenance + 자산별 sha256/bytes/content-type).
+  기본 `--serve-check`: docroot 재스윕으로 **외부요청 0 단언**(오프라인 완전성 보장).
+- `./run.sh paper2org-capsule <URL> --name jspace` → `out/anthropic-paper/<name>/capsule/`.
+- jspace 검증 baseline: **219 파일 / 11.3 MB**, 요청 220, external 0, failed 0, 오프라인 재스윕 PASS.
+  2층 런타임 확인: `/anthropic-serve/`(distill+katex, 범용) + `/2026/workspace/`(bundle.js=jspace 전용).
+- 저작권: 캡슐 산출물 `out/`(gitignore). 커밋 대상은 로직만(`paper_capsule_sweep.mjs`, `run.sh`).
+
+**픽스처 선검증 ✅ (2026-07-07)**: org `#+begin_export html` figure DOM + `#+HTML_HEAD_EXTRA`가
+`pandoc -f org -t html5 -s`에서 verbatim 보존 + head 삽입 + 순서(libs head→body→figure) 정확.
+
+### ✅ CMD2 핵심 실증 완료 (2026-07-07) — 명제 PROVEN
+
+**`jspace.interactive.org`(org SSOT) → `pandoc -f org`(LaTeX/Typst 없음) → `jspace.interactive.html`이
+84개 인터랙티브 figure 를 오프라인 hydrate.** 실측: 외부요청 **0**, 404 **0**, parquet **39개 로컬 fetch**,
+콘솔 에러 **0**, 수식=로컬 KaTeX(`/anthropic-serve/katex/`, mathjax CDN 제거), csl 참고문헌 173.
+3중 parity: 원문 interactive figure 84 == interactive.org raw 블록 84 == interactive.html figure 84.
+- converter `--interactive`: figure 를 math/cite 보다 먼저 protect → figcaption 내 `<d-cite>`/`<d-math>`
+  pristine 보존 → restore 에서 `#+begin_export html`. head 런타임 10개 = HTML_HEAD_EXTRA(단일행 script/link;
+  리다이렉트 인라인·멀티라인 JSON config 는 스킵). `<d-article>`/`<d-contents>` 래퍼도 org raw 블록(=template 파일 0).
+- `./run.sh paper2org-interactive <URL> --name X` end-to-end 작동(converter→캡슐 보장→pandoc --katex 로컬→capsule 트리).
+- 커밋 대상=로직만(`anthropic_paper_to_org.py`, `run.sh`). 산출물=out/(gitignore).
+
+**폴리시**
+1. [x] **prose 컬럼 잘림 해결 (2026-07-07, GPT 진단 적중)**: 원인은 distill 부재가 아니라 **pandoc 기본
+   `body{max-width:36em}`(=576px)** 가 distill d-article grid 를 좁은 문서폭에 가둠(`overflow-x:hidden` → 클립).
+   해결 = **마지막 `#+HTML_HEAD_EXTRA` 에 reset `<style id=paper2org-interactive-reset>`**(문서폭 제약만 해제,
+   distill grid/figure CSS 유지). 실측: article 576→**1855px**, p 704px, body max-width none, 클립 사라짐,
+   외부0·콘솔0 유지. `_INTERACTIVE_RESET_STYLE` 상수. → **CMD2 전체 green.**
+2. [ ] `--serve-check` 식 자동 검증을 paper2org-interactive 에도(figure/mount parity + 외부0 assert).
+3. [ ] fidelity 후속(선택): `<d-front-matter>`/`<d-title>`/`<d-bibliography>` 재현. 단 d-title=pandoc title,
+   d-bibliography=citeproc references 와 중복 주의 → v1 은 d-article+d-contents+reset 로 충분.
+4. [ ] 대표 위젯 click/hover smoke.
+
+### 참고 — CMD2 원설계 상세 (GPT 검수 반영판)
+
+**명제 acceptance (GPT)**: GLG 명제 "org=SSOT, LaTeX/Typst 없이 인터랙티브 문서 생성"의 완전 증명은
+`source mirror hydrate`(CMD1)가 아니라 **`interactive.org → jspace.interactive.html`이 캡슐 자산으로
+hydrate**되는 것. 용어: **캡슐 = resource bundle**(SSOT 아님). **SSOT = `interactive.org` +
+`capsule-manifest.json`**(구조/배치=org, 런타임 바이트/provenance=manifest). 왕복의 실질은
+`원문 interactive HTML → paper2org capture(org+raw figure blocks+manifest) → pandoc export →
+로컬 브라우저 hydrate 외부요청 0`. `html→org` 무손실 역파싱은 v1 비필수.
+
+**CMD2 required**
+
+1. [ ] `paper2org-interactive <URL> --name X` 명령: capture(interactive org) + capsule + interactive html export + 검증.
+2. [ ] `jspace.interactive.org` 생성: prose=현재 org 파이프. img 없는 interactive figure = 원문 `paper.html`의
+   `<figure data-fignum=N>` **outerHTML verbatim** as `#+begin_export html`(figcaption/div class 수정 금지 =
+   mount class mismatch가 최대 실제 위험). static figure는 v1은 기존 `file:png/` 유지.
+   raw block 앞 추적 주석 옵션: `<!-- paper2org-raw-figure: fig-xxx sha256=... -->`.
+3. [ ] **pandoc interactive template** `scripts/paper_interactive_template.html`:
+   `<d-article>$body$</d-article>` + `<d-contents></d-contents>` wrapper (bundle이 `d-article h2/h3`,
+   `d-contents`, `resolveFigRefs`, `figure[data-fignum]`에 의존). 원문 **script/link/style 순서+defer 보존**
+   (bundle.js 끝 `window.init()`가 defer 전제 — 순서 깨지면 hydrate 실패). **`<base>` 금지**(anchor/cite/TOC 오염).
+   최소 v1 = d-article + d-contents + 원문 head scripts/links. d-front-matter/d-title/d-bibliography는 선택.
+4. [ ] output = 캡슐 트리 안 `out/anthropic-paper/jspace/capsule/2026/workspace/jspace.interactive.html`,
+   docroot=capsule, URL=`/2026/workspace/jspace.interactive.html`.
+5. [ ] validation: 로컬 docroot 스윕으로 **external 0 · failed 0**(favicon 예외). **figure/mount count 3중 parity**
+   (source paper.html interactive figure == interactive.org export-block == interactive.html figure).
+   대표 class 존재(`slice-stack-count`·`lens-inline`·`jlens-rm-bias`·`eval-awareness-probe`).
+   대표 figure smoke 1개 이상 hydrate. **bundle init 런타임 에러는 fail**(console warning 임계 정의).
+6. [ ] PDF/acmart는 caption+link fallback 유지(raw DOM 넣지 말 것).
+
+**CMD2 optional / later**
+7. [ ] click/hover smoke 2~3개 대표 위젯 (전체 순회 아님). v1 보장 = "load+full-scroll".
+8. [ ] interactive HTML/Org에서 `capsule-manifest.json` 참조(provenance 가시/기계판독).
+9. [ ] Quarto 평가는 org→pandoc interactive green 이후로 연기(이 증명엔 불필요).
+10. [ ] J-space green 이후에만 일반화. bundle은 jspace 전용 — 아직 "generic Distill interactive" 주장 금지.
+
+**CMD1 하드닝 (비블로커, GPT 코드리뷰)**
+- [ ] `serveAndVerify` path guard `f.startsWith(root)` → `path.resolve` + `relative()` `..` 검사로 강화.
+- [ ] `external_requests`에 `blob:` 별도 분류(현재 `data:`만 skip).
+- [ ] `mirror()` plain fetch = public static 전제. 쿠키/세션/생성응답 필요 논문은 `failed_requests`로 잡힘(v1 OK).
+
+### CMD3 마무리
+- [x] skill `.claude/skills/anthropic-paper2org/SKILL.md` capsule 섹션 (CMD1분 반영 완료).
+- [x] AGENTS.md paper2org 블록 (CMD1분 반영 완료). [ ] interactive 섹션은 CMD2 후.
+
+---
+
 ## ⏸️ 작업축 — ROSSE 배포 파이프라인 (이슈 #4) — 손 배포 모드, 자동화 보류
 
 > **현황 (2026-07-07): 손 배포 모드.** ROSSE는 지금 GLG가 각 면에 **손으로 직접** 원문을 남기고, **해설본(가든 canonical)은 org 담당자가 GLG 글을 받아 작성** 중. 완전 자동화는 번거롭고 잘될지도 불확실 → `syndicate` 도구/스킬은 **당장 안 돌린다**(v2026.6.15 구축분·스킬은 그대로 보존, 필요할 때 재개). 아래 실전 사이클·자동화 항목은 전부 **저우선 보류**.

@@ -403,6 +403,76 @@ cmd_paper2org_html() {
     [[ -f "$html" ]] && success "HTML: $html ($(du -h "$html" | cut -f1))"
 }
 
+cmd_paper2org_capsule() {
+    # DESC: Anthropic 웹논문의 인터랙티브 생명성을 로컬 재현 캡슐로 회수 (headless CDP 네트워크 스윕 + 자산 미러)
+    # USAGE: paper2org-capsule <URL> [--name NAME] [--outdir DIR] [--no-verify]
+    # EXAMPLE: paper2org-capsule https://transformer-circuits.pub/2026/workspace/index.html --name jspace
+    # NOTE: headless google-chrome(CDP 직접, npm 의존 0)으로 load+scroll 스윕 → 런타임 fetch 자산 열거 →
+    #       same-origin 자산을 서버경로 그대로 <outdir>/<name>/capsule/ 에 미러 + capsule-manifest.json(sha256).
+    # NOTE: 기본 오프라인 검증(docroot 재스윕, 외부요청 0 단언). --no-verify 로 생략. 원문 저작권=Anthropic(out/ gitignore).
+    # NOTE: 로직 SSOT = scripts/paper_capsule_sweep.mjs + skill `anthropic-paper2org`.
+    local url="${1:?사용법: paper2org-capsule <URL> [--name NAME] [--outdir DIR] [--no-verify]}"
+    shift
+    ensure_project_dir
+    local name="paper"
+    local outdir="${PROJECT_DIR}/out/anthropic-paper"
+    local verify="--serve-check"
+    local args=("$@")
+    local i
+    for ((i = 0; i < ${#args[@]}; i++)); do
+        case "${args[$i]}" in
+            --name) [[ $((i + 1)) -lt ${#args[@]} ]] && name="${args[$((i + 1))]}" ;;
+            --outdir) [[ $((i + 1)) -lt ${#args[@]} ]] && outdir="${args[$((i + 1))]}" ;;
+            --no-verify) verify="" ;;
+        esac
+    done
+    local capsule="${outdir%/}/${name}/capsule"
+    run_cmd "nix develop $(printf '%q' "$PROJECT_DIR") --command node $(printf '%q' "${SCRIPTS_DIR}/paper_capsule_sweep.mjs") $(printf '%q' "$url") --out $(printf '%q' "$capsule") ${verify}"
+    [[ -f "${capsule}/capsule-manifest.json" ]] && success "캡슐: ${capsule} ($(du -sh "$capsule" | cut -f1))"
+}
+
+cmd_paper2org_interactive() {
+    # DESC: Anthropic 논문 → org(SSOT) → LaTeX/Typst 없이 pandoc 만으로 인터랙티브 HTML(figure hydrate, 외부요청 0)
+    # USAGE: paper2org-interactive <URL> [--name NAME] [--outdir DIR]
+    # EXAMPLE: paper2org-interactive https://transformer-circuits.pub/2026/workspace/index.html --name jspace
+    # NOTE: (1) converter --interactive = 인터랙티브 figure 원본 outerHTML 을 raw export 블록 + 원문 head 런타임을
+    #       HTML_HEAD_EXTRA + <d-article> 래퍼로 <name>.interactive.org 생성. (2) 캡슐 없으면 paper2org-capsule.
+    #       (3) pandoc -f org (--katex=로컬 캡슐 katex) → capsule 트리 안 <name>.interactive.html. docroot=capsule 로
+    #       열면 상대/절대경로 그대로 해석 + bundle.js 가 figure hydrate. 원문 저작권=Anthropic(out/ gitignore).
+    # NOTE: 로직 SSOT = scripts/anthropic_paper_to_org.py(--interactive) + paper_capsule_sweep.mjs + skill.
+    local url="${1:?사용법: paper2org-interactive <URL> [--name NAME] [--outdir DIR]}"
+    shift
+    ensure_project_dir
+    local name="paper"
+    local outdir="${PROJECT_DIR}/out/anthropic-paper"
+    local args=("$@")
+    local i
+    for ((i = 0; i < ${#args[@]}; i++)); do
+        case "${args[$i]}" in
+            --name) [[ $((i + 1)) -lt ${#args[@]} ]] && name="${args[$((i + 1))]}" ;;
+            --outdir) [[ $((i + 1)) -lt ${#args[@]} ]] && outdir="${args[$((i + 1))]}" ;;
+        esac
+    done
+    local dir="${outdir%/}/${name}"
+    local capsule="${dir}/capsule"
+    local nd; nd="nix develop $(printf '%q' "$PROJECT_DIR") --command"
+    # 1) interactive org (paper.html 없으면 converter 가 자동 fetch)
+    run_cmd "${nd} python $(printf '%q' "${SCRIPTS_DIR}/anthropic_paper_to_org.py") --url $(printf '%q' "$url") --name $(printf '%q' "$name") --outdir $(printf '%q' "$outdir") --interactive"
+    # 2) 캡슐 없으면 생성(스윕+검증)
+    [[ -f "${capsule}/capsule-manifest.json" ]] || \
+        run_cmd "${nd} node $(printf '%q' "${SCRIPTS_DIR}/paper_capsule_sweep.mjs") $(printf '%q' "$url") --out $(printf '%q' "$capsule") --serve-check"
+    # 3) 원문 URL 경로 아래(캡슐 트리)에 interactive.html export — 상대/절대 자산경로 보존
+    local reldir; reldir="$(${nd} python -c "import urllib.parse as u,posixpath; print(posixpath.dirname(u.urlparse('${url}').path).lstrip('/'))" 2>/dev/null | tail -1)"
+    local target="${capsule}/${reldir}/${name}.interactive.html"
+    run_cmd "mkdir -p $(printf '%q' "${capsule}/${reldir}")"
+    # pandoc: org=SSOT → HTML. --katex=로컬 캡슐 katex(원문과 동일 엔진, 외부요청 0). emacs/texlive/latex 불필요.
+    run_cmd "cd $(printf '%q' "$dir") && ${nd} pandoc -f org -t html5 -s --citeproc --bibliography=bibliography.bib --katex=/anthropic-serve/katex/ -o $(printf '%q' "$target") $(printf '%q' "${name}.interactive.org")"
+    if [[ -f "$target" ]]; then
+        success "인터랙티브 HTML: $target ($(du -h "$target" | cut -f1))"
+        info "서빙: (cd $(printf '%q' "$capsule") && python3 -m http.server 8877) → http://localhost:8877/${reldir}/${name}.interactive.html"
+    fi
+}
+
 
 # ── ArXiv Paper Template ─────────────────────────────────────────────
 
@@ -837,6 +907,8 @@ COMMANDS=(
     "paper2org:cmd_paper2org"
     "paper2org-pdf:cmd_paper2org_pdf"
     "paper2org-html:cmd_paper2org_html"
+    "paper2org-capsule:cmd_paper2org_capsule"
+    "paper2org-interactive:cmd_paper2org_interactive"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
     "diff-review:cmd_diff_review"

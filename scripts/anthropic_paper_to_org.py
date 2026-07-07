@@ -43,6 +43,17 @@ log = logging.getLogger("paper2org")
 # sentinel 토큰: 순수 대문자+숫자라 pandoc 이 건드리지 않는다(--wrap=none 과 함께).
 S = lambda kind, i: f"ZZ{kind}{i}ZZ"
 
+# 인터랙티브 export 전용 reset: pandoc 기본 문서폭(body{max-width:36em}≈576px)만 해제해서
+# distill d-article grid 에 viewport 폭을 돌려준다. distill/figure CSS 는 건드리지 않는다.
+_INTERACTIVE_RESET_STYLE = (
+    '<style id="paper2org-interactive-reset">'
+    "html,body{width:100%;max-width:none!important;margin:0!important;padding:0!important}"
+    "body{overflow-x:hidden}"
+    "body>main,body>#content,body>.content{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}"
+    "d-article{width:100%;max-width:none}"
+    "</style>"
+)
+
 
 def _text(s: str) -> str:
     """HTML 조각 → 평문(태그 제거 + 엔티티 해제 + 공백 정리)."""
@@ -155,10 +166,47 @@ def extract_frontmatter(html: str) -> dict:
 
 
 # ------------------------------------------------------------------------ protect
-def protect(body: str, source_url: str) -> tuple[str, dict]:
-    """Distill 전용 태그를 sentinel 로 치환하고 복원 테이블을 만든다."""
+def extract_head_assets(html: str) -> list[str]:
+    """원문 <head> 에서 하이드레이션에 필요한 **단일행** <script src>/<link> 태그를 순서대로.
+
+    인터랙티브 export 의 `#+HTML_HEAD_EXTRA:`(행 단위)에 그대로 실린다. 제외:
+      - 인라인 스크립트(리다이렉트 `if(!location...)` = 로컬 서빙에 해로움, distill JSON config = byline 용)
+      - meta/멀티라인 태그
+    원문 defer 순서(libs → bundle)를 보존해야 bundle.js 끝 init 이 figure 생성 후 실행된다.
+    """
+    m = re.search(r"<head\b[^>]*>(.*?)</head>", html, re.S)
+    head = m.group(1) if m else html
+    assets: list[str] = []
+    for mt in re.finditer(r"<script\b[^>]*\bsrc=[^>]*>\s*</script>|<link\b[^>]*>", head):
+        tag = mt.group(0).strip()
+        if "\n" not in tag:  # 멀티라인 제외(현재 원문엔 없음)
+            assets.append(tag)
+    return assets
+
+
+def protect(body: str, source_url: str, interactive: bool = False) -> tuple[str, dict]:
+    """Distill 전용 태그를 sentinel 로 치환하고 복원 테이블을 만든다.
+
+    interactive=True 면 img 없는(JS 렌더) figure 를 **수식/인용/각주보다 먼저** sentinel 로
+    빼돌린다. 그러면 figcaption 안의 <d-cite>/<d-math> custom element 가 org-cite/LaTeX 로
+    치환되지 않고 pristine HTML 로 보존되어, restore 에서 `#+begin_export html` raw 블록으로
+    복원 → org→pandoc→html 에서 원문 그대로 나가 distill 런타임이 hydrate 한다.
+    """
     store: dict[str, str] = {}
     footnotes: list[str] = []
+    figures: list[str] = []
+
+    # 0) (interactive) 인터랙티브 figure 를 pristine outerHTML 로 먼저 빼돌린다
+    if interactive:
+        def _fig_raw(m: re.Match) -> str:
+            fig = m.group(0)
+            if "<img" in fig:
+                return fig  # 정적 그림은 기존 파이프(#+caption + 이미지)로
+            tok = S("FIG", len(figures))
+            figures.append(fig)  # 아직 math/cite sentinel 안 됨 = pristine
+            return tok
+
+        body = re.sub(r"<figure\b[^>]*>.*?</figure>", _fig_raw, body, flags=re.S)
 
     # 1) 디스플레이 수식 → \[ ... \]  (인라인 수식보다 먼저)
     def _mb(m: re.Match) -> str:
@@ -216,6 +264,7 @@ def protect(body: str, source_url: str) -> tuple[str, dict]:
     body = re.sub(r"<figure\b[^>]*>.*?</figure>", _fig, body, flags=re.S)
 
     store["__footnotes__"] = footnotes  # type: ignore[assignment]
+    store["__figures__"] = figures  # type: ignore[assignment]
     return body, store
 
 
@@ -239,9 +288,14 @@ def restore(org: str, store: dict) -> str:
         frag = pandoc_html_to_org(f"<div>{inner}</div>").strip()
         frag = re.sub(r"\s*\n\s*", " ", frag).strip()  # 각주는 한 줄
         org = org.replace(S("FN", i), f"[fn:{i + 1}: {frag}]")
+    # (interactive) 인터랙티브 figure sentinel → pristine outerHTML 을 raw export 블록으로
+    figures = store.get("__figures__", [])
+    for i, fig in enumerate(figures):
+        block = f"\n#+begin_export html\n{fig}\n#+end_export\n"
+        org = org.replace(S("FIG", i), block)
     # 수식/인용 sentinel 복원 (뒤에 붙은 각주 텍스트 안의 것까지 전역 복원)
     for tok, val in store.items():
-        if tok == "__footnotes__":
+        if tok in ("__footnotes__", "__figures__"):
             continue
         org = org.replace(tok, val)
     return org
@@ -274,7 +328,14 @@ def fixup(org: str, fig_map: dict | None = None) -> str:
     return org.strip() + "\n"
 
 
-def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
+def assemble(
+    fm: dict,
+    body: str,
+    source_url: str,
+    has_bib: bool,
+    interactive: bool = False,
+    head_assets: list[str] | None = None,
+) -> str:
     authors = "; ".join(fm["authors"]) if fm["authors"] else "Anthropic"
     head = [
         f"#+title:      {fm['title']}",
@@ -284,12 +345,30 @@ def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
         "#+options:     toc:2 num:nil",
         "#+cite_export: basic",
         "#+bibliography: bibliography.bib" if has_bib else "",
+    ]
+    if interactive and head_assets:
+        # 원문 head 의 런타임 자산(distill 템플릿/d3/bundle/css…)을 순서 그대로 head 에.
+        # docroot=capsule 이라 상대(public/…)·절대(/anthropic-serve/…) 경로가 그대로 해석된다.
+        head += [f"#+HTML_HEAD_EXTRA: {t}" for t in head_assets]
+        # pandoc 기본 body{max-width:36em}(=576px)가 distill d-article grid 를 좁은 문서폭에 가둬
+        # prose 가 우측으로 클립된다. **마지막** HTML_HEAD_EXTRA 로 문서폭 제약만 해제(distill grid/
+        # figure CSS 는 그대로 두고 viewport 폭을 grid 에 돌려준다). distill css 뒤에 와야 이긴다.
+        head.append("#+HTML_HEAD_EXTRA: " + _INTERACTIVE_RESET_STYLE)
+    head += [
         "",
         "# 변환: memex-kb scripts/anthropic_paper_to_org.py (Anthropic Distill HTML → Org).",
         "# 원문 저작권 = Anthropic. 이 org 는 개인 아카이브/연구용 캡처.",
         "",
     ]
     head = [h for h in head if h != ""] + [""]
+    if interactive:
+        # bundle.js 가 TOC/section-numbering/resolveFigRefs 에서 <d-article> 을 전제하므로
+        # 래퍼조차 org raw 블록으로 표현(= template 파일 없이 pandoc -f org 만으로 완결).
+        body = (
+            "#+begin_export html\n<d-article>\n#+end_export\n\n"
+            + body.rstrip()
+            + "\n\n#+begin_export html\n</d-article>\n<d-contents></d-contents>\n#+end_export"
+        )
     # 참고문헌 섹션 = pandoc --citeproc 가 렌더한 reference list 가 놓일 위치(`#+print_bibliography:`).
     # HTML 프로덕션 경로는 pandoc --citeproc(paper2org-html). #+cite_export 는 emacs 폴백 힌트일 뿐(미사용).
     foot = (
@@ -352,7 +431,14 @@ def assemble_acmart(fm: dict, body: str, source_url: str) -> str:
 
 
 # --------------------------------------------------------------------------- main
-def convert(html: str, source_url: str, workdir: Path, name: str, acmart: bool = False) -> Path:
+def convert(
+    html: str,
+    source_url: str,
+    workdir: Path,
+    name: str,
+    acmart: bool = False,
+    interactive: bool = False,
+) -> Path:
     fm = extract_frontmatter(html)
     log.info("title=%r authors=%d date=%r", fm["title"], len(fm["authors"]), fm["date"])
     art = _isolate(html)
@@ -360,11 +446,21 @@ def convert(html: str, source_url: str, workdir: Path, name: str, acmart: bool =
     body_html = _strip_visual_toc(art)
     body_html = body_html[body_html.find("<h2") :]  # 제목/byline 버리고 첫 섹션부터
     body_html = _lift_heading_ids(body_html)  # 앵커 id → 헤딩 CUSTOM_ID (상호참조 복원)
-    protected, store = protect(body_html, source_url)
+    protected, store = protect(body_html, source_url, interactive=interactive)
     org_body = pandoc_html_to_org(protected)
     org_body = restore(org_body, store)
     org_body = fixup(org_body, fig_map)
     has_bib = (workdir / "bibliography.bib").exists()
+    if interactive:
+        # org=SSOT 로 인터랙티브 문서 생성: prose+수식+인용은 org, 인터랙티브 figure 는 raw 블록,
+        # 원문 head 런타임은 HTML_HEAD_EXTRA. LaTeX/Typst 없이 pandoc -f org 만으로 hydrate HTML.
+        head_assets = extract_head_assets(html)
+        org = assemble(fm, org_body, source_url, has_bib, interactive=True, head_assets=head_assets)
+        out = workdir / f"{name}.interactive.org"
+        out.write_text(org, encoding="utf-8")
+        log.info("wrote %s (%d bytes) — interactive (raw figure %d, head asset %d)",
+                 out, len(org), len(store.get("__figures__", [])), len(head_assets))
+        return out
     org = assemble(fm, org_body, source_url, has_bib)
     out = workdir / f"{name}.org"
     out.write_text(org, encoding="utf-8")
@@ -384,6 +480,11 @@ def main() -> None:
     ap.add_argument("--outdir", default="out/anthropic-paper", help="작업 루트")
     ap.add_argument("--fetch", action="store_true", help="HTML/이미지/bib 새로 내려받기")
     ap.add_argument("--acmart", action="store_true", help="acmart PDF export 용 <name>.acmart.org 도 생성")
+    ap.add_argument(
+        "--interactive",
+        action="store_true",
+        help="<name>.interactive.org 생성 (인터랙티브 figure 를 raw export 블록 + head 런타임 자산으로 보존)",
+    )
     args = ap.parse_args()
 
     workdir = Path(args.outdir) / args.name
@@ -391,7 +492,7 @@ def main() -> None:
     if args.fetch or not html_path.exists():
         fetch(args.url, workdir)
     html = html_path.read_text(encoding="utf-8")
-    out = convert(html, args.url, workdir, args.name, acmart=args.acmart)
+    out = convert(html, args.url, workdir, args.name, acmart=args.acmart, interactive=args.interactive)
 
     # 간단 검수 리포트
     org = out.read_text(encoding="utf-8")
@@ -402,8 +503,15 @@ def main() -> None:
     print(f"  인용:        {org.count('[cite:')}")
     print(f"  각주:        {len(re.findall(r'\[fn:\d+:', org))}")
     print(f"  임베드이미지: {org.count('[[file:png/')}")
-    print(f"  인터랙티브:  {org.count('(interactive figure)')}")
-    leftover = re.findall(r"ZZ(?:MB|MI|CI|FN)\d+ZZ|<d-\w+", org)
+    if args.interactive:
+        # 인터랙티브: raw figure 블록 수 + head 자산 수. <d-...> 는 raw 블록 안의 pristine
+        # custom element(정상)이므로 잔여 태그로 세지 않는다.
+        print(f"  raw figure 블록: {org.count('#+begin_export html')}")
+        print(f"  HTML_HEAD_EXTRA: {org.count('#+HTML_HEAD_EXTRA:')}")
+        leftover = re.findall(r"ZZ(?:MB|MI|CI|FN|FIG)\d+ZZ", org)
+    else:
+        print(f"  인터랙티브:  {org.count('(interactive figure)')}")
+        leftover = re.findall(r"ZZ(?:MB|MI|CI|FN|FIG)\d+ZZ|<d-\w+", org)
     print(f"  잔여 sentinel/태그: {len(leftover)} {leftover[:5]}")
 
 

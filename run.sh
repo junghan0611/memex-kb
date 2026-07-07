@@ -370,10 +370,10 @@ cmd_paper2org_pdf() {
 }
 
 cmd_paper2org_html() {
-    # DESC: Anthropic HTML 논문 → org → ox-html HTML (인용 org-cite 렌더 + MathJax 수식, texlive 불필요)
+    # DESC: Anthropic HTML 논문 → org → HTML (pandoc --citeproc = 인용/참고문헌/수식 렌더, texlive/emacs 불필요)
     # USAGE: paper2org-html <URL> [--name NAME] [--outdir DIR]
     # EXAMPLE: paper2org-html https://transformer-circuits.pub/2026/workspace/index.html --name jspace
-    # NOTE: emacs ox-html + oc-basic(=인용/참고문헌 렌더, pandoc 왕복과 달리 프로덕션). paper_html_build.el = broken-links 허용.
+    # NOTE: pandoc org 리더가 [cite:@k] 를 파싱 → --citeproc 로 (Author Year)+참고문헌 렌더. oc-basic(bibtex-validate 엄격) 회피.
     # NOTE: 산출물 <outdir>/<name>/<name>.html (+ png/ 동반). 기본 outdir=out/anthropic-paper. 원문 저작권=Anthropic.
     local url="${1:?사용법: paper2org-html <URL> [--name NAME] [--outdir DIR]}"
     shift
@@ -396,9 +396,9 @@ cmd_paper2org_html() {
     for arg in "${args[@]}"; do qargs+=" $(printf '%q' "$arg")"; done
     # 1) org 생성 (HTML 은 acmart org 불필요)
     run_cmd "nix develop --command python $(printf '%q' "${SCRIPTS_DIR}/anthropic_paper_to_org.py") --url $(printf '%q' "$url")${qargs}"
-    # 2) org → HTML (emacs ox-html; texlive 불필요 → 빠름)
+    # 2) org → HTML (pandoc --citeproc; robust bib 파서 = oc-basic bibtex-validate 엄격성 회피. emacs/texlive 불필요)
     local dir="${outdir%/}/${name}"
-    run_cmd "cd $(printf '%q' "$dir") && nix-shell -p 'pkgs.emacs' --run \"emacs -Q --batch --script $(printf '%q' "${SCRIPTS_DIR}/paper_html_build.el") ${name}.org\""
+    run_cmd "cd $(printf '%q' "$dir") && nix develop $(printf '%q' "$PROJECT_DIR") --command pandoc -f org -t html5 -s --citeproc --bibliography=bibliography.bib --mathjax -o $(printf '%q' "${name}.html") $(printf '%q' "${name}.org")"
     local html="${dir}/${name}.html"
     [[ -f "$html" ]] && success "HTML: $html ($(du -h "$html" | cut -f1))"
 }

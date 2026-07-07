@@ -66,18 +66,29 @@ Distill 논문은 그림이 두 종류다. **개수를 반드시 검수**한다(
   → **캡션 + `원문#앵커` 라이브 링크로 대체**. 각 `<figure id="fig-…">`의 id 가 앵커. 이게 "못 담는 건
   대체" 규칙(scanbook 과 같은 철학). 스크린샷이 꼭 필요하면 브라우저로 따로 떠서 붙인다(수동, 스킬 밖).
 
-## org → HTML — `paper2org-html` (프로덕션)
+## org → HTML — `paper2org-html` (프로덕션, pandoc --citeproc)
 
-**증명(pandoc) vs 프로덕션(ox-html)** 두 경로, 프로덕션 구현됨:
-- **증명**: `pandoc -f org -t html5 --mathjax --standalone` 로 구조·수식·이미지·앵커 생존 = "논문 쓰기 포맷 = org"
-  성립. 단 pandoc org 리더는 `[cite:@key]`/`#+bibliography` 를 **못 읽는다**(평문으로 남음) → 증명용.
-- **프로덕션**: `./run.sh paper2org-html <URL> --name <name>` → `scripts/paper_html_build.el`(emacs ox-html + `oc-basic`).
-  **인용까지 렌더**: `[cite:@key]` → (Author Year), `#+print_bibliography:` → 참고문헌 목록. 수식 MathJax(CDN),
-  이미지 `png/` 동반. **texlive 불필요 = emacs 만, 빠름**. 검증(J-space): raw `[cite:` 0, 참고문헌 목록 생성, 수식·이미지 정상.
+`./run.sh paper2org-html <URL> --name <name>` →
+`pandoc -f org -t html5 -s --citeproc --bibliography=bibliography.bib --mathjax`.
+pandoc org 리더가 **`[cite:@key]` org-cite 를 파싱**하고 `--citeproc` 가 (Author Year) + 참고문헌 목록을 렌더한다.
+수식 MathJax(CDN), 이미지 `png/` 동반. **emacs·texlive 불필요 = pandoc 하나.** web org(`assemble`)가 끝에
+`* References` + `#+print_bibliography:` 를 붙여 참고문헌 위치를 준다.
+검증(J-space): raw `[cite:` 0, **csl-entry 173(참고문헌 채워짐)**, citation span 157, 수식·이미지 정상.
 
-이를 위해 web org(`assemble`)는 끝에 `* References` + `#+print_bibliography:` 를 붙이고 `#+cite_export: basic` 를 둔다.
-`paper_html_build.el` 도 `org-export-with-broken-links t`(원문 미해결 `??` 참조) + backtrace 억제를 켠다.
-(더 예쁜 CSL 서지가 필요하면 `#+cite_export: csl` + citeproc-el + `.csl` — 현재는 의존성 0 인 `basic`.)
+**⚠️ 왜 ox-html(oc-basic) 이 아니라 pandoc 인가** (2026-07-07, 삽질 기록):
+- 처음엔 emacs ox-html + `oc-basic` 로 갔는데 **인용이 전부 `??`, 참고문헌 빈 블록**으로 나왔다. 원인: `oc-basic` 은
+  `(bibtex-validate)` 를 통과해야 bib 를 읽는데, 실무 publisher bib(중복키/`@online`/필수필드 누락)에서 **"Malformed
+  bibliography"** 로 조용히 실패(에러가 `condition-case` 로 삼켜져 0 entries) → 모든 키 미해결.
+- `bibtex.el`(807 entries)·`bibtex`(PDF, latexmk) 는 관대해서 통과하지만 `oc-basic` 만 엄격. → **pandoc citeproc 채택**
+  (robust bib 파서, org-cite 파싱, 이미 flake 의존성). CSL 기본 = chicago-author-date.
+- **검수 함정**: `raw [cite: == 0` 만 보면 안 된다(마커 소비 ≠ 렌더). **반드시 `csl-entry > 0`(참고문헌 채워짐) +
+  대표 문단 인용 spot-check((Author Year) 형태)** 로 확인. (GPT 검수가 이 갭을 잡았음.)
+
+### 깨진 `??` figure 참조 복원 (fixup)
+원문 HTML 은 figure 상호참조가 `??` 로 깨져 published(그들의 매크로 미해결). `fixup()` 가 각 `<figure data-fignum="N">`
+에서 `{fig-id: N}` 맵을 만들어 `[[#fig-x][??]]` → **"Figure N"** 으로 되살린다(앞 문맥이 "Figure" 면 숫자만 → "Figure Figure"
+방지). J-space: 222 복원. 남는 `??` 는 원문이 truncated 한 섹션의 figure 라 본문에 대상이 없음(소스도 `??`, 정직 표기).
+이 복원은 HTML·PDF 양쪽 org_body 에 적용된다.
 
 ## org → ArXiv급 PDF (acmart) — `paper2org-pdf`
 

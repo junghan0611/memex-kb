@@ -119,6 +119,22 @@ def _lift_heading_ids(html: str) -> str:
     return re.sub(r"<h([2-4])><a id='([^']+)'[^>]*>(.*?)</a>\s*</h\1>", repl, html, flags=re.S)
 
 
+def _figure_number_map(art: str) -> dict:
+    """`<figure id="fig-x" data-fignum="N">` / fig-num 캡션에서 {fig-id: N} 를 만든다.
+
+    원문의 미해결 상호참조 `[[#fig-x][??]]` 를 실제 "Figure N" 으로 되살리는 데 쓴다
+    (원문 HTML 이 못 푼 것을 우리가 해결)."""
+    fmap: dict[str, str] = {}
+    for fig in re.findall(r"<figure\b[^>]*>.*?</figure>", art, re.S):
+        mid = re.search(r'id="(fig-[^"]+)"', fig)
+        if not mid:
+            continue
+        num = re.search(r'data-fignum="(\d+)"', fig) or re.search(r'fig-num">\s*Figure\s+(\d+)', fig)
+        if num:
+            fmap[mid.group(1)] = num.group(1)
+    return fmap
+
+
 # -------------------------------------------------------------------- frontmatter
 def extract_frontmatter(html: str) -> dict:
     title = "Untitled"
@@ -232,11 +248,27 @@ def restore(org: str, store: dict) -> str:
 
 
 # -------------------------------------------------------------------------- fixup
-def fixup(org: str) -> str:
+def fixup(org: str, fig_map: dict | None = None) -> str:
+    fig_map = fig_map or {}
     # 이미지 경로: pandoc 의 ./png/ , png/ → file:png/
     org = re.sub(r"\[\[(?:\./)?png/", "[[file:png/", org)
     # 헤딩 승급: 본문 최상위가 h2(=**) 이므로 한 단계씩 올린다(** → *, *** → **, ...)
     org = re.sub(r"^\*(\*+ )", r"\1", org, flags=re.M)
+    # 원문의 미해결 상호참조 [[#anchor][??]](원문 HTML 도 ?? 로 깨져 있음) 처리:
+    #   - figure 앵커면 data-fignum 으로 "Figure N" 복원(원문이 못 푼 걸 우리가 해결)
+    #   - 그 외(비figure)면 dead link 제거하고 평문 ?? 로. 유효한 [[#intro][..]] 은 그대로.
+    def _ref(m: re.Match) -> str:
+        fid = m.group(1)
+        if fid not in fig_map:
+            return "??"
+        n = fig_map[fid]
+        # 앞 문맥이 이미 "Figure/Fig/Figures ..." 로 끝나면 숫자만, 아니면 "Figure N".
+        pre = m.string[: m.start()]
+        if re.search(r"(?:[Ff]ig(?:ure)?s?\.?)\s*$", pre) or re.search(r"\b(?:and|,|&)\s*$", pre):
+            return n
+        return f"Figure {n}"
+
+    org = re.sub(r"\[\[#([^\]]*)\]\[\?\?\]\]", _ref, org)
     # 빈 줄 3개+ → 2개
     org = re.sub(r"\n{3,}", "\n\n", org)
     return org.strip() + "\n"
@@ -249,7 +281,7 @@ def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
         f"#+author:     {authors}",
         f"#+date:       {fm['date']}" if fm["date"] else "",
         f"#+source:     {source_url}",
-        "#+options:     toc:2 num:nil broken-links:t",
+        "#+options:     toc:2 num:nil",
         "#+cite_export: basic",
         "#+bibliography: bibliography.bib" if has_bib else "",
         "",
@@ -323,13 +355,14 @@ def convert(html: str, source_url: str, workdir: Path, name: str, acmart: bool =
     fm = extract_frontmatter(html)
     log.info("title=%r authors=%d date=%r", fm["title"], len(fm["authors"]), fm["date"])
     art = _isolate(html)
+    fig_map = _figure_number_map(art)  # {fig-id: N} — 깨진 [[#fig-x][??]] → "Figure N" 복원
     body_html = _strip_visual_toc(art)
     body_html = body_html[body_html.find("<h2") :]  # 제목/byline 버리고 첫 섹션부터
     body_html = _lift_heading_ids(body_html)  # 앵커 id → 헤딩 CUSTOM_ID (상호참조 복원)
     protected, store = protect(body_html, source_url)
     org_body = pandoc_html_to_org(protected)
     org_body = restore(org_body, store)
-    org_body = fixup(org_body)
+    org_body = fixup(org_body, fig_map)
     has_bib = (workdir / "bibliography.bib").exists()
     org = assemble(fm, org_body, source_url, has_bib)
     out = workdir / f"{name}.org"

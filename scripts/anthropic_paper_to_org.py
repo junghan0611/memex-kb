@@ -290,7 +290,8 @@ def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
         "",
     ]
     head = [h for h in head if h != ""] + [""]
-    # 참고문헌 섹션(ox-html + oc-basic 이 [cite:@k] 와 함께 렌더). pandoc 은 이 키워드 무시(무해).
+    # 참고문헌 섹션 = pandoc --citeproc 가 렌더한 reference list 가 놓일 위치(`#+print_bibliography:`).
+    # HTML 프로덕션 경로는 pandoc --citeproc(paper2org-html). #+cite_export 는 emacs 폴백 힌트일 뿐(미사용).
     foot = (
         "\n* References\n:PROPERTIES:\n:CUSTOM_ID: references\n:END:\n#+print_bibliography:\n"
         if has_bib

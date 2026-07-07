@@ -190,9 +190,10 @@ def protect(body: str, source_url: str) -> tuple[str, dict]:
         caption = ""
         if cap:
             caption = re.sub(r'<span class="fig-num">.*?</span>', "", cap.group(1), flags=re.S)
-        # <strong> + 링크 + 캡션(내부 sentinel 유지) → pandoc 이 org 로 변환
+        # <strong> + 링크 + 캡션(내부 sentinel 유지) → pandoc 이 org 로 변환.
+        # 마커는 ASCII 영어(원문이 영어 논문 + pdflatex 는 한글 못 씀).
         return (
-            f'<p><strong>[{label} · 인터랙티브 그림 — 원문: '
+            f'<p><strong>[{label} (interactive figure) -- see original: '
             f'<a href="{anchor}">{anchor}</a>]</strong> {caption}</p>'
         )
 
@@ -248,7 +249,7 @@ def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
         f"#+author:     {authors}",
         f"#+date:       {fm['date']}" if fm["date"] else "",
         f"#+source:     {source_url}",
-        "#+options:     toc:2 num:nil",
+        "#+options:     toc:2 num:nil broken-links:t",
         "#+cite_export: basic",
         "#+bibliography: bibliography.bib" if has_bib else "",
         "",
@@ -260,8 +261,59 @@ def assemble(fm: dict, body: str, source_url: str, has_bib: bool) -> str:
     return "\n".join(head) + body
 
 
+def assemble_acmart(fm: dict, body: str, source_url: str) -> str:
+    """acmart(ArXiv급 PDF) export 용 org. arxiv-acm/build.el 파이프에 물린다.
+
+    브리지: web org(평문 `[cite:@key]`)를 acmart 관례로 바꾼다 — org-cite → natbib `\\cite{}`,
+    저자 리스트 → acmart 프리앰블(affiliation=Anthropic 고정, "앤트로픽 논문 변환기"). 참고문헌은
+    `\\bibliography{bibliography}`(bibliography.bib) + ACM-Reference-Format(latexmk 이 bibtex 자동).
+    단일컬럼 manuscript(넓은 수식/그림 안전). 본문 특수문자는 ox-latex 가 알아서 이스케이프.
+    """
+
+    def _cite(m: re.Match) -> str:  # [cite:@a;@b] → \cite{a,b}
+        keys = [k.strip().lstrip("@") for k in m.group(1).split(";") if k.strip()]
+        return "\\cite{" + ",".join(keys) + "}"
+
+    body = re.sub(r"\[cite:([^\]]+)\]", _cite, body)
+
+    authors = fm["authors"] or ["Anthropic"]
+    short = authors[0].split()[-1] if authors else "Anthropic"
+    auth_block: list[str] = []
+    for a in authors:
+        auth_block += [f"\\author{{{a}}}", "\\affiliation{\\institution{Anthropic}\\country{USA}}"]
+
+    head = [
+        "# acmart(ArXiv급 PDF) export 변환본 — memex-kb paper2org --acmart.",
+        f"# 원문: {source_url} · 저작권 = Anthropic · 개인 아카이브/연구용 캡처.",
+        # broken-links:t = 원문의 미해결 fig 참조([[#fig-..][??]])에서 export 중단 방지
+        "#+OPTIONS: title:nil author:nil toc:nil date:nil broken-links:t",
+        "#+LATEX_CLASS: acmart",
+        "#+LATEX_CLASS_OPTIONS: [manuscript, nonacm]",
+        "#+LATEX_HEADER: \\settopmatter{printacmref=false}",
+        "#+LATEX_HEADER: \\setcopyright{none}",
+        "#+LATEX_HEADER: \\acmDOI{}",
+        "#+LATEX_HEADER: \\acmISBN{}",
+        "#+LATEX_HEADER: \\setkeys{Gin}{width=\\linewidth,keepaspectratio}",
+        "",
+        "#+BEGIN_EXPORT latex",
+        f"\\title{{{fm['title']}}}",
+        *auth_block,
+        f"\\renewcommand{{\\shortauthors}}{{{short} et al.}}",
+        "\\maketitle",
+        "#+END_EXPORT",
+        "",
+    ]
+    foot = [
+        "",
+        "#+LATEX: \\bibliographystyle{ACM-Reference-Format}",
+        "#+LATEX: \\bibliography{bibliography}",
+        "",
+    ]
+    return "\n".join(head) + body.rstrip() + "\n\n" + "\n".join(foot)
+
+
 # --------------------------------------------------------------------------- main
-def convert(html: str, source_url: str, workdir: Path, name: str) -> Path:
+def convert(html: str, source_url: str, workdir: Path, name: str, acmart: bool = False) -> Path:
     fm = extract_frontmatter(html)
     log.info("title=%r authors=%d date=%r", fm["title"], len(fm["authors"]), fm["date"])
     art = _isolate(html)
@@ -277,6 +329,11 @@ def convert(html: str, source_url: str, workdir: Path, name: str) -> Path:
     out = workdir / f"{name}.org"
     out.write_text(org, encoding="utf-8")
     log.info("wrote %s (%d bytes)", out, len(org))
+    if acmart:
+        acm = assemble_acmart(fm, org_body, source_url)
+        acm_out = workdir / f"{name}.acmart.org"
+        acm_out.write_text(acm, encoding="utf-8")
+        log.info("wrote %s (%d bytes) — acmart PDF export 용", acm_out, len(acm))
     return out
 
 
@@ -286,6 +343,7 @@ def main() -> None:
     ap.add_argument("--name", default="paper", help="산출물 이름(<name>.org)")
     ap.add_argument("--outdir", default="out/anthropic-paper", help="작업 루트")
     ap.add_argument("--fetch", action="store_true", help="HTML/이미지/bib 새로 내려받기")
+    ap.add_argument("--acmart", action="store_true", help="acmart PDF export 용 <name>.acmart.org 도 생성")
     args = ap.parse_args()
 
     workdir = Path(args.outdir) / args.name
@@ -293,7 +351,7 @@ def main() -> None:
     if args.fetch or not html_path.exists():
         fetch(args.url, workdir)
     html = html_path.read_text(encoding="utf-8")
-    out = convert(html, args.url, workdir, args.name)
+    out = convert(html, args.url, workdir, args.name, acmart=args.acmart)
 
     # 간단 검수 리포트
     org = out.read_text(encoding="utf-8")
@@ -304,7 +362,7 @@ def main() -> None:
     print(f"  인용:        {org.count('[cite:')}")
     print(f"  각주:        {len(re.findall(r'\[fn:\d+:', org))}")
     print(f"  임베드이미지: {org.count('[[file:png/')}")
-    print(f"  인터랙티브:  {org.count('인터랙티브 그림')}")
+    print(f"  인터랙티브:  {org.count('(interactive figure)')}")
     leftover = re.findall(r"ZZ(?:MB|MI|CI|FN)\d+ZZ|<d-\w+", org)
     print(f"  잔여 sentinel/태그: {len(leftover)} {leftover[:5]}")
 

@@ -73,6 +73,38 @@ Distill 논문은 그림이 두 종류다. **개수를 반드시 검수**한다(
 → 인용까지 제대로 렌더하려면 **ox-html + org-cite/citeproc**(Emacs)이 프로덕션 경로. 왕복 "증명"은 pandoc,
 "출판"은 ox-html.
 
+## org → ArXiv급 PDF (acmart) — `paper2org-pdf`
+
+`--acmart` 가 `<name>.acmart.org` 를 같이 낸다(웹 org 의 자매). 이걸 `templates/arxiv-acm` 의 acmart
+파이프(org→LaTeX→PDF)에 물려 **ArXiv급 학술 PDF** 를 만든다. 검증됨: J-space = **93쪽, 인용 155개 bibtex
+전부 해석, 수식·그림 정상**.
+
+**브리지(웹 org → acmart org)가 하는 일** — `assemble_acmart()`:
+- 헤더를 acmart 관례로: `#+OPTIONS: title:nil author:nil` + `#+LATEX_CLASS: acmart [manuscript, nonacm]`
+  (**단일컬럼 manuscript** — 넓은 수식/그림에 2컬럼 sigconf 보다 안전) + `\settopmatter{printacmref=false}` + `\setcopyright{none}`.
+- **저자 → acmart 프리앰블 자동생성**: `#+BEGIN_EXPORT latex` 안에 `\title` + N명 `\author`/`\affiliation`
+  (affiliation = **Anthropic 고정** — "앤트로픽 논문 변환기") + `\maketitle`.
+- **인용 org-cite → natbib**: `[cite:@a;@b]` → `\cite{a,b}`. 끝에 `\bibliographystyle{ACM-Reference-Format}` +
+  `\bibliography{bibliography}`(bibliography.bib). latexmk 가 bibtex 자동 다중패스.
+- 이미지 폭맞춤 `\setkeys{Gin}{width=\linewidth,keepaspectratio}`(2컬럼 오버플로 방지).
+
+**빌드**: `./run.sh paper2org-pdf <URL> --name <name>` → acmart org 생성 후
+`nix-shell` (texlive scheme-full + emacs) 안에서 `scripts/paper_build.el` 로 `org-latex-export-to-pdf`.
+산출 `out/anthropic-paper/<name>/<name>.acmart.pdf`.
+
+**`paper_build.el` 가 build.el 과 다른 점(둘 다 필요)**:
+- `org-export-with-broken-links t` — 원문의 **미해결 fig 참조**(`[[#fig-..][??]]`, HTML 에도 `??`)에서
+  ox-latex 가 export 를 **중단(abort)** 하는 걸 막는다. 없으면 "Unable to resolve link" 로 실패.
+- `backtrace-on-error-noninteractive nil` — 에러 시 org AST 전체 덤프로 **로그가 수백 MB** 터지는 것 방지.
+
+**함정/한계(PDF)**:
+- **texlive scheme-full 은 494MB 다운로드(1회, 이후 캐시)** — acmart 엔 과잉. 슬림화(scheme-basic+acmart+deps)는
+  후속 최적화(의존성 누락 토끼굴 주의). 지금은 GLG 플레이크(geworfen/docs·arxiv-acm)가 핀한 scheme-full 그대로.
+- 원문의 깨진 `??` 참조는 PDF 에서 **빈 괄호/공백**으로 렌더된다(소스 문제, 우리 버그 아님). 필요하면 브리지에서
+  `[[#anchor][desc]]`(비헤딩 앵커) → 평문화로 개선 가능(현재 미적용).
+- `latexmk -f` 라 일부 경고(Overfull/undefined)를 강행 통과해 "produced with errors" 떠도 PDF 는 정상 생성.
+- amssymb 는 acmart(newtx) 충돌로 **제거**(build.el 관례). `\mathbb` 등은 newtxmath 가 제공.
+
 ## ⚠️ 저작권 — 산출물 커밋 금지
 
 논문 전문·그림은 **Anthropic 저작물**이다. memex-kb(공개 repo)엔 **변환 로직만 커밋**하고 산출물은 안 담는다:

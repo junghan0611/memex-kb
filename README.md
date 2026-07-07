@@ -38,7 +38,7 @@ memex-kb is useful when you want to:
 | Confluence export (`.doc` MIME HTML) | Stable | `scripts/confluence_to_markdown.py` | Clean Markdown |
 | GitHub Stars | Stable | `scripts/gh_starred_to_bib.sh`, `./run.sh github-starred-export` | BibTeX |
 | Naver Blog | Active | `scripts/naver_blog_crawler.py`, `./run.sh naver-*` | Denote-style Org + assets |
-| Anthropic Distill HTML papers | Active | `scripts/anthropic_paper_to_org.py`, `./run.sh paper2org` | Org (math/figure/citation-aware, HTML round-trippable) |
+| Anthropic Distill HTML papers | Active | `scripts/anthropic_paper_to_org.py`, `./run.sh paper2org` / `paper2org-pdf` | Org (math/figure/citation-aware) → ArXiv-style acmart PDF |
 | HWPX / OWPML related workflows | Active | `hwpx2org/`, `orgadoc2odt/`, `proposal-pipeline/` | Org, ODT, DOC, HWP-oriented outputs |
 
 ### Publishing / template workflows

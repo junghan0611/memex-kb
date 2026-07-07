@@ -334,6 +334,26 @@ cmd_paper2org() {
     run_cmd "nix develop --command python ${SCRIPTS_DIR}/anthropic_paper_to_org.py --url '${url}' ${*:2}"
 }
 
+cmd_paper2org_pdf() {
+    # DESC: Anthropic HTML 논문 → org → acmart LaTeX → ArXiv급 PDF (수식/인용/그림 포함)
+    # USAGE: paper2org-pdf <URL> [--name NAME]
+    # EXAMPLE: paper2org-pdf https://transformer-circuits.pub/2026/workspace/index.html --name jspace
+    # NOTE: texlive(scheme-full) nix-shell 안에서 빌드(1회 다운로드 후 캐시). paper_build.el = broken-links 허용.
+    # NOTE: 산출물 out/anthropic-paper/<name>/<name>.acmart.pdf. 원문 저작권=Anthropic → gitignore.
+    local url="${1:?사용법: paper2org-pdf <URL> [--name NAME]}"
+    ensure_project_dir
+    local name="paper"
+    local args="${*:2}"
+    if [[ "$args" =~ --name[[:space:]]+([^[:space:]]+) ]]; then name="${BASH_REMATCH[1]}"; fi
+    # 1) org + acmart org 생성
+    run_cmd "nix develop --command python ${SCRIPTS_DIR}/anthropic_paper_to_org.py --url '${url}' --acmart ${args}"
+    # 2) acmart org → PDF (texlive nix-shell + paper_build.el)
+    local dir="${PROJECT_DIR}/out/anthropic-paper/${name}"
+    run_cmd "cd '${dir}' && nix-shell -p 'pkgs.emacs' '(pkgs.texlive.combine { inherit (pkgs.texlive) scheme-full latexmk; })' --run \"emacs -Q --batch --script ${SCRIPTS_DIR}/paper_build.el ${name}.acmart.org\""
+    local pdf="${dir}/${name}.acmart.pdf"
+    [[ -f "$pdf" ]] && success "PDF: $pdf ($(du -h "$pdf" | cut -f1))"
+}
+
 
 # ── ArXiv Paper Template ─────────────────────────────────────────────
 
@@ -766,6 +786,7 @@ COMMANDS=(
     "arxiv-build:cmd_arxiv_build"
     "--- Anthropic 논문→Org"
     "paper2org:cmd_paper2org"
+    "paper2org-pdf:cmd_paper2org_pdf"
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
     "diff-review:cmd_diff_review"

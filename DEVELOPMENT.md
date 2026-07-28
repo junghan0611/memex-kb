@@ -145,7 +145,7 @@ memex-kb/
 │   ├── denote_namer.py        # Denote 파일명 생성 (공통)
 │   ├── categorizer.py         # 자동 분류 (공통)
 │   └── [backend]_exporter.py  # Backend별 CLI 스크립트
-├── hwpx2asciidoc/             # HWPX 변환 모듈
+├── orgadoc2odt/               # Org+AsciiDoc → ODT (한글 산출물 경로)
 ├── epub2org/                  # EPUB 변환 모듈
 ├── html2epub/                # HTML→EPUB 변환 모듈
 ├── config/

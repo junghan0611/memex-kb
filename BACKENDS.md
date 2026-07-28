@@ -18,7 +18,7 @@ Memex-KB는 다양한 Backend 소스를 지원합니다. 각 Backend별 설정, 
 | Google Docs | ✅ 구현됨 | `gdocs_md_processor.py` | `export` 명령 (완전 자동) |
 | Threads SNS | ✅ 구현됨 | `threads_exporter.py` | API 직접 호출 |
 | Confluence | ✅ 구현됨 | `confluence_to_markdown.py` | MIME 파싱 + Pandoc |
-| HWPX | ✅ 구현됨 | `hwpx2asciidoc/` | XML 직접 파싱 |
+| 한글(HWP) 산출물 | ✅ 활성 | `orgadoc2odt/`, `proposal-pipeline/` | Org → ODT/DOC → HWP (HWPX 직접 조작은 폐기) |
 | GitHub Stars | ✅ 구현됨 | `gh_starred_to_bib.sh` | gh CLI + jq → BibTeX |
 | Dooray Wiki | 🔧 개발 중 | - | - |
 | Scan PDF / EPUB | ✅ 활성 | `.claude/skills/scanbook/`, `mineru-client/`, `scripts/mineru2org.py`, `./run.sh mineru-*`, `./run.sh diff-review`, `./run.sh org2epub-build` | MinerU VLM → Org → EPUB. 새 세션은 scanbook 스킬부터 읽기 |
@@ -370,27 +370,28 @@ nix develop --command python scripts/confluence_to_markdown.py -v document.doc
 
 ---
 
-## HWPX 연동
+## 한글(HWP) 산출물
 
-**한글 문서를 AI 에이전트와 함께**: HWPX ↔ AsciiDoc 양방향 변환
+**한글 문서를 AI 에이전트와 함께**: Org → ODT/DOC → HWP
 
 ### 개요
 
-- HWPX/OWPML → AsciiDoc 변환 (테이블 병합 보존)
-- AsciiDoc → HWPX 역변환 (왕복 변환 테스트 통과)
-- KS X 6101 표준 준수
+HWPX/OWPML XML을 직접 조작하던 축(`hwpx2org/`, `orgadoc2odt/_legacy/`, `python-hwpx`)은
+**2026-07-28 폐기**했다. 서식 보존을 위해 템플릿 XML을 패치하는 방식은 유지비가 크고,
+실제로는 ODT/DOC를 거쳐 한글에서 여는 편이 훨씬 안정적이었다.
+
+- Org → ODT → DOC → (한글에서 열어 HWP 저장)
+- 표/병합 셀은 `orgadoc2odt/`의 AsciiDoc 셀 문법으로 표현
 
 ### 사용법
 
 ```bash
-# HWPX → AsciiDoc
-nix develop --command python hwpx2asciidoc/hwpx_to_asciidoc.py input.hwpx output.adoc
+# Org → ODT (제안서 파이프라인)
+./run.sh proposal-export-odt [ORG_FILE]
+./run.sh proposal-odt-fix <INPUT.odt>
 
-# AsciiDoc → HWPX
-nix develop --command python hwpx2asciidoc/asciidoc_to_hwpx.py input.adoc output.hwpx
-
-# 통합 CLI
-nix develop --command ./hwpx2asciidoc/run.sh
+# Org + AsciiDoc 병합 셀 → ODT
+nix develop --command ./orgadoc2odt/run.sh
 ```
 
 ### v1.4 방향: Org-mode 메타 포맷

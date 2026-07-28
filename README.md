@@ -39,7 +39,7 @@ memex-kb is useful when you want to:
 | GitHub Stars | Stable | `scripts/gh_starred_to_bib.sh`, `./run.sh github-starred-export` | BibTeX |
 | Naver Blog | Active | `scripts/naver_blog_crawler.py`, `./run.sh naver-*` | Denote-style Org + assets |
 | Anthropic Distill HTML papers | Active | `scripts/anthropic_paper_to_org.py`, `./run.sh paper2org` / `paper2org-html` / `paper2org-pdf` | Org (math/figure/citation-aware) → citeproc HTML + ArXiv-style acmart PDF |
-| HWPX / OWPML related workflows | Active | `hwpx2org/`, `orgadoc2odt/`, `proposal-pipeline/` | Org, ODT, DOC, HWP-oriented outputs |
+| Korean HWP deliverables | Active | `orgadoc2odt/`, `proposal-pipeline/` | Org → ODT → DOC → HWP (direct HWPX manipulation retired 2026-07-28) |
 
 ### Publishing / template workflows
 
@@ -93,7 +93,6 @@ memex-kb/
 ├── proposal-pipeline/            # Proposal authoring and export pipeline
 ├── scanpdf2org/                  # Older scanned PDF → page render → vision fallback
 ├── epub2org/                     # EPUB → Org (reverse direction)
-├── hwpx2org/                     # HWPX/Org-related conversion utilities
 ├── orgadoc2odt/                  # AsciiDoc/ODT conversion utilities
 ├── office/                       # Real project working materials and samples
 ├── docs/                         # Converted output and project notes
@@ -109,7 +108,7 @@ memex-kb/
 - **`.claude/skills/anthropic-paper2org/`**: the durable operating guide for Anthropic Distill HTML paper → Org / HTML / PDF work
 - **`mineru-client/`, `scripts/mineru2org.py`, `scripts/corrections/*.json`**: the current MinerU → Org → EPUB path
 - **`office/`**: practical working examples and proposal artifacts
-- **`hwpx2org/` and `orgadoc2odt/`**: lower-level format conversion experiments and tools
+- **`orgadoc2odt/`**: Org + AsciiDoc merged-cell tables → ODT, the entry point for Korean HWP deliverables
 
 ---
 

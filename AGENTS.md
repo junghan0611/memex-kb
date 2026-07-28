@@ -94,7 +94,6 @@ memex-kb/
 ├── proposal-pipeline/
 ├── scanpdf2org/
 ├── epub2org/
-├── hwpx2org/
 ├── orgadoc2odt/
 ├── office/
 ├── docs/
@@ -152,8 +151,15 @@ does not cover the remote server orchestration or the correction judgment.
 
 Together: scanned PDF → Org → EPUB. `epub2org/` is the reverse (EPUB → Org, conventions in `PATTERNS.org`).
 
-#### `hwpx2org/` and `orgadoc2odt/`
-Lower-level conversion tooling and experiments related to HWPX, AsciiDoc, Org, and ODT workflows.
+#### `orgadoc2odt/`
+Org + AsciiDoc merged-cell tables → ODT. This is the entry point for Korean HWP deliverables:
+**Org → ODT → DOC → open in 한글 → save as HWP**.
+
+Direct HWPX/OWPML XML manipulation was retired on 2026-07-28 (`hwpx2org/`,
+`orgadoc2odt/_legacy/`, and the `python-hwpx` flake derivation are gone). Do not reintroduce it —
+patching template XML to preserve formatting cost more than it returned. Note that
+`proposal-pipeline` still parses the `:HWPX_IDX:` Org property; that is a plain text attribute
+and has no dependency on the removed library.
 
 #### `office/`
 Contains real-world working artifacts and examples.
@@ -241,7 +247,7 @@ J-space 검증: PDF 93쪽·인용 155개 bibtex 해석 / HTML raw `[cite:` 0·cs
 docx=pandoc 은 후속 — NEXT 참조.
 
 **인터랙티브 캡슐**(`paper2org-capsule`, `scripts/paper_capsule_sweep.mjs`): 텍스트 보존을 넘어 논문의
-**웹문서 생명성**을 회수. headless Chrome **CDP 직접**(Playwright 없음, npm 의존 0 = flake nodejs_24 +
+**웹문서 생명성**을 회수. headless Chrome **CDP 직접**(Playwright 없음, npm 의존 0 = flake nodejs +
 호스트 google-chrome-stable)으로 load+scroll 네트워크 스윕 → 런타임이 fetch 하는 bundle.js·parquet·json·css
 자산을 same-origin 서버경로 그대로 `capsule/`에 미러 + `capsule-manifest.json`(sha256). 기본 `--serve-check`가
 docroot 재스윕으로 **외부요청 0 단언**(오프라인 완전성). jspace: 219 파일 11.3MB, 재스윕 PASS. 2층 런타임
@@ -292,7 +298,7 @@ Important current realities:
 1. The repository includes **multiple pipelines**, not only backends.
 2. `templates/presentation-pptx/` is now a first-class template area.
 3. `templates/arxiv-acm/` is also a first-class template area.
-4. `proposal-pipeline/`, `hwpx2org/`, `orgadoc2odt/`, and `office/` are part of the meaningful repo surface.
+4. `proposal-pipeline/`, `orgadoc2odt/`, and `office/` are part of the meaningful repo surface.
 5. `README.md` should describe the repository as a **document workflow toolkit**, not just a KB converter.
 
 ---

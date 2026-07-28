@@ -120,7 +120,7 @@ orgadoc2odt/
 │   ├── test-merge-tables.org          # 6유형 병합 셀 테스트
 │   ├── complex-table.odt             # KIAT 제안서 표지 (49행×30열)
 │   └── complex-table-extracted.adoc  # 역추출된 AsciiDoc
-└── _legacy/                          # HWPX 관련 코드 (보존)
+└── (2026-07-28: _legacy/ HWPX 직접 조작 코드 제거 — git 이력에만 남음)
 ```
 
 ## 검증 결과

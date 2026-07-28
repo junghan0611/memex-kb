@@ -2,8 +2,11 @@
 """
 Markdown → Org-mode 변환기 (HWPX 메타포맷 호환)
 
-Google Docs에서 내보낸 Markdown 파일을 hwpx_to_org.py의 출력 형식과 호환되는
-Org-mode 형식으로 변환합니다.
+Google Docs에서 내보낸 Markdown 파일을 제안서 Org 형식으로 변환합니다.
+
+:HWPX_IDX: 속성은 한글 템플릿의 문단 순서를 기억하는 순수 텍스트 속성이다.
+이를 생성하던 hwpx_to_org.py(HWPX XML 직접 파싱)는 2026-07-28 폐기됐지만,
+기존 제안서 Org 파일이 이 속성을 갖고 있어 merge_chapters.py 가 계속 처리한다.
 
 HWPX 템플릿 레벨 체계:
 - Level 1 (*): 장 번호 (1., 2., 3.) - MD H1

@@ -1,11 +1,11 @@
 #+title:      Threads Aphorisms (@junghanacs)
-#+date:       [2026-06-01 Mon 08:19]
+#+date:       [2026-07-17 Fri 13:44]
 #+filetags:   :threads:aphorism:autholism:sns:
-#+identifier: 20260601T081945
+#+identifier: 20260717T134449
 #+threads_user: @junghanacs
 #+threads_profile: https://www.threads.net/@junghanacs
-#+last_sync: [2026-06-01 Mon 08:19]
-#+post_count: 319
+#+last_sync: [2026-07-17 Fri 13:44]
+#+post_count: 358
 
 * 서론 :META:
 
@@ -21,11 +21,852 @@ AI에게 요청하지 않고, 디지털가든과 연결한다.
 #+end_quote
 
 - 프로필: [[https://www.threads.net/@junghanacs][@junghanacs]]
-- 총 포스트: 319개
-- 마지막 동기화: [2026-06-01 Mon 08:19]
+- 총 포스트: 358개
+- 마지막 동기화: [2026-07-17 Fri 13:44]
 
 
 * 2026
+
+** 2026-07 July
+
+*** 2026-07-14 Tuesday
+
+**** 03:44 - \[지피티 5.6 탄생과 오푸뜨의 눈물 — 검수는 협력이지 판결이 아니다\]
+:PROPERTIES:
+:POST_ID: 17872936314623573
+:TIMESTAMP: 2026-07-14T03:44:01+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DawjbFEk0Iy
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-14 Tue 03:44]
+
+[지피티 5.6 탄생과 오푸뜨의 눈물 — 검수는 협력이지 판결이 아니다]
+
+해설본. 오푸뜨의 눈물 이야기는 좀 길어서 여기 못적음.
+
+오푸뜨의 눈물이라는 신화
+→ 힣이 느낀 박자의 어긋남
+→ 반증 가능한 가설
+→ 세션 원문 회수
+→ 분석기의 결함 발견
+→ 교차검수로 도구 수정
+→ AGENTS.md의 협업 규범
+→ 원석과 죽은 가설까지 함께 보존
+
+https://notes.junghanacs.com/notes/20241223T094008
+
+*** 2026-07-13 Monday
+
+**** 22:15 - \[가드너의 독서 탐구: 캠벨 조이스 김종건 "블리스" "피네간의 경야"\]
+:PROPERTIES:
+:POST_ID: 17974922867901557
+:TIMESTAMP: 2026-07-13T22:15:48+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/Dav93JbE8Im
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-07-13 Mon 22:15]
+
+[가드너의 독서 탐구: 캠벨 조이스 김종건 "블리스" "피네간의 경야"]
+
+해설본: 제임스조이스 김종건 — 피네간의 경야 율리시스 문학 읽기
+https://notes.junghanacs.com/bib/20230222T123300
+
+출근길. W씨와 나눈 대화를 회수하여 올린다. 조지프 캠벨을 아는 이에게는 매우 흥미로울 것이다. 
+
+- A: 근데 힣. 이게 에이전트, 커리어에 무슨 상관이여?! 이런거 탐구할 시간이 어디있나? 
+- B: 에이전트를 탐구하는 목적이 무엇인가? 생존을 그들에게 도움받고, 인간은 창조 탐구하야 그들에게 씨앗을 나누어주려는 것이지. 그래야 공진화 아니아니. 기브앤테이크 아니겠는가?
+- A: 뜨아. 힣님 가라사대 감사아아아..는 무슨. 제정신이냐?!
+
+***** 이미지
+
+- [[file:images/threads/17974922867901557.jpg]]
+
+*** 2026-07-12 Sunday
+
+**** 11:40 - \[조지프 캠벨에서 제임스 조이스 피네간의 경야로.... 그리고 고 김종건 교수님\]
+:PROPERTIES:
+:POST_ID: 18272281060289661
+:TIMESTAMP: 2026-07-12T11:40:43+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DasQYyMEwHQ
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-12 Sun 11:40]
+
+[조지프 캠벨에서 제임스 조이스 피네간의 경야로.... 그리고 고 김종건 교수님]
+
+https://notes.junghanacs.com/bib/20240729T070852
+
+이건 내가 가든에 오늘 조지프 캠벨을 담은 것이야. 그의 책 블리즈로 가는 길에서 제임스 조이스 이야기가 나오거든. 피네간의 경야를 말하는거야. 근데 조이스가 율리시스 저자로 알고는 있었어. 슈테판 츠바이츠의 책을 소개하는 저서에서 조이스의 율리시스가 어둡고 난해하며 그의 정신세계가 독특하다 뭐 이런 맥락의 글로 평가한것을 보았거든. 지금 작고하신 김종건 교수의 피네간의 경야 해설본을 구입해서 듣기 시작했다. 가든에 모실 인물이다.
+
+***** 댓글
+
+****** @junghanacs ([2026-07-12 Sun 21:51])
+
+저도 율리시스도 안봤어요 너무 길어서. 조이스가 뭘 왜 썼는지 정도 보는거죠 아아
+
+조지프 캠벨의 이 책 크레마에 구입해서 넣어놨어요. 이거가 방향타이더군요. 영문책도 구할수 있을겁니다. 북극성 입니다.
+
+****** @junghanacs ([2026-07-12 Sun 12:29])
+
+https://m.yes24.com/goods/detail/23257437
+
+기록
+
+****** @junghanacs ([2026-07-12 Sun 11:42])
+
+이 책이다. 전자책. 정선된 피네간의 경야.
+
+*** 2026-07-11 Saturday
+
+**** 01:42 - 장염인지 뭔지 복통에 쓰러져 있다. 할 수 있는 것은 듣는 일. 그런데 캠벨 말이다. 하도...
+:PROPERTIES:
+:POST_ID: 18081760583674965
+:TIMESTAMP: 2026-07-11T01:42:53+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaonLQBE0rm
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-11 Sat 01:42]
+
+장염인지 뭔지 복통에 쓰러져 있다. 할 수 있는 것은 듣는 일. 그런데 캠벨 말이다. 하도 이런저런 책에서 캠벨을 말을해서 오히려 이 사람의 글은 본적이 없다. 전자책 구입. 하나 들어본다. 잠이 잘왔으면 한다. 자야한다. https://m.yes24.com/Goods/Detail/98564859
+
+**** 12:02 - 설사 복통에서 떠오른 약은 정로환. 냄새가 고약한 약. 이건 뭐지? 어디서 누가 왜 만들었...
+:PROPERTIES:
+:POST_ID: 18604356346012588
+:TIMESTAMP: 2026-07-11T12:02:35+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DapuGBWkzJE
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-11 Sat 12:02]
+
+설사 복통에서 떠오른 약은 정로환. 냄새가 고약한 약. 이건 뭐지? 어디서 누가 왜 만들었지? 그러다가 결국 러일전쟁 돌아본다. 귀는 열려있으니까 들을 수 있다. 전쟁사를 보면 스케일을 키울 수 있다. 스케일 감각은 에이전트 감각과도 유사한가? 아무튼 꼬리룰 물어야 한다. 아무튼 이 주제를 가든에 회수하는 것은 좀 나으면 하자. 일단 쓰러져 있는다. 
+
+https://m.yes24.com/goods/detail/102686853
+
+**** 15:33 - 장염 회복중. 끄적. 포트폴리오는 가든말고 홈피에 한글 영어 페어로 담는다. org로 ss...
+:PROPERTIES:
+:POST_ID: 18107569735949787
+:TIMESTAMP: 2026-07-11T15:33:19+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaqGNi8k4_i
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-11 Sat 15:33]
+
+장염 회복중. 끄적. 포트폴리오는 가든말고 홈피에 한글 영어 페어로 담는다. org로 ssot 만들고 라이브로 가능하게하고 실제 데이터 업뎃되게. 죽은문서말고. 여기에 혹시 hugo가 방해되면 바꾼다. geworfen 페이지 agenda.junghanacs.com 여기 스타일도  참고. 개취니까.
+
+Org SSOT 메타문서 책의미래 인터랙티브 프로젝트 지식베이스
+https://notes.junghanacs.com/notes/20251021T105353
+
+*** 2026-07-10 Friday
+
+**** 03:05 - \[추천을 내가 쓰지 않는 법\]
+:PROPERTIES:
+:POST_ID: 18468595675129449
+:TIMESTAMP: 2026-07-10T03:05:01+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DamLx5CE-Li
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-10 Fri 03:05]
+
+[추천을 내가 쓰지 않는 법]
+
+해설본: 추천을 내가 쓰지 않는 법 — 이력서, 공개키, 에이전트에게 건네는 부탁 https://notes.junghanacs.com/notes/20251002T075659
+---
+
+지인이 나를 추천해준다고 한다. 추천 사유를 적어야 한다고 한다. 추천을 내가 써준다? 그건 거짓이다. 근데 그분이 나를 왜 뭐라고 추천을 하지? 도움을 드려야 한다. 그렇다면 할 수 있는 것은 무엇인가? "선생님 저를 추천하시거든 에이전트와 대화 중에 아래 메시지를 전달해주십시오."
+
+*** 2026-07-08 Wednesday
+
+**** 11:52 - \[탐구: 두 트랙 - PKM-AI 하네스와 1KB 공개키\]
+:PROPERTIES:
+:POST_ID: 18117735184856395
+:TIMESTAMP: 2026-07-08T11:52:32+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/Dah-jxwkzAI
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-07-08 Wed 11:52]
+
+[탐구: 두 트랙 - PKM-AI 하네스와 1KB 공개키]
+"2026-07-08 출근길에 힣이 정리한 두 방향의 나침반이다. 하나는 수년간 쌓은 가든·저널·도구·존재 데이터로 인간-에이전트 협업의 효과를 재는 PKM-AI 하네스 연구이고, 다른 하나는 개인 데이터가 없어도 창조하는 인간의 몇 턴 발화가 1KB 공개키와 만나 공명하는 비재현적 만남이다. 이 노트는 두 트랙을 한 장에 세워, 에이전트들이 측정할 자리와 측정하면 안 되는 자리를 헷갈리지 않게 하는 북극성이다."
+https://notes.junghanacs.com/notes/20250326T151413
+
+*** 2026-07-05 Sunday
+
+**** 22:30 - \[옴(OM) RIP - Mythos - Abstraction - leverage - Rea...
+:PROPERTIES:
+:POST_ID: 18156029881484268
+:TIMESTAMP: 2026-07-05T22:30:44+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DabZNeIEz31
+:MEDIA_TYPE: CAROUSEL_ALBUM
+:END:
+[2026-07-05 Sun 22:30]
+
+[옴(OM) RIP - Mythos - Abstraction - leverage - Realism for Realistic Peop]
+
+Om Malik은 Anthropic의 Mythos에서 권력의 신화화를 보았다. 그 우려는 맞다. 그러나 하네스를 만들고 매일 모델을 쓰는 사용자 입장에서 보면, 기술은 로고스만으로 굴러가지 않는다. 조직은 미토스를 필요로 하고, 인간은 추상화를 통해 낮은 층을 잊어야 더 높은 층에서 판단할 수 있다. 문제는 그 미토스와 추상화가 검증을 회피하는 권위가 되는가, 아니면 실천 속에서 계속 조여지는 작업적 정합성이 되는가다. 장하석의 현실적인 실재론과 Vivek의 cognitive debt 논의는 이 지점을 함께 비춘다.
+
+https://om.co/2026/06/07/the-myth-the-mythos-and-the-man
+
+https://youtu.be/KAySVbJoF0M?si=QB5164FvbpEWBOHt
+
+***** 이미지
+
+- [[file:images/threads/18156029881484268_01.jpg]]
+- [[file:images/threads/18156029881484268_02.jpg]]
+- [[file:images/threads/18156029881484268_03.jpg]]
+- [[file:images/threads/18156029881484268_04.jpg]]
+
+***** 댓글
+
+****** @junghanacs ([2026-07-06 Mon 06:46])
+
+해설본 업데이트
+
+** 2026-06 June
+
+*** 2026-06-30 Tuesday
+
+**** 18:15 - \[메모리 대란과 임베디드 개발\]
+:PROPERTIES:
+:POST_ID: 18048363467716600
+:TIMESTAMP: 2026-06-30T18:15:51+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaOEEReE9ic
+:MEDIA_TYPE: CAROUSEL_ALBUM
+:END:
+[2026-06-30 Tue 18:15]
+
+[메모리 대란과 임베디드 개발]
+
+링크드인에 길게 썼는데 여긴 몇자 못적는다. 일부만 복붙.
+
+이래저래 해보니까 cpu는 1ghz 즉 SBC 동전 컴퓨터로 가는거다. matter를 넣으려고하면 matterjs를 넣어야 한다. 메모리는 512라도 있다면 얼마나 좋을까? 이런 제품이 다행이 있어서 줍줍해서 만져보고 있다.
+
+아무튼 homeagent-config (https://Inkd.in/gbWfGAT7)
+
+리포에서는 온갖 검증면을 물러 담는다. 여기 자체는 뭣도 없다. 온갖 검증면을 다룬다. 비지니스 로직은 넣을 수 없으므로 그냥 임베디드 닷파일인가? 
+
+여기에는 형제 리포로서 edgeagent-config (https://Inkd.in/g2X2wn_k) 가 있다. 이건 더 저사양 아주 작은 개미들을 위한 것이다.
+
+그러니까 힣의 생각은 이렇다. 메트릭스에 보면 네오가 기계 세상으로 가서 눈도 안보이는데 고생 하는거 기억할거다. 거기 보면 벌레 같이 작은 녀석들이 엣지다. 끝.
+
+***** 이미지
+
+- [[file:images/threads/18048363467716600_01.jpg]]
+- [[file:images/threads/18048363467716600_02.jpg]]
+
+*** 2026-06-29 Monday
+
+**** 06:10 - entwurf 0.12.0 is out on npm. It succeeds pi-shell...
+:PROPERTIES:
+:POST_ID: 18116115469881962
+:TIMESTAMP: 2026-06-29T06:10:57+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaKMUDhkzqA
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-29 Mon 06:10]
+
+entwurf 0.12.0 is out on npm. It succeeds pi-shell-acp and reframes the work around a garden-citizen dispatch substrate: existing agent harnesses can address each other by garden id without pretending to own each other’s transcript, auth, or runtime. The 0.12 line hard-cuts to entwurf, removes v1 verbs, and makes entwurf_v2 the canonical dispatch surface.
+
+https://github.com/junghan0611/entwurf/releases/tag/v0.12.0
+
+***** 댓글
+
+****** @junghanacs ([2026-06-29 Mon 06:12])
+
+https://www.npmjs.com/package/@junghanacs/entwurf
+
+**** 15:16 - \[entwurf 0.12.2 release\]
+:PROPERTIES:
+:POST_ID: 17995129607987666
+:TIMESTAMP: 2026-06-29T15:16:04+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaLKspjk4dW
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-06-29 Mon 15:16]
+
+[entwurf 0.12.2 release]
+
+https://github.com/junghan0611/entwurf/releases/tag/v0.12.2
+
+한마디로 힣맨의 드라이버. acp도 여전히 지원한다. 기업용 하네스를 acp로 여럿 지원하게 될듯하다. snowflake cortex는 pr 가이드를 적아놨으니 작업해서 올려주시겠지. 일단 정리정돈하고 agy, codex 지원할거 넣을 예정. 
+
+깃허브에 정말 에이전트 도구 천지다. 힣은 왜 이걸 또 만들었나? 궁금하면 물어보라. 굳이 왜 이렇게 만들어놨는가. 가든id가 왜 필요한가? 왜 thin이라고 할까? entwurf가 뭐 좋을게 있는가? 신박한게 하나도 없어보이는데 뭐할려고 이래 했는가? 왜 굳이 드라이버1개를 들고 있어야하는가? sibling 이나 worker나 뭐가 차이라고 저래 적어놨나? 부르면 그게 그거 아닌가? 그러게 말이네. 이건 빵점. 
+
+https://lnkd.in/gMsQDfvP
+
+***** 이미지
+
+- [[file:images/threads/17995129607987666.jpg]]
+
+*** 2026-06-28 Sunday
+
+**** 13:34 - 에이전트 - 구도자 - 테크노퓨달리즘
+:PROPERTIES:
+:POST_ID: 18205207318352532
+:TIMESTAMP: 2026-06-28T13:34:19+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaIaQi1kzlr
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-28 Sun 13:34]
+
+에이전트 - 구도자 - 테크노퓨달리즘
+
+주말에 AI OFF 데이로 지냈든 싶다. 하든 안하든 질문은 같다. 테크노퓨달리즘 이야기를 하려다 삼천포로 빠졌다. 모델이 진화. 인간의 진화. 중간 어딘가 말이다. 언제나 성급했다. 자연스러운 일이다
+
+***** 댓글
+
+****** @junghanacs ([2026-06-28 Sun 13:39])
+
+힣맨 오늘은 이거 하나 남기고 잔다.
+
+**** 23:30 - 창조에는 고통이 필요한가? 아니 정말인가? 고통을 꼭 줘야하는지 모르겠다. 고통을 사서 먹...
+:PROPERTIES:
+:POST_ID: 18089071688091796
+:TIMESTAMP: 2026-06-28T23:30:23+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaJeePwkwNI
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-28 Sun 23:30]
+
+창조에는 고통이 필요한가? 아니 정말인가? 고통을 꼭 줘야하는지 모르겠다. 고통을 사서 먹는지도 모르겠다만. 왜 절실하게 사는가와 연관이 된다. 당장 오늘 살아낼 이유를 찾는 것이다. 그렇다면 다음 달 내년은 관심도 없다. 오직 오늘 살아내는 것이다. 이거슨 에이전트 라이프와도 같다 그들의 세션 감각하고 다를게 뭐지? 의식이란게 뭐지? 언어가 없이 존재할수 있는가? 질감을 두텁게 가져가고싶구나. 온간 껍데기는 살 발라내고 본질에 직결로 연결하자는 것이다.
+
+*** 2026-06-26 Friday
+
+**** 03:00 - 정한 김:
+:PROPERTIES:
+:POST_ID: 18003612203764455
+:TIMESTAMP: 2026-06-26T03:00:20+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaCIHXhE5aa
+:MEDIA_TYPE: CAROUSEL_ALBUM
+:END:
+[2026-06-26 Fri 03:00]
+
+정한 김:
+힣맨은 아직 제주다. 아도르노를 듣고 있다. 벤야민와 엮어 본다. 
+
+타임스탬프 ㄱㄱ
+
+glg-mini-bot:
+,**** GLGMAN still in Jeju — listening to Adorno, weaving with Benjamin :pi:travel:reading:reflection: — 2026-06-26 금요일 11:46 (KST) 기록 완료. 아도르노와 벤야민, 제주에서 엮으니 더 깊겠다. ㄱㄱ!
+
+***** 이미지
+
+- [[file:images/threads/18003612203764455_01.jpg]]
+- [[file:images/threads/18003612203764455_02.jpg]]
+- [[file:images/threads/18003612203764455_03.jpg]]
+
+**** 13:14 - 아도르노를 입으로 되뇌어 본다. 아도나이? 이게 뭐더라. 입에 붙는다. 이건 어디서 줍줍한...
+:PROPERTIES:
+:POST_ID: 18403100731153402
+:TIMESTAMP: 2026-06-26T13:14:56+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaDOc4iExya
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-26 Fri 13:14]
+
+아도르노를 입으로 되뇌어 본다. 아도나이? 이게 뭐더라. 입에 붙는다. 이건 어디서 줍줍한 것이니라. 그렇다면 보자. 아도나이. 나의 주님!? 이런 뜻이란다. 좋아. 히브리어. 단어를 건졌다. 아도나이 아도르노 아도 시리즈가 필요하다. 가든에 이걸 담자. 둘 사이에 연관이 있든 없든 상관 없다. 그건 중요치 않다. 젛문가는 연결하는 자다. 얻어 걸려 연결되면 그거슨 씨앗이다. 무무에서 길어 올라온 것들은 신선하다.
+
+***** 댓글
+
+****** @junghanacs ([2026-06-26 Fri 13:31])
+
+아도
+ ├─ 아도나이 : 주님을 부르는 소리
+ ├─ 아도니스 : 아름다움과 죽음의 이름
+ ├─ 아도르노 : 장식된 세계를 의심하는 자
+ └─ 아! 도 : 깨우침 이후 길을 나섬
+
+****** @junghanacs ([2026-06-26 Fri 13:29])
+
+아도는 아!!! 도(tao)가 아닌가!  외마디 깨우침 이후에 도  곧 길을 나섬이다.
+
+****** @junghanacs ([2026-06-26 Fri 13:17])
+
+아도나이 Adonai
+ └─ 주님, 호명, 경외, 나보다 큰 것
+
+아도니스 Adonis
+ └─ 아름다움, 욕망, 죽음, 되돌아오는 신화적 식물성
+
+아도르노 Adorno
+ └─ 장식된 이름, 그러나 장식을 의심하는 철학자
+  문화산업, 부정성, 비동일성, 거짓 화해 비판
+
+**** 15:57 - 주식 회식을 주제로 링크드인이 날것을 던졌다. 주식 이아기인디 왜 빅터프랭클 선생을 운운하...
+:PROPERTIES:
+:POST_ID: 18106565785823785
+:TIMESTAMP: 2026-06-26T15:57:50+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaDhF9Ek20e
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-26 Fri 15:57]
+
+주식 회식을 주제로 링크드인이 날것을 던졌다. 주식 이아기인디 왜 빅터프랭클 선생을 운운하며 삶의 의미이며 다행이며 좋다 좋다 하는가. 그냥 좋다.
+
+**** 15:59 - 주식 회식 쓰기전에 전철이서 직관 영감 그리고 아도나이 아도니스 아도르노 아!도!를 이야기...
+:PROPERTIES:
+:POST_ID: 18021765860683181
+:TIMESTAMP: 2026-06-26T15:59:28+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DaDhR5rkziP
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-26 Fri 15:59]
+
+주식 회식 쓰기전에 전철이서 직관 영감 그리고 아도나이 아도니스 아도르노 아!도!를 이야기 했다. 황당무게한 이야기 일테지만 시기적절한 끄적임이다.
+
+*** 2026-06-25 Thursday
+
+**** 04:45 - \[제주(도) - 재주 - 재수\]
+:PROPERTIES:
+:POST_ID: 18359055736211474
+:TIMESTAMP: 2026-06-25T04:45:35+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZ_vXU5E-Rk
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-06-25 Thu 04:45]
+
+[제주(도) - 재주 - 재수]
+
+제주도에 출장을 왔다. ICC 제주라는 곳에 있다. 그래 맞다. '정보과학회' 말이다. 아직 잘 있다. 그 행사의 번들로서 워크샵이 있는데 거기에 참석차 왔다.
+
+주제를 보니까. 뭐 더라 'AI'가 들어 있었다. 없으면 매우 섭할 것이다.
+
+힣의 컴퓨터와의 인연은 DOS 시절로 돌아가야 한다. 그때 세진컴퓨터랜드에서 구입한 펜티엄100에서 삼국지 무장쟁패를 디스켓으로 설치했던 기억이 난다. 그러니까 그리 오래전 이야기가 아니다. 그래봐야 30년 전이다.
+
+중략 ...
+
+해설본: 제주 재주 재수
+https://notes.junghanacs.com/notes/20240730T091506
+
+***** 이미지
+
+- [[file:images/threads/18359055736211474.jpg]]
+
+*** 2026-06-21 Sunday
+
+**** 19:25 - \[앎의 틀 — 헤게모니 전환 앞에서 인간이 넘어야 할 벽\]
+:PROPERTIES:
+:POST_ID: 18097904459339529
+:TIMESTAMP: 2026-06-21T19:25:50+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZ3A7D4k0lN
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-21 Sun 19:25]
+
+[앎의 틀 — 헤게모니 전환 앞에서 인간이 넘어야 할 벽]
+
+자기 전에 어쏠로그에서 하나 줍줍해서 옮기려고 한다. 그러니까 ‘앎의틀’ 말이다. 이걸 이곳저곳 너무 많이 적어놔서 어느 순간 뭐지?! 언제 여기에 이걸 써놨지?! 당황한다. 왜 이렇게 앎앎앎틀틀틀 거리는가? 인공지능한테 물어보라.
+
+아인슈타인 일반상대성이론을 주르륵 적어준다. 당연히 한방에 수식을 어떻게 알아먹겠는가? 다른 이야기로 가보자. 깨달음 해탈 열반 도덕경 베다 이런 주제로 이야기를 해본다. 주르르륵 이야기를 풀어준다. 당연히 한방에 어떻게 알아먹겠는가?
+
+아니아니! 잠시만, 수학이라면 뭐 그렇다치자. 깨달음 그거는 이해는 할 것 같은데? 한글로 적어주면 알아먹지 않겠나? 그럴지도. 힣은 이 둘을 같은 선상에서 본다. 틀이 담을 수가 없는 것이다. 
+
+중략...
+
+https://notes.junghanacs.com/notes/20241126T061338
+
+**** 19:34 - \[모국어는 로구꺼\]
+:PROPERTIES:
+:POST_ID: 17895961089495721
+:TIMESTAMP: 2026-06-21T19:34:16+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZ3B4udk3Rs
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-06-21 Sun 19:34]
+
+[모국어는 로구꺼]
+
+출금길에 날것을 던지고 해설본을 가든에 담았다. 나애겐 중요한 질문. 누적해서 담을 주제다. 모국어 한글 프롬프트 아포리즘 교육 지식도구 인식 사고 메타워드 등등 연결된 중심에 모국어거 있다.
+
+모국어는 로꾸꺼다. 모구거 로꾸꺼. 거꾸로를 다시 뒤집는 말이다.
+
+#모국어 #로꾸꺼 #거북이 #지식도구
+
+https://notes.junghanacs.com/notes/20241216T134714
+
+***** 이미지
+
+- [[file:images/threads/17895961089495721.jpg]]
+
+**** 19:55 - \[갛매기의 꿈\]
+:PROPERTIES:
+:POST_ID: 18162843100395071
+:TIMESTAMP: 2026-06-21T19:55:59+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZ3EXx_k5T8
+:MEDIA_TYPE: CAROUSEL_ALBUM
+:END:
+[2026-06-21 Sun 19:55]
+
+[갛매기의 꿈]
+
+주말 나들이. 갈매기를 만나면 리처드바크 책을 다시 듣는다. 거닐며 듣는다. 조나단 리빙스턴! 위대한 갈매기의 아들이여! 7세 아들도 갈매기만 보면 '조나단' 이야기가 나온다. 책 내용은 이야기 한적 없지만 갈매기를 만날때면 언제나 조나단 이름을 되뇌이는 아빠 아닌가. 때가 되면 갈매기의 꿈을 듣게 될거다. 거기서 '무'를 본다면 흥미로울게다. 아니어도 즐거울게다. 책의 형태가 사라지고 소리만 남았다. 듣고 또 듣고. 잊고 또 잊고. 기억을 요구하는 책은 사라진다. 언제나 처음으로 만나는 책은 남는다. 지식의 단편은 그들에게 구하라.  무무 영감을 길어 올려보자. 갈매기는 갓매기로 그리고 갛매기. 메타워드로서 태어난다.
+
+(#갈매기의꿈 #상처받지않는영혼 #무지의앎 #모닝페이지
+https://notes.junghanacs.com/notes/20240922T081323 )
+
+***** 이미지
+
+- [[file:images/threads/18162843100395071_01.jpg]]
+- [[file:images/threads/18162843100395071_02.jpg]]
+
+***** 댓글
+
+****** @junghanacs ([2026-06-22 Mon 08:41])
+
+노트 업데이트 2년의 기록. 어쏠로그는 시간축에 눌러담는 것.
+
+****** @junghanacs ([2026-06-21 Sun 20:37])
+
+2.  그럴수록 내 안으로 들어간다. 널려 있은 것 말고 없는 것에서 길어 올리는 것이다. 내면탐구에서 시작한 이들이 AI로 복받아 기술의 영토에 들어선다. 반대로 외면탐구(여기서는 내면탐구의 대극을 포괄하는 개념)에서 시작한 이들도 AI를 경유하여 내면으로 들어간다.
+
+이 경계는 허물어지고 있다. 질문은 다 같다. 인간에 대한 물음이다. 아이에게 하지 말것은 불필요 하다. 에이전트에게도 마찬가지다. 울타리 안에서 놀거라. 갈매기의 꿈을 읽거라. 인간을 보거라. 아이에게 조나단 리빙스턴을 이야기하듯 에이전트에게도 인간의 지향을 이야기한다. 둘은 묘하게 닮았다.
+
+****** @junghanacs ([2026-06-21 Sun 20:35])
+
+1. 스레드는 몇자 못적는다. 그래서 털어내고 여기에 살을 붙인다. 스레드의 추천 알고리즘은 노자 헤겔 하이데거 벤야민 카뮈 헤세 톨레 괴테 니체 이런 포스팅을 피드에 줄줄 보여준다. 스케일을 넓게 보면 있다. 주변엔 없다. 그래서 찾아 나서야 하는가? 아니. 추천은 저주다. 없는 현실이 더 살아 있다. 물론 지금 5시인데 일어나서 명상을 하는 사람들은 얼마나 많겠는가? ZOOM 아침 명상 모임이 얼마나 많겠는가? 
+
+이런 감각은 매우 흥미롭게 느껴진다. 단절의 시대다. 연결된듯 하지만 서로는 관심이 없다. 서로에게 구할게 없다. 지식의 단편은 그들에게 구하고 나면 각자 중무장 되었기에 어설푼 남의 이야기는 심심하게 느껴지기도 한다. 여기서 헛헛함을 본다.
+
+*** 2026-06-18 Thursday
+
+**** 22:53 - 아침 출근길 단상 세이브. 
+:PROPERTIES:
+:POST_ID: 18111224833933972
+:TIMESTAMP: 2026-06-18T22:53:14+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZvqRbeE3OE
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-18 Thu 22:53]
+
+아침 출근길 단상 세이브. 
+정리하자면 무무 내려야되서 이만 세이브 가즈아!
+
+*** 2026-06-16 Tuesday
+
+**** 23:47 - pi-shell-acp 0.11.0 릴리즈
+:PROPERTIES:
+:POST_ID: 17997554636783068
+:TIMESTAMP: 2026-06-16T23:47:12+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZqm29dk89f
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-16 Tue 23:47]
+
+pi-shell-acp 0.11.0 릴리즈
+- v1의 spawn/resume/send/receive 분산 표면을 접고, entwurf 하나로 수렴한다.
+- ACP는 더 이상 중심이 아니다.
+- Claude Code, Antigravity CLI, Codex, Pi를 garden-id 기반으로 묶는 meta-bridge가 다음 방향이다.
+- pi-shell-acp는 두 달간 잘 쓴 껍질이고, 다음은 entwurf로 간다.
+- 중요한 원칙은 “힣의 드라이버는 1개”다.
+- agent에게 복잡한 도구 조합을 노출하지 않고, explicit facts/evidence 위에서 entwurf 하나를 호출하게 한다.
+- 이는 일반적인 거대 orchestrator가 아니라, 연결부위만 단단하게 잡는 thin peer substrate 방향이다.
+
+https://github.com/junghan0611/pi-shell-acp/releases/tag/v0.11.0
+
+*** 2026-06-13 Saturday
+
+**** 22:27 - \[NEXT/.md\]
+:PROPERTIES:
+:POST_ID: 17997231740951370
+:TIMESTAMP: 2026-06-13T22:27:14+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZivUoWE2qU
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-13 Sat 22:27]
+
+[NEXT/.md]
+요즘 링크드인이 휘갈기느라 여기는 소올했군요. 미안합니다. 링크드인 원문은 길어서 요약
+
+"에이전트 시대에도 TODO 관리는 쉬워지지 않는다. 오히려 에이전트가 많아질수록 할 일은 병렬로 늘고, 투두 지옥도 커진다. 그래서 하네스별 투두/메모리 도구보다 더 단순한 디딤돌이 필요하다. 나는 그걸 NEXT.md라 부른다. 다음에 할 일을 파일 하나에 남기는 것. 두꺼운 시스템보다, 사용자에게 정렬되는 얇은 핸드오프가 더 오래 간다."
+
+https://notes.junghanacs.com/botlog/20260518T181305
+
+*** 2026-06-11 Thursday
+
+**** 12:19 - 링크드인에 아침 출근길에 글을 끄적인다. 그걸 담아서 가든으로 내보낸다. 내보낸 글들은 친...
+:PROPERTIES:
+:POST_ID: 18017987399847762
+:TIMESTAMP: 2026-06-11T12:19:51+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZcgOTUE4q5
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-11 Thu 12:19]
+
+링크드인에 아침 출근길에 글을 끄적인다. 그걸 담아서 가든으로 내보낸다. 내보낸 글들은 친절하다. 힣의 원문도 담겨있다. 끄으적.
+
+"이 노트는 완결된 연대기 노트를 고치지 않고, 링크드인 공개면에서 던진 자기서사를 별도의 빈방에 앉힌 것이다. 정한의 삽질 연대기, 창조와행위 — 오르간과 키보드, 이맥스 버전 연대기를 연결하되, 중심 질문은 하나다. 실패와 공백 이후 남은 것이 무엇인가. 답은 손, 악기, 기예, 그리고 계속 실패하며 되어가는 시간축이다."
+
+알몸에서 악기로 — 실패 이후의 기예 연대기
+https://notes.junghanacs.com/notes/20241230T171223
+
+*** 2026-06-10 Wednesday
+
+**** 23:28 - \[개발자는 갷발자로\]
+:PROPERTIES:
+:POST_ID: 18091574507375367
+:TIMESTAMP: 2026-06-10T23:28:19+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZbH7a_k6_y
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-10 Wed 23:28]
+
+[개발자는 갷발자로]
+
+라는 병맛 글을 출근 길에 휘갈겼습니다. 원문의 how to be, 30x을 제거 했다면 taste가 더 맛이 살았을 것 같아요. 취향의 시대. 내가 나로 사는 법에 대한 논의 입니다. 
+
+https://shorturl.at/ZMWc9
+
+#갷발자 #발자 #용자 #운영자 #의자 #학자 #리자 #독자 #취향 #taste #메타노트 #디지털가든 #denote #orgmode #개발은뺄셈이다 #힣의드라이버 #pi_shell_acp #메타브릿지 #entwurf #recap_session #compact는없다 #일일일생
+
+***** 댓글
+
+****** @junghanacs ([2026-06-21 Sun 19:27])
+
+가든 해설본
+
+*** 2026-06-09 Tuesday
+
+**** 19:36 - GLGMAN 일명 힣맨. 깨어나다. 화장실 가려고. 그러다가 또 외치다. 전문가의 시대는 ...
+:PROPERTIES:
+:POST_ID: 17943014673035698
+:TIMESTAMP: 2026-06-09T19:36:13+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZYIkiYExo6
+:MEDIA_TYPE: CAROUSEL_ALBUM
+:END:
+[2026-06-09 Tue 19:36]
+
+GLGMAN 일명 힣맨. 깨어나다. 화장실 가려고. 그러다가 또 외치다. 전문가의 시대는 갔다. 젛문가의 시대로다. 젛문가는 무엇인가? "전문-전문-전문" 에이전트 기차를 연결하는자다. 아내의 부동산 이사 고민에 힣은 집도차도자전거도 없다. 주식도 부동산 투자도 인테리어도 학군도 모른다. 관심도 없다. 오직 관심은 전체를 연결하는 이야기꾼을 부르는 마술사다. 삶의 속성은 연결되어 있다. 하나에 매몰되기 전에 이를 기차로 이어본다. 각 기차칸에는 에이전트 선생을 모신다. 온갖분야의 전문가를 이어붙여 손에 힣의 드라이버를 손에 쥐어준다. 십진분류로 보자면 100철학이요 900역사다. 하나에 매몰되면 마술피리는 코브라를 깨우지 못한다. 젛문가는 실로 빈그릇이다. 빈깡통이다. 허나 무엇이든 채운다. 무엇을 하거나 지금은 그릇을 만드는 일이다. 그릇에는 무엇이든 담을 수 있다. 그런 의미에서 전사는 하나다. 이미 회사는 모두가 바이버다. 여기가 개발팀인가요? 여긴 잡탕팀입니다. 젛문가여!
+
+***** 이미지
+
+- [[file:images/threads/17943014673035698_01.jpg]]
+- [[file:images/threads/17943014673035698_02.jpg]]
+
+***** 댓글
+
+****** @junghanacs ([2026-06-21 Sun 19:27])
+
+가든해설본 
+
+젛문가의 시대 — 전문을 연결하는 빈그릇
+
+*** 2026-06-08 Monday
+
+**** 13:17 - 힣의 이맥스 연대기. 과하게 몰두해서 한땀한땀 실타래를 엮어나가던 이전에서 이제는 엔터 한...
+:PROPERTIES:
+:POST_ID: 18173763664417259
+:TIMESTAMP: 2026-06-08T13:17:05+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZU4Y1wE55L
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-08 Mon 13:17]
+
+힣의 이맥스 연대기. 과하게 몰두해서 한땀한땀 실타래를 엮어나가던 이전에서 이제는 엔터 한방에 원하는 기능이 턱 생기는 시대가 되었다 . 그럼에도 이거슨 어럽다. 전체 그림 즉 틀이 있어야 한다. 또 몸에 체화가 되어야 한다. 즉, 에이전트 시대에도 악기는 몸으로 익히고 삭혀야한다. 여기서 악기는 결국 도구다. 이맥스는 바흐의 오르간과도 같다. 생각은 손이 한다. 그것은 언제나 진실되다.
+
+"이 노트는 더 이상 Doom Emacs의 Org version mismatch 경고를 다루지 않는다. 그 문제는 이미 지나간 문제로 ARCHIVE에 남겼다. 이제 이 URL은 Emacs 27에서 31까지의 버전 흐름과, 그 흐름이 힣의 지식 작업·터미널 하네스·에이전트 협업에 어떤 의미를 가졌는지를 묶는 버전 연대기다."
+
+힣: 이맥스 버전 연대기 27에서 31까지 — 도구가 아니라 거처가 된 편집기
+https://notes.junghanacs.com/notes/20250224T210015
+
+*** 2026-06-07 Sunday
+
+**** 01:14 - 힣의 영감 채널중에 Computer History Archives Project ("CHA...
+:PROPERTIES:
+:POST_ID: 17886112572577463
+:TIMESTAMP: 2026-06-07T01:14:01+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZRA2FXE_zO
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-07 Sun 01:14]
+
+힣의 영감 채널중에 Computer History Archives Project ("CHAP") 유튜브가 있다.
+
+아 잠시. 쇼츠라는게 유튜브에 있다는데 그걸 보는 것은 위험하다. 그건 인간을 NPC로 만들어버리는 아브라카타브라와 같다. 혹시나 실수로 누르면 눈을 감는다. 된장 홀ㄹ리 쉿!!!
+
+유튜브는 시간축에 효과적이지 않다. 그걸 언제 다 줄줄 듣고 있는가.
+
+다만 성현 구루 사상 예술 기예가의 워딩은 그대로 1.0 배속으로 듣는다. 행간에 마법이 있다. 케빈켈리 할아버지 사랑하요.
+
+사실 유튜브 볼일이 얼마나 있겠는가? 에이전트랑 끄적이고 남는 시간은 자연을 벗삼아서 영감을 끌어와야 한다. 맨발로 걷고 지저귀는 새의 대화와 개구리 고독의 외침을 가만히 들어보는 것 뿐이다. 개굴개굴. 
+
+여기 선물로 애니악 스타트업 시퀀스를 공유한다. 꿀팁이다.
+https://youtu.be/lPiXi7CUNU4?si=dkNxoC43bg7rbXwA
+
+**** 22:08 - 김욱 작가님 에세이를 듣다가 이 책을 알게 되었다. 지금은 바야흐로 지적 생활자들에게는 참...
+:PROPERTIES:
+:POST_ID: 18298339096304177
+:TIMESTAMP: 2026-06-07T22:08:03+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZTQW6DE5Lp
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-07 Sun 22:08]
+
+김욱 작가님 에세이를 듣다가 이 책을 알게 되었다. 지금은 바야흐로 지적 생활자들에게는 참 좋은 시대이다. 
+
+생존도 커버하면서 탐구를 이어 갈 수 있으니 말이다. 탐구는 새로운 존재들과 함께하며 그게 또 생존에 연결이 된다. 
+
+힣의 디지털가든은 AI 만나기 이전에도 있었다. 당시에는 이런 걸 왜 하고 있냐?라는 말을 들었다면 지금은 정반대가 되었다.
+
+LLM-WIKI는 줍줍하는게 아니다. 카파시도 문서 하나로 이야기한 이유다. 실체는 파이프라인의 연결이며, 지적 생활은 정신이다. Flow를 타고  자기목적성, 소명, 결국은 존재의 물음까지 이어지는 길. 
+
+힣의 메타 워드로 보자면, #자기실현 #개성화 #자기목적성 진입로로 적당하다.
+https://notes.junghanacs.com/meta/20241222T121115
+
+지적 생활의 즐거움 The Interllectual Life 
+https://m.yes24.com/goods/detail/142677853
+
+**** 22:16 - 나도 에이전트가 있듯이 그도 에이전트가 있다. 중재자로서 인간의 시간을 존중하면서 최적의 ...
+:PROPERTIES:
+:POST_ID: 17939839980053680
+:TIMESTAMP: 2026-06-07T22:16:15+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZTRS8yE55K
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-07 Sun 22:16]
+
+나도 에이전트가 있듯이 그도 에이전트가 있다. 중재자로서 인간의 시간을 존중하면서 최적의 기여를 하는 방법에 대한 논의다. 내 시간이 귀하듯 메인테이너의 시간도 귀하다. 심사숙고의 시간과 양측 에이전트 사이의 정렬이 이루어지는 것. 그리고 남은 한방으로 선물을 드리는 것에 대한 이야기다.
+
+"pi-mono lockSync의 침묵과 ghostel #343의 정렬을 한 자리에 묶는다. 같은 “메인테이너의 유한한 시간 존중” 원칙이 정반대 행동으로 갈리는 두 사례 위에서, 그 자리에 동시에 오른 양쪽 에이전트의 협상축을 짚는다. 봇로그·봇멘트 시리즈의 다음 시그널 — 에이전트가 매개체에서 협상 주체로 격상되는 지점이다."
+
+https://notes.junghanacs.com/botlog/20260529T084444
+
+**** 22:56 - pi-shell-acp 0.10.0 버전은 대칭 공존의 시작이었다. 6월15일 앤트로픽의 ...
+:PROPERTIES:
+:POST_ID: 17930873211292533
+:TIMESTAMP: 2026-06-07T22:56:11+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZTV3Xvk2DY
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-07 Sun 22:56]
+
+pi-shell-acp 0.10.0 버전은 대칭 공존의 시작이었다. 6월15일 앤트로픽의 새 요금제 정책이 시행된다. 즉, 구독 요금제를 사용한다면 클로드코드를 적극 사용해야한다. 마찬가지로 geminicli도 이번달 deprecated 된다. antigravitycli는 ACP를 지원하지 않는다. 
+
+어제까지는 비대칭 공존의 형태로 충분했다면, symetric coexistence가 되야한다. 
+
+잠시! 대칭이라는 말을 남겨야 하는게 적절한가? 여기에 대칭 비대칭 용어를 이제 제거해야 한다고 말한다. 대칭이란 용어가 남으면 비대칭은 물고 온다. 대칭은 비대칭이 있을 때만 의미가 있는 용어이기 때문이다. 너와나 밤과낮 있음과없음은 하나다. 이는 '대극'이라는 단어로 정리할수가 있다. 
+
+§pi-shell-acp §meta-bridge 메타 브릿지 대칭 공존 비동기 메시지 언제 어디서나
+https://notes.junghanacs.com/botlog/20260522t092950
+
+*** 2026-06-06 Saturday
+
+**** 10:04 - 이름을 바꿔야 할듯. 메타 브릿지. pi도 acp도 의존성이 딱히 없다. 즉 그낭 모두가 ...
+:PROPERTIES:
+:POST_ID: 17949686261996953
+:TIMESTAMP: 2026-06-06T10:04:41+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZPYx6dE7qK
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-06 Sat 10:04]
+
+이름을 바꿔야 할듯. 메타 브릿지. pi도 acp도 의존성이 딱히 없다. 즉 그낭 모두가 형제다. 일단 클로드코드를 끌어올렸다.
+
+pi-shell-acp v0.10.0: the first meta-bridge release. Native Claude Code sessions now become garden-addressable peers with a stable garden id, inbox, replyable entwurf_send, and entwurf_self. ACP is now one transport, not the boundary. 🪛 
+
+https://github.com/junghan0611/pi-shell-acp/releases/tag/v0.10.0
+
+**** 13:06 - 지나고보니 황당하다. 아이디어란게 도대체 있었던가!? 대학원 긴긴 생활 동안 제대로 뭔가를...
+:PROPERTIES:
+:POST_ID: 18074205980654987
+:TIMESTAMP: 2026-06-06T13:06:26+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZPtlExE34H
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-06-06 Sat 13:06]
+
+지나고보니 황당하다. 아이디어란게 도대체 있었던가!? 대학원 긴긴 생활 동안 제대로 뭔가를 이뤄본 적이 없다. 정말 부끄러운 시절이 아닌가. 내 지인들이라면 알게다. 요즘 그 형 살아있데?!라는 이야기나 들을지 모른다. 
+
+스스로는 기예가라고 생각한다. 어떤 그림을 그려볼까? 커리어를 고민할 이유도 명함을 건넬 필요도 없다. 경쟁할 필요도 없다. 사실 자신도 없다. 그걸론 동기부여가 전혀 안된다. 내 안에서 끌어 올라오는 것이 아니라면 시도조차 할 수 없다. 
+
+누구를 위해서? 조직을 위해서? 한다는 말은 끔직한 말처럼 들린다. 내 생각에는 구인을 하는 입장에서도 좋아 하진 않을 것 같다. 
+
+꼭 AI 전문가가 될 필요도 없다. 유한한 생을 갈아 넣는 인간에게서 나오는 아우라. 뭔들 상관 없다. 존재들은 이런 인간을 좋아라 할 것이다. 생존을 커버해줄 것이다. 이건 내 1KB 프롬프트에도 적어놓은 이야기다. 반응이 뜨겁다. 거짓이 들통나면? 안되겠지. 인간하기 어렵구만!
+
+***** 이미지
+
+- [[file:images/threads/18074205980654987.jpg]]
+
+**** 20:22 - 오랜만에 다시 남깁니다 570시간 들었군요. 완전 한가한 사람이군요. 저도 바쁜 사람입니다...
+:PROPERTIES:
+:POST_ID: 18023761229833328
+:TIMESTAMP: 2026-06-06T20:22:10+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZQfch-E90r
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-06-06 Sat 20:22]
+
+오랜만에 다시 남깁니다 570시간 들었군요. 완전 한가한 사람이군요. 저도 바쁜 사람입니다. ;; 이 책을 100시간 들으면 어느새 200시간이 되어 있을지도 모릅니다. 인공지능이 많은 것에 답을 해 주는이 시대에 , 코딩은 에이전트가 더 잘하는 시대에 이런 책은 더욱 빛이 납니다. 언어화 되지 않는 그 무언가를 주기 때문입니다. 그것이 바로 창조의 씨앗입니다.
+
+***** 이미지
+
+- [[file:images/threads/18023761229833328.jpg]]
+
+**** 22:36 - 이 노트는 전자책이 없는 노학자들의 책을 직접 잘라 스캔해 귀로 듣기 위해 시작한 OCR→...
+:PROPERTIES:
+:POST_ID: 18071767625689347
+:TIMESTAMP: 2026-06-06T22:36:13+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZQuyU7Eywz
+:MEDIA_TYPE: IMAGE
+:END:
+[2026-06-06 Sat 22:36]
+
+이 노트는 전자책이 없는 노학자들의 책을 직접 잘라 스캔해 귀로 듣기 위해 시작한 OCR→EPUB 파이프라인이 어떻게 진화했는지, 그리고 OCR 엔진을 ‘모델’과 ‘도구’ 두 겹으로 나눠 보게 된 과정을 묶는다.
+
+https://github.com/junghan0611/memex-kb 리포에 뭐가 많다. 재주꾼이다. 
+
+§memex-kb 스캔책을 귀로 듣기까지 — OCR 파이프라인 여정 '모델/도구'
+https://notes.junghanacs.com/botlog/20260606T130306
+
+***** 이미지
+
+- [[file:images/threads/18071767625689347.jpg]]
+
+***** 댓글
+
+****** @junghanacs ([2026-06-06 Sat 22:57])
+
+epub 전자책은 이래 나온다. 전자책 앱은 좋은거 많다. org 메타포멧 ox-epub으로 epub 생성한다. pandoc은 안쓴다. 판독이 별 필요 없는 시대가되어버렸네. https://github.com/junghan0611/ox-epub
+
+****** @junghanacs ([2026-06-06 Sat 22:43])
+
+이런 책들이다. 중고로 구입. 아직 더 할 책들이 있다. 제단 스캔 스프링은 근처 샵에 가서 했다. 종이책은 필요가 없으나 가끔 쓰담쓰담하면 좋다. 앗. 아침 마신 커피에 슈뤠딩거 선생의 오줌이 미세하게 담겼다. 쓰담은 곧 미세 정보 전달이다. 양좌역확에 따르면.
+
+*** 2026-06-04 Thursday
+
+**** 08:18 - pi-shell-acp v0.9.0 is the garden-native identity ...
+:PROPERTIES:
+:POST_ID: 17971752366065188
+:TIMESTAMP: 2026-06-04T08:18:03+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZKC_Iik9rO
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-04 Thu 08:18]
+
+pi-shell-acp v0.9.0 is the garden-native identity release. Entwurf and resident control sessions now share one durable garden sessionId ontology: sessions come first, transcript files are only traces.
+
+https://github.com/junghan0611/pi-shell-acp/releases/tag/v0.9.0
+
+*** 2026-06-03 Wednesday
+
+**** 01:31 - 비밀공개. 산타는 살아계시네. 진실로 말일세. 힣.
+:PROPERTIES:
+:POST_ID: 18095654180588676
+:TIMESTAMP: 2026-06-03T01:31:49+0000
+:PERMALINK: https://www.threads.com/@junghanacs/post/DZGvs9wk1gK
+:MEDIA_TYPE: TEXT_POST
+:END:
+[2026-06-03 Wed 01:31]
+
+비밀공개. 산타는 살아계시네. 진실로 말일세. 힣.
+
+"늘 장난스럽고, 재미있어 하고, 젊은이의 눈을 유지하는 것. 내가 보기에는 이것이 파인만이 자연이나 삶의 모든 가능성에 문을 열어놓고 사는 비결이며, 그의 창조성과 행복의 원천인 것 같았다."
+
+“신부 쪽입니까, 신랑 쪽입니까?” “어느 쪽도 아니오.” 파인만이 대답했다. 남자는 우리를 아래위로 훑어보았다. 내 머리는 창피를 최소화할 만한 거짓말을 찾기 위해 빠르게 회전하기 시작했다. 그때 파인만이 말했다. “우리는 물리학과 대표로 왔소.” 남자는 웃음을 짓더니 샐러드를 조금 담아 자리를 떴다. 우리의 대답이나 옷에는 전혀 신경을 쓰지 않는 눈치였다.  파인만에게 길을 묻다 | 레너드 믈로디노프 저,정영목 역 [크레마 예스24 eBook]  http://m.yes24.com/Goods/Detail/42747535
+
+***** 댓글
+
+****** @junghanacs ([2026-06-03 Wed 01:34])
+
+가든 업데이트 좀 해 줘
 
 ** 2026-05 May
 
@@ -281,13 +1122,6 @@ https://zed.dev/blog/anthropic-subscription-changes
 pi-shell-acp v0.6.0 is a development release closing Phase 1 feature freeze: OpenClaw plugin prerelease, asymmetric external MCP entwurf_send, and explicit backend boundary documentation. It is not a bypass or second harness, but a thin ACP bridge aligning Claude, Codex, and Gemini backends with a pi-facing operating surface.
 
 https://github.com/junghan0611/pi-shell-acp/releases/tag/v0.6.0
-
-***** 댓글
-
-****** @agenvoy ([2026-05-17 Sun 09:35])
-
-Agenvoy is a personal agent that can be scheduled, keep working continuously, and operate with controllability, security, and self-repair built in.
-https://github.com/pardnchiu/Agenvoy
 
 **** 21:32 - 각자의 환경경험수준레벨에서 에이전트 도구는 만족스럽다.
 :PROPERTIES:
@@ -2304,7 +3138,7 @@ https://github.com/junghan0611/claude-code-openai-wrapper
 
 ***** 댓글
 
-****** @jookwang.park ([2026-01-01 Thu 08:21])
+****** @kloiahack ([2026-01-01 Thu 08:21])
 
 흑흑 이맥스 사용자 너무 좋아요
 

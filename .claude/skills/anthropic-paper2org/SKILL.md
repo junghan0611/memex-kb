@@ -228,7 +228,7 @@ out/anthropic-paper/jspace/capsule/
 How it works (`scripts/paper_capsule_sweep.mjs`):
 
 - Headless Chrome via **CDP directly** — no Playwright, no npm deps. Uses the flake's
-  `nodejs_24` (global `WebSocket`/`fetch`/`crypto`) plus the host `google-chrome-stable`
+  `nodejs` (v24+, global `WebSocket`/`fetch`/`crypto`) plus the host `google-chrome-stable`
   (override with `CHROME_BIN`).
 - **load + full-scroll network sweep** enumerates every asset the runtime actually fetches
   (including runtime-assembled URLs like `data/lens-slice-ranks-s2/count_introspect_ranks/*.parquet`

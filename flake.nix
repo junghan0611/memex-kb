@@ -2,7 +2,7 @@
   description = "memex-kb - Universal Knowledge Base Converter";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -14,20 +14,10 @@
         # OCR 경로는 marker(surya, uv venv)로 일원화됨. tesseract/ocrmypdf는
         # 한글 스캔 품질이 사용 불가라 제거했다(2026-06-02 smoke). marker/STRATEGY.md 참조.
 
-        # PyPI에만 있는 python-hwpx (nixpkgs에 없음)
-        python-hwpx = pkgs.python312Packages.buildPythonPackage rec {
-          pname = "python-hwpx";
-          version = "1.9";
-          format = "wheel";
-          src = pkgs.fetchurl {
-            url = "https://files.pythonhosted.org/packages/27/08/c757b68fb3d77ff0b2aedee08856cd89ef85cec1b8a62d29f54bd05938a8/python_hwpx-1.9-py3-none-any.whl";
-            sha256 = "0xfy3cycp9708sp568gy6708xpihqrhd7d5n3g9ki8hiqq6g6zq9";
-          };
-          propagatedBuildInputs = [ pkgs.python312Packages.lxml ];
-          doCheck = false;
-        };
+        # HWPX 직접 조작(python-hwpx + lxml)은 폐기됐다(2026-07-28). 한글 산출물은
+        # proposal-pipeline 의 Org → ODT/DOC → HWP 경로가 더 편하고 실제로 그 축만 쓴다.
 
-        pythonEnv = pkgs.python312.withPackages (ps: with ps; [
+        pythonEnv = pkgs.python3.withPackages (ps: with ps; [
           # Google API
           google-api-python-client
           google-auth
@@ -46,10 +36,6 @@
 
           # HTTP (토큰 갱신용)
           requests
-
-          # HWPX 처리
-          lxml
-          python-hwpx
 
           # scanpdf2org: 스캔 PDF 페이지 → 이미지 렌더 (vision 전사용, OCR 아님)
           pymupdf
@@ -79,7 +65,7 @@
             # 한글 textlint + kiwi(형태소) 작업축 (2026-06-04~). textlint 15.x = node>=20,
             # CI 매트릭스 [20,22,24]. kiwi 연결은 kiwi-nlp(C++→WASM, JVM 불요)로 가볍게 —
             # textlint/kiwi-nlp 자체는 npm으로 shell 안에서, nix엔 nodejs 런타임만 둔다.
-            pkgs.nodejs_24
+            pkgs.nodejs
           ];
 
           shellHook = ''
@@ -91,11 +77,9 @@
             echo "Gitleaks: $(gitleaks version)"
             echo "EPUBCheck: $(epubcheck --version 2>/dev/null || echo available)"
             echo ""
-            echo "HWPX 변환:"
-            echo "  ./hwpx2asciidoc/hwpx2asciidoc.sh input.hwpx   # HWPX → AsciiDoc"
-            echo "  ./hwpx2asciidoc/asciidoc2hwpx.sh input.adoc   # AsciiDoc → HWPX"
-            echo "  asciidoctor input.adoc                        # → HTML (시스템)"
-            echo "  asciidoctor-pdf input.adoc                    # → PDF (시스템)"
+            echo "한글(HWP) 산출물: Org → ODT/DOC → HWP"
+            echo "  ./run.sh proposal-export-odt [ORG_FILE]       # Org → ODT"
+            echo "  ./orgadoc2odt/run.sh                          # Org+AsciiDoc → ODT"
             echo ""
             export PYTHONPATH="$PWD:$PYTHONPATH"
             export TERM=xterm-256color

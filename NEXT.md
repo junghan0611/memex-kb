@@ -25,93 +25,30 @@ Open follow-ups:
 
 ---
 
-## 🔨 작업축 — 인터랙티브 캡슐 (paper2org-capsule / -interactive) — 2026-07-07
+## 후속 — 인터랙티브 캡슐 (paper2org-capsule / -interactive)
 
-목표: 논문 **텍스트 보존**(paper2org)에서 **웹논문 생명성 보존**으로. Anthropic Distill 논문의
-인터랙티브 figure(bundle.js가 parquet/json을 런타임 fetch)를 로컬 재현 캡슐로 회수 →
-jacobian-lens 담당자가 원본 URL(경계) 없이 오프라인에서 동일 hydrate. org→html 단일 경로
-(Quarto 폐기, GLG 확정). 방향·검토는 Opus×GPT 세션(2026-07-07).
+CMD1·CMD2·CMD3 전부 완료 → `CHANGELOG.md` `v2026.7.28` 로 이관. 명제
+**"org=SSOT, LaTeX/Typst 없이 인터랙티브 문서 생성"** PROVEN (jspace 84 figure 오프라인 hydrate).
+운영 SSOT = `.claude/skills/anthropic-paper2org/SKILL.md`.
 
-### ✅ CMD1 완료 — `paper2org-capsule`
+용어 고정: **캡슐 = resource bundle**(SSOT 아님). **SSOT = `interactive.org` + `capsule-manifest.json`**
+(구조/배치=org, 런타임 바이트/provenance=manifest).
 
-- `scripts/paper_capsule_sweep.mjs` — headless Chrome **CDP 직접**(Playwright 없음, npm 의존 0;
-  flake nodejs_24 + 호스트 google-chrome-stable). load+scroll 네트워크 스윕 → same-origin 자산
-  서버경로 미러 → `capsule-manifest.json`(provenance + 자산별 sha256/bytes/content-type).
-  기본 `--serve-check`: docroot 재스윕으로 **외부요청 0 단언**(오프라인 완전성 보장).
-- `./run.sh paper2org-capsule <URL> --name jspace` → `out/anthropic-paper/<name>/capsule/`.
-- jspace 검증 baseline: **219 파일 / 11.3 MB**, 요청 220, external 0, failed 0, 오프라인 재스윕 PASS.
-  2층 런타임 확인: `/anthropic-serve/`(distill+katex, 범용) + `/2026/workspace/`(bundle.js=jspace 전용).
-- 저작권: 캡슐 산출물 `out/`(gitignore). 커밋 대상은 로직만(`paper_capsule_sweep.mjs`, `run.sh`).
+남은 후속:
 
-**픽스처 선검증 ✅ (2026-07-07)**: org `#+begin_export html` figure DOM + `#+HTML_HEAD_EXTRA`가
-`pandoc -f org -t html5 -s`에서 verbatim 보존 + head 삽입 + 순서(libs head→body→figure) 정확.
-
-### ✅ CMD2 핵심 실증 완료 (2026-07-07) — 명제 PROVEN
-
-**`jspace.interactive.org`(org SSOT) → `pandoc -f org`(LaTeX/Typst 없음) → `jspace.interactive.html`이
-84개 인터랙티브 figure 를 오프라인 hydrate.** 실측: 외부요청 **0**, 404 **0**, parquet **39개 로컬 fetch**,
-콘솔 에러 **0**, 수식=로컬 KaTeX(`/anthropic-serve/katex/`, mathjax CDN 제거), csl 참고문헌 173.
-3중 parity: 원문 interactive figure 84 == interactive.org raw 블록 84 == interactive.html figure 84.
-- converter `--interactive`: figure 를 math/cite 보다 먼저 protect → figcaption 내 `<d-cite>`/`<d-math>`
-  pristine 보존 → restore 에서 `#+begin_export html`. head 런타임 10개 = HTML_HEAD_EXTRA(단일행 script/link;
-  리다이렉트 인라인·멀티라인 JSON config 는 스킵). `<d-article>`/`<d-contents>` 래퍼도 org raw 블록(=template 파일 0).
-- `./run.sh paper2org-interactive <URL> --name X` end-to-end 작동(converter→캡슐 보장→pandoc --katex 로컬→capsule 트리).
-- 커밋 대상=로직만(`anthropic_paper_to_org.py`, `run.sh`). 산출물=out/(gitignore).
-
-**폴리시**
-1. [x] **prose 컬럼 잘림 해결 (2026-07-07, GPT 진단 적중)**: 원인은 distill 부재가 아니라 **pandoc 기본
-   `body{max-width:36em}`(=576px)** 가 distill d-article grid 를 좁은 문서폭에 가둠(`overflow-x:hidden` → 클립).
-   해결 = **마지막 `#+HTML_HEAD_EXTRA` 에 reset `<style id=paper2org-interactive-reset>`**(문서폭 제약만 해제,
-   distill grid/figure CSS 유지). 실측: article 576→**1855px**, p 704px, body max-width none, 클립 사라짐,
-   외부0·콘솔0 유지. `_INTERACTIVE_RESET_STYLE` 상수. → **CMD2 전체 green.**
-2. [ ] `--serve-check` 식 자동 검증을 paper2org-interactive 에도(figure/mount parity + 외부0 assert).
-3. [ ] fidelity 후속(선택): `<d-front-matter>`/`<d-title>`/`<d-bibliography>` 재현. 단 d-title=pandoc title,
-   d-bibliography=citeproc references 와 중복 주의 → v1 은 d-article+d-contents+reset 로 충분.
-4. [ ] 대표 위젯 click/hover smoke.
-
-### 참고 — CMD2 원설계 상세 (GPT 검수 반영판)
-
-**명제 acceptance (GPT)**: GLG 명제 "org=SSOT, LaTeX/Typst 없이 인터랙티브 문서 생성"의 완전 증명은
-`source mirror hydrate`(CMD1)가 아니라 **`interactive.org → jspace.interactive.html`이 캡슐 자산으로
-hydrate**되는 것. 용어: **캡슐 = resource bundle**(SSOT 아님). **SSOT = `interactive.org` +
-`capsule-manifest.json`**(구조/배치=org, 런타임 바이트/provenance=manifest). 왕복의 실질은
-`원문 interactive HTML → paper2org capture(org+raw figure blocks+manifest) → pandoc export →
-로컬 브라우저 hydrate 외부요청 0`. `html→org` 무손실 역파싱은 v1 비필수.
-
-**CMD2 required**
-
-1. [ ] `paper2org-interactive <URL> --name X` 명령: capture(interactive org) + capsule + interactive html export + 검증.
-2. [ ] `jspace.interactive.org` 생성: prose=현재 org 파이프. img 없는 interactive figure = 원문 `paper.html`의
-   `<figure data-fignum=N>` **outerHTML verbatim** as `#+begin_export html`(figcaption/div class 수정 금지 =
-   mount class mismatch가 최대 실제 위험). static figure는 v1은 기존 `file:png/` 유지.
-   raw block 앞 추적 주석 옵션: `<!-- paper2org-raw-figure: fig-xxx sha256=... -->`.
-3. [ ] **pandoc interactive template** `scripts/paper_interactive_template.html`:
-   `<d-article>$body$</d-article>` + `<d-contents></d-contents>` wrapper (bundle이 `d-article h2/h3`,
-   `d-contents`, `resolveFigRefs`, `figure[data-fignum]`에 의존). 원문 **script/link/style 순서+defer 보존**
-   (bundle.js 끝 `window.init()`가 defer 전제 — 순서 깨지면 hydrate 실패). **`<base>` 금지**(anchor/cite/TOC 오염).
-   최소 v1 = d-article + d-contents + 원문 head scripts/links. d-front-matter/d-title/d-bibliography는 선택.
-4. [ ] output = 캡슐 트리 안 `out/anthropic-paper/jspace/capsule/2026/workspace/jspace.interactive.html`,
-   docroot=capsule, URL=`/2026/workspace/jspace.interactive.html`.
-5. [ ] validation: 로컬 docroot 스윕으로 **external 0 · failed 0**(favicon 예외). **figure/mount count 3중 parity**
-   (source paper.html interactive figure == interactive.org export-block == interactive.html figure).
-   대표 class 존재(`slice-stack-count`·`lens-inline`·`jlens-rm-bias`·`eval-awareness-probe`).
-   대표 figure smoke 1개 이상 hydrate. **bundle init 런타임 에러는 fail**(console warning 임계 정의).
-6. [ ] PDF/acmart는 caption+link fallback 유지(raw DOM 넣지 말 것).
-
-**CMD2 optional / later**
-7. [ ] click/hover smoke 2~3개 대표 위젯 (전체 순회 아님). v1 보장 = "load+full-scroll".
-8. [ ] interactive HTML/Org에서 `capsule-manifest.json` 참조(provenance 가시/기계판독).
-9. [ ] Quarto 평가는 org→pandoc interactive green 이후로 연기(이 증명엔 불필요).
-10. [ ] J-space green 이후에만 일반화. bundle은 jspace 전용 — 아직 "generic Distill interactive" 주장 금지.
+- [ ] `--serve-check` 식 자동 검증을 `paper2org-interactive` 에도 (figure/mount parity + 외부0 assert).
+- [ ] (선택) fidelity: `<d-front-matter>`/`<d-title>`/`<d-bibliography>` 재현. 단 d-title=pandoc title,
+  d-bibliography=citeproc references 와 중복 주의 → 현재 d-article+d-contents+reset 로 충분.
+- [ ] (선택) 대표 위젯 click/hover smoke 2~3개 (전체 순회 아님). 현 보장 = "load+full-scroll".
+- [ ] (선택) interactive HTML/Org 에서 `capsule-manifest.json` 참조(provenance 가시/기계판독).
+- [ ] **일반화 금지선**: bundle 은 jspace 전용 — J-space 외 논문 green 전까지 "generic Distill
+  interactive" 주장 금지. Quarto 평가도 그 이후(이 증명엔 불필요).
+- [ ] PDF/acmart 는 caption+link fallback 유지 (raw DOM 넣지 말 것).
 
 **CMD1 하드닝 (비블로커, GPT 코드리뷰)**
 - [ ] `serveAndVerify` path guard `f.startsWith(root)` → `path.resolve` + `relative()` `..` 검사로 강화.
 - [ ] `external_requests`에 `blob:` 별도 분류(현재 `data:`만 skip).
 - [ ] `mirror()` plain fetch = public static 전제. 쿠키/세션/생성응답 필요 논문은 `failed_requests`로 잡힘(v1 OK).
-
-### CMD3 마무리
-- [x] skill `.claude/skills/anthropic-paper2org/SKILL.md` capsule 섹션 (CMD1분 반영 완료).
-- [x] AGENTS.md paper2org 블록 (CMD1분 반영 완료). [ ] interactive 섹션은 CMD2 후.
 
 ---
 
@@ -273,7 +210,7 @@ textlint kernel ─┬ lint → report(file:line:col)   ✅ 실증
 - 파일: `kime.mjs`(공유 백엔드), `rules/ko-saisiot.mjs`(룰 1개), `run-textlint.mjs`(kernel 드라이버),
   `probe.mjs`/`check.mjs`(형태소 실증), `package.json`(kiwi-nlp+textlint), `.gitignore`(node_modules 제외).
 - 실증: `초기 값→초깃값` 등 lint 3건 + fix 정확, **`속도가`/`거리이다` 오탐 0**(kime POS 검증).
-- flake.nix 에 `pkgs.nodejs_24` 추가(textlint 15.x CI 매트릭스 [20,22,24] 검증). `nix develop` → node v24.15.0.
+- flake.nix 에 `pkgs.nodejs` 추가(textlint 15.x CI 매트릭스 [20,22,24] 검증). `nix develop` → node v24.18.0.
 
 ### 다음 (양 채우기 = 이후, 병렬 가능)
 
@@ -300,7 +237,8 @@ catalog), `~/repos/3rd/textlint-rule-preset-ja-technical-writing`(preset 조합 
 ## 인프라 메모
 
 - **flake.nix nix-ld 자립**(2026-06-04): MinerU 클라(numpy/opencv manylinux wheel)가 `nix-ld.libraries=[libcap]`만인 호스트에서 `libstdc++/libz` 부재로 실패 → flake shellHook이 `MINERU_LD_LIBRARY_PATH = makeLibraryPath [stdenv.cc.cc.lib zlib] + nix-ld path` export, run.sh mineru 명령을 nix develop 안에서 그 변수로 실행. 호스트 nix-ld 설정 무관 자립.
-  - **nodejs_24 추가 완료**(2026-06-04, 한글 텍스트린트 작업축): 같은 flake buildInputs 에 `pkgs.nodejs_24`. textlint/kiwi-nlp 는 npm 으로 `textlint-ko/` 안에서(nix 엔 런타임만 — 가볍게). kiwi 모델은 `~/repos/3rd/Kiwi/models/cong/base` 외부 주입(리포에 안 담음). 외부 의존 0 유지.
+  - **nodejs 추가 완료**(2026-06-04, 한글 텍스트린트 작업축): 같은 flake buildInputs 에 `pkgs.nodejs`. textlint/kiwi-nlp 는 npm 으로 `textlint-ko/` 안에서(nix 엔 런타임만 — 가볍게). kiwi 모델은 `~/repos/3rd/Kiwi/models/cong/base` 외부 주입(리포에 안 담음). 외부 의존 0 유지.
+- **nixpkgs 26.05 이관**(2026-07-28): `python312`/`nodejs_24` 핀 → `python3`/`nodejs`(채널 기본 추종). 실측 Python 3.13.14 / Node v24.18.0 / pandoc 3.7.0.2. 버전 핀을 다시 박지 말 것 — 채널 올릴 때마다 같은 작업 반복된다.
 - **원격 서버**(nixos 담당): MinerU = gpu2i tmux `mineru-vllm` :30000. DeepSeek-OCR = gpu1i tmux `deepseek-ocr` :8000. `run.sh mineru-parse`/`deepseek-parse` 가 터널 자동.
 - **빌드**: `nix develop --command ./run.sh org2epub-build` (zip/unzip 필요, flake에 포함). ltximg는 빌드캐시(gitignore) — RSC-007 시 `rm -rf ltximg *.epub` 후 재빌드.
 
@@ -309,5 +247,6 @@ catalog), `~/repos/3rd/textlint-rule-preset-ja-technical-writing`(preset 조합 
 ## 은퇴/기록
 
 - vision/Opus 전체전사 은퇴(oracle로만 비교). tesseract/ocrmypdf, marker/surya 제거. 살아남은 QA = `diff_review.py`(`./run.sh diff-review`, 엔진무관).
+- **HWPX 직접 조작 폐기**(2026-07-28): `hwpx2org/`, `orgadoc2odt/_legacy/`, flake `python-hwpx`(+`lxml`) 제거. 한글 산출물은 **Org → ODT → DOC → 한글에서 열어 HWP 저장** 한 경로만. 서식 보존하려 템플릿 XML 패치하는 방식은 유지비가 회수를 넘었다 — 재도입 금지. `proposal-pipeline` 의 `:HWPX_IDX:` 는 평문 org 속성이라 무관하게 살아있다.
 - ox-epub는 `~/repos/gh/ox-epub` 포크(EPUB3 네이티브+headless). memex-kb 내부 후처리(`epub_upgrade.py`/`org2epub.el`) 재도입 금지. SVG 수식 대문짝 버그 = ox-epub CSS `max-width:90%;height:auto`로 해결됨.
 - scanpdf = nested private repo, remote `work` Forgejo `glg-bot/scanpdf`.

@@ -4,6 +4,29 @@ All notable changes, tracked by CalVer date tags.
 
 ## Unreleased
 
+## v2026.7.28 — Interactive paper capsules + nixpkgs 26.05 + HWPX retirement
+
+### Anthropic paper2org — interactive capsules
+
+- Added `paper2org-capsule`: a headless Chrome CDP sweep (no Playwright, zero npm dependencies) mirrors every same-origin asset a Distill paper fetches at runtime — `bundle.js`, parquet, json, css — into `capsule/`, with `capsule-manifest.json` recording sha256, byte size, and content type per asset. The default `--serve-check` re-sweeps the local docroot and asserts zero external requests, so offline completeness is proven rather than assumed.
+- Added `paper2org-interactive` (`anthropic_paper_to_org.py --interactive`): Org stays the SSOT and pandoc alone — no LaTeX, Typst, or Quarto — produces a document whose interactive figures hydrate offline. Interactive figures are preserved as verbatim `<figure data-fignum>` outerHTML inside `#+begin_export html`, protected before math and citations so figcaption custom elements stay pristine. The source head runtime becomes `#+HTML_HEAD_EXTRA`, and the `<d-article>` / `<d-contents>` wrappers are Org raw blocks, leaving zero pandoc template files. KaTeX is served locally from `/anthropic-serve/katex/`.
+- Fixed prose column clipping in interactive exports: pandoc's default `body{max-width:36em}` caged the distill `d-article` grid. A final reset style block releases only the document-width constraint (article 576 → 1855 px) while keeping distill grid and figure CSS intact.
+- Verified the J-space paper end-to-end: capsule of 219 files / 11.3 MB with 0 external and 0 failed requests, offline re-sweep passing, and an interactive export with 0 external requests, 0 console errors, 39 parquet files fetched locally, and 3-way figure parity (source 84 == Org raw blocks 84 == exported HTML 84).
+- Documented both commands in AGENTS and the `anthropic-paper2org` skill. Capsule and export artifacts stay under `out/` (gitignored; source copyright remains Anthropic's).
+
+### Nix environment
+
+- Migrated the flake to `nixos-26.05` (Python 3.13.14, Node v24.18.0, pandoc 3.7.0.2).
+- Replaced the pinned `python312` and `nodejs_24` with `python3` and `nodejs` so the shell follows the channel default instead of drifting from it.
+- Replaced the stale `hwpx2asciidoc/` hints in the shell banner with the live Org → ODT commands.
+
+### Removed — direct HWPX manipulation
+
+- Removed `hwpx2org/`, `orgadoc2odt/_legacy/`, and the `python-hwpx` flake derivation together with its `lxml` dependency. No other code in the repository imported lxml, and the only live consumer was a single Org → HWPX writer untouched since 2026-02-05.
+- Korean HWP deliverables now travel one path: **Org → ODT → DOC → open in 한글 → save as HWP**. Patching HWPX template XML to preserve formatting cost more than it returned.
+- `proposal-pipeline` still parses the `:HWPX_IDX:` Org property. It is a plain text attribute and has no dependency on the removed library.
+- Synchronized README, AGENTS, BACKENDS, DEVELOPMENT, and `orgadoc2odt/README.md` with the reduced surface.
+
 ## v2026.7.7 — Anthropic paper2org exports + ROSSE handoff
 
 ### Anthropic Distill papers

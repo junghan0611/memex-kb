@@ -75,10 +75,18 @@ The single most important frame: an engine is **two layers**. Compare *within* a
 | spacing 공백비율 | 정상 | **0.12 붕괴** | 0.21 | 0.23 | 0.22 | **0.242 정상** |
 | 한국어 글자 | mosaic/焮 환각 | 보통(mobile-rec) | 우수 | 우수 | **최악 + 한자환각(磊嚣螽)** | **최상 · 텍스트층 환각 0**(물리학강의 샘플 한정) / **chart path 환각 확인** |
 
-> ⚠️ **Upstage 열은 1차 스크리닝이다** (2026-07-30). 실측 대조는 **Upstage vs MinerU 뿐**이고 나머지
-> 4열은 2026-06-06 기록 인용(당시 산출물 디렉토리는 비어 있음). **gold(vision oracle) 대조 0회**,
-> 표본 34쪽(2권), CER/WER 없음. 심층 검증 = **GitHub 이슈 #5**(계획·체크리스트 SSOT), 포인터는 `NEXT.md`.
-> 그 전까지 "6엔진 중 1위"는 **상대비교 근거**로만 인용할 것.
+> ⚠️ **이 표는 "2026-06-06 기록 기반 상대비교 + Upstage 1차 스크리닝"이다.** 앞 5열은 2026-06-06
+> 기록 인용이고 raw artifact 가 없다(정량 재현성 debt, 재측정은 `deferred` — `NEXT.md` 6번).
+> 정량 순위로 인용하지 말 것.
+>
+> **gold 대조 진행분(2026-07-30)**: `물질생명인간` 1~4장 vision 전사 합본을 기준으로 Upstage vs
+> MinerU 정량 CER 산출 완료 — 단 이건 **vision silver 기준**이지 adjudicated 아니다. 그리고 그
+> 과정에서 `diff_review` 정규화 비대칭 4종을 발견해 고쳤다(그전 숫자는 전부 무효). 계측 규칙은
+> `scripts/diff_review.py` 의 "대칭 원칙" 주석이 SSOT, 정량 CER 은 `./run.sh cer-eval`.
+> **projection 3종을 함께 볼 것 — 각주 포함 여부로 순위가 뒤집힌다.**
+>
+> 채택 판정 = **GitHub 이슈 #5**(체크리스트 SSOT), 포인터는 `NEXT.md`. 서사·판단 근거는
+> 봇로그 `20260606T130306`.
 
 **★ Upstage Document Parse (2026-07-30 측정, 6번째 엔진, 관리형 API)** — `POST /v1/document-digitization`,
 `model=document-parse`(→`document-parse-260128`), `ocr=force`, `base64_encoding=["figure"]`. 17p **12.4s**

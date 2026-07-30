@@ -7,6 +7,25 @@ per-book `mineru/README.md` 로 옮긴다. 이 파일은 "지금 다음 한 걸�
 
 ---
 
+## NOW
+
+- **Stem**: scanbook 엔진 판정 — Upstage 를 채택할지(이슈 #5). 단 2026-07-30 에 드러났듯
+  **엔진보다 계측기가 먼저**였다.
+- **Current**: 계측기 수정 완료. `diff_review` 정규화 비대칭 4종 제거(충돌 3,125→1,430,
+  따옴표 잡음 1,464→0) + `cer_eval.py` 신설(`./run.sh cer-eval`). 이제 정량 CER 이 나온다.
+  단 **vision-gold 기준**이지 adjudicated 아니다.
+- **Next**: (1) 충돌 1,430개 중 **큰 블록부터** 페이지 이미지로 판정 → gold 오류도 함께 고쳐
+  **adjudicated micro-gold** 고정 → (2) 같은 축으로 재측정 → (3) #5 채택 판정.
+- **Blocker**: 없음. gpu2i MinerU(tmux `mineru` :30000) 가동, 로컬 클라 복구됨.
+  단 **GPU 16GB 배타** — 다른 모델을 쓰려면 `vllm-api` 스왑이고 sudo 는 사람 손이다.
+- **Read**: `.claude/skills/scanbook/SKILL.md` → 이슈 #5 → 봇로그 `20260606T130306`
+  (오늘 서사·판단 근거는 거기 있다. 여기 다시 적지 말 것.)
+- **Do not touch**: 도식 실린 문서를 `chart_recognition` 켠 채로 재지 말 것(환각). API 키 출력 금지.
+  저작권 원문·raw 대량 산출물은 private `scanpdf/` 밖으로 내보내지 말 것. Opus vision 전사 복귀 금지.
+  푸시는 **GLG 가 그 세션에서 명시 요청할 때만**.
+
+---
+
 ## 후속 — Anthropic Distill paper2org
 
 Closed work moved to `CHANGELOG.md` for `v2026.7.7`:
@@ -134,41 +153,38 @@ POSSE 변형 **ROSSE**(Raw Outside, Syndicate via own Site, Everywhere). 링크�
 연결고리(textlint↔kime) 실증 완료(2026-06-04). 다음 = **양 채우기** → 아래 "한글 텍스트린트" 섹션의 '다음' 참조.
 당장 후보: 룰 A(마침표 뒤 공백, `check.mjs` 로직 → 룰화), scanbook `run.sh kospell` 게이트(인공지능시대부터), ko-saisiot `PAIRS` 확장.
 
-### 🔬 작업축 — Upstage 심층 검증 (2026-07-30 착수, **1차는 스크리닝일 뿐**) — **이슈 #5**
+### 🔬 작업축 — Upstage 채택 판정 — **이슈 #5** (체크리스트 SSOT는 이슈)
 
-> 진행/체크리스트 관리는 **GitHub 이슈 #5**가 SSOT. 여기는 포인터만 유지한다.
-> (이슈 #3 = 5엔진 평가 에픽은 결론 정리 후 **완료 종결**, 미평가 후보·평가원칙은 #5로 승계.)
+**용어 고정**: `물질생명인간-epub.org` 는 **vision silver**(gold candidate)다. absolute gold 아님 —
+그게 틀린 자리에서는 맞게 읽은 엔진이 벌점을 받는다. 사람이 페이지 이미지로 판정을 마친 구간만
+**adjudicated** 라 부른다. `vision-gold 기준 CER` 과 `adjudicated CER` 을 섞어 쓰지 말 것.
 
-**현재 상태**: Upstage 5회 호출(DP standard/enhanced·OCR·IE·classify) 실측 완료, 상세 SSOT =
-`scanpdf/work/물리학강의/upstage/README.md`. 결론 요약은 `.claude/skills/scanbook/SKILL.md` 6엔진 표.
-**단 이건 깊이 있는 비교가 아니다.** GLG 판정: "깊이 있는 분석 아니면 의미 없다." 아래를 채우기 전까지
-README/SKILL/botlog의 "6엔진 중 1위" 주장은 **상대비교 근거**임을 잊지 말 것.
+**계측기(2026-07-30 수정 완료)** — 서사·근거는 봇로그 `20260606T130306`, 여기 다시 적지 말 것.
+- `diff_review.normalize()` 대칭 원칙 4종(각주 본문 보존 / 곡선따옴표 / heading 마커만 / 이미지·표 태그).
+  이 규칙 깨면 엔진 비교 숫자가 통째로 무효다. 소스 주석이 SSOT.
+- `./run.sh cer-eval` = 정량 CER. projection 3종을 **함께** 볼 것 — 각주 포함 여부로 순위가 뒤집힌다
+  (body: Upstage 4.127% < MinerU 4.280% / body-no-fn: MinerU 2.869% < Upstage 5.661%).
+  `body` 가 이 비교의 맞는 축(`body-no-fn` 은 각주를 놓친 엔진을 상대적으로 유리하게 만든다).
+- 쪽번호·러닝헤드는 책마다 달라 `--noise` 로 선언한다. 하드코딩 금지.
 
-**⚠️ 1차의 구멍 (반드시 인지)**
-- **6엔진 표 앞 5열은 이번 실측이 아니다** — `deepseek-out/`·`paddleocr-out/`·`vltool-out/`·`glm-out/`·
-  `ppstructure-out/` 전부 **비어 있음**. 2026-06-06 NEXT 기록 인용. 실측은 **Upstage vs MinerU 뿐**.
-- **gold 대조 0회** — 물질생명인간 vision oracle 27개(`scanpdf/work/물질생명인간/org/`)와 `run.sh diff-review`가
-  있는데 안 씀. 지금 판정은 전부 "MinerU와 다르면 Upstage가 맞다" 가정. **둘 다 틀린 자리는 못 잡는다.**
-- 고유명사 8~10 토큰만 카운트, CER/WER 없음. "유사도 0.979"는 정확도가 아니라 두 산출물 일치도.
-- 표본 34쪽 = 보유 2,284쪽의 **1.5%**, 책 2권뿐. 재현성(동일요청 2회) 미확인.
-- `chart_recognition=false` 재호출 **미실행**(환각 소거 여부 미검증).
+**엔진 실패 성격 (이 구간 실측)**: MinerU = **누락**(각주 114자·경험조건 86자·직관의공리 39자),
+Upstage = **환각**(`chart_recognition` 켜진 상태에서 도식→`0.08/0.28/0.47` 표 생성) + 쪽번호/러닝헤드.
+한 숫자로 합치지 말고 ① char CER ② footnote handling ③ structure hazard 로 나눠 볼 것.
 
-**다음 한 걸음 (가치순, 1·3·4는 GPU 없이 즉시 가능)**
-1. [ ] **gold CER 대조** — ⚠️ **oracle 1개로는 안 덮인다**(2026-07-30 GPT 교차검토 정정). 산문 샘플
-   PDF p60–76 → p60–71 = `01장-05절.org`(물리 p53–71) / **p72 = 장 간지, 어느 oracle에도 없음** /
-   p73–76 = `02장-01절.org` **다른 파일**. 통짜 대조는 `scanpdf/work/물질생명인간/org/물질생명인간-epub.org`
-   (370KB, 1~4장 vision 전사 합본 = **진짜 gold**, MinerU 산출물 아님)로 할 것.
-   `./run.sh diff-review <oracle> <upstage|mineru>` 로 **절대 정확도** 산출. 상대비교 → 정량 전환.
-2. [ ] **다른 5엔진 재측정** — `ssh gpu2i/gpu3i/gpu1i` 서버 생존 확인 후 같은 구간 재실행 → 표 앞 5열을
-   실측으로 교체. 죽어 있으면 nixos 담당에게 요청(직접 띄우지 말 것).
-3. [ ] **`chart_recognition=false` 재호출** — 물질생명인간 p60–76. 칸트 도식 환각(`0.08/0.28/0.47`) 소거 확인.
+**다음 한 걸음**
+1. [ ] **adjudicated micro-gold** — 충돌 1,430개 중 큰 블록 전수 + 무작위 100~200 + equal 구간 30~50
+   spot-check(둘 다 틀린 자리를 잡으려면 equal 도 봐야 한다). silver 가 틀린 자리는 silver 를 고친다.
+2. [ ] **재측정** — adjudicated 축으로 `cer-eval` 재실행 → #5 채택 판정.
+3. [ ] **`chart_recognition=false` 재호출** — 물질생명인간 p60–76. 환각 소거 확인(GPU 불요).
 4. [ ] **결정성** — 동일 요청 2회 diff. PaddleOCR-VL `알갱이/알깡이` 비결정성 전례 있음.
-5. [ ] **OCR confidence PoC** — `literal` 282건(물리학강의)을 정답지로 confidence 임계값의 재현율/정밀도 실측.
-   성공 시 `engine_vote.py` 구상을 단일엔진 confidence로 대체 가능.
-6. [ ] (선택) 표본 확대 5권 각 1구간 — "조판 유형이 구조 성능을 가른다" 가설 검증.
-
-**Do not touch**: 커밋/푸시 금지(GLG 승인 전). API 키 출력 금지. 저작권 원문·raw 대량 산출물은
-private `scanpdf/` 밖으로 내보내지 말 것. Opus vision 전사 같은 구식 경로 복귀 금지.
+5. [ ] **OCR confidence PoC** — `literal` 282건(물리학강의)을 정답지로 confidence 임계값의 재현율/정밀도.
+   성공 시 `engine_vote.py`(3엔진 교차투표) 구상을 단일엔진 confidence 로 대체 가능 → 아래 6번도 불요.
+6. [ ] **`deferred` — 다른 5엔진 재측정.** #5 blocker 아니다(GPT 교차검토 2026-07-30). 2026-06-06
+   측정 기록은 보존하되 raw artifact 부재 = **정량 재현성 debt**. 6엔진 순위표를 정량으로 다시
+   주장하거나 tool base 를 MinerU 에서 바꿀 때 재측정한다. 그전엔 표를 "2026-06-06 기록 기반
+   상대비교 + Upstage 1차 스크리닝"으로만 인용할 것.
+   - ⚠️ "5권이 MinerU 로 잘 빌드됐다"는 **MinerU 가 충분한 production base** 라는 근거일 뿐,
+     PaddleOCR-VL 도구모드 측정이 무가치했다는 뜻이 아니다. 이 논거를 세게 쓰지 말 것.
 
 ### scanbook — 안정화, 저우선 후속
 - [ ] **인공지능시대 char 잔여 4건** (oracle 없어 보류, `.candidates.log`): `섬ピ`/`바WWW하게`(L476)/`'WWW'를 다했나`(L556)/`되Mrkm되어`. 교정어 미상 → DeepSeek-OCR 의심페이지 대조 or reading-pass.
@@ -178,7 +194,7 @@ private `scanpdf/` 밖으로 내보내지 말 것. Opus vision 전사 같은 구
 ### 백로그
 - [ ] (선택) 봉합 워크플로 스킬화 — 리스트→봉합→로그검수→환류 루프.
 - [ ] (선택) `scanbook/eval/` — 4엔진 총교정비용 점수표(MinerU vs DeepSeek-OCR vs **PaddleOCR-VL** vs **GLM-OCR**). 벤치는 항상 **물리학강의 5강(PDF p121–137)** 동일구간(= DeepSeek 비교 때 쓴 구간).
-  - ⬆️ **이 항목은 위 "🔬 Upstage 심층 검증" 작업축이 흡수한다** — 거기 1·2번(gold CER + 5엔진 재측정)이 곧 이 점수표의 실체. 별도로 착수하지 말 것.
+  - ⬆️ **이 항목은 위 "🔬 Upstage 채택 판정" 작업축이 흡수한다** — 거기 1·2번(adjudicated micro-gold + 재측정)이 곧 이 점수표의 실체. 5엔진 재측정분은 같은 곳 6번에서 `deferred`. 별도로 착수하지 말 것.
   - **⚠️ eval 설계 원칙(GLG 2026-06-05)**: 후처리(구조복원+교정+감독형 봉합)는 우리가 결정론적으로 **소유**한다 → 엔진은 **우리가 못 고치는 부분 = raw OCR 글자/레이아웃 충실도**로만 줄세운다. 엔진이 뱉는 markdown 구조 예쁨(heading/표/reading order)은 어차피 mineru2org/assemble에서 재구성하므로 **점수에서 제외**. 메트릭 = 글자 오독(literal/safe_regex 발생수) + 띄어쓰기 붕괴 + 도판 asset(픽셀·bbox) 품질. 목적은 "문서 보면서 custom하게 org 생성".
   - **⚙️ 모델 layer vs 도구 layer 구분 (2026-06-06 측정 결론 — GLG 핵심질문 "MinerU가 모델로서/도구로서 의미있나")**: 엔진은 **2겹**이다. 비교도 2층으로 나눠야 공정.
     - **모델**(페이지→텍스트): MinerU2.5-VLM / PaddleOCR-VL / DeepSeek-OCR / GLM-OCR. 글자정확도 경쟁.

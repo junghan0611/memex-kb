@@ -11,7 +11,22 @@
   실제 내용 차이만 남긴다.
 - 괄호/따옴표 스타일도 엔진마다 다르다([Rosen]/(Rosen), ""/'' 등) → 정규화로 제거.
   단 systematic bracket 차이는 따로 카운트해 보고만 한다.
-- 각주 마커(<sup>N</sup>, [fn:...])는 위치가 달라 노이즈 → 제거.
+- 각주 **마커**(<sup>N</sup>, $^N$, [fn:...])는 위치가 달라 노이즈 → 제거.
+  각주 **본문**은 남긴다(아래 대칭 원칙).
+
+⚠️ 대칭 원칙 (2026-07-30) — 이 규칙을 깨면 엔진 비교 숫자가 통째로 무효가 된다.
+gold 는 org, 엔진 산출물은 md/txt 다. **한쪽 포맷에서만 사라지는 내용이 있으면
+그 차이가 엔진 오류로 계상된다.** 실측으로 잡힌 비대칭 4종을 여기서 없앤다:
+  1. org 각주 정의줄 통째 삭제 → 각주를 잘 잡는 엔진이 벌점. (물질생명인간 gold
+     기준 23줄 2,790자 = 전체의 2.55% 가 한쪽에서만 증발했다.)
+  2. BRACKETS 에 곡선 따옴표(U+2018/2019/201C/201D)가 없어 인용부호가 diff 에 남음.
+     (전권 delete 1,786건 중 1,691건 = 95% 가 이 노이즈였다.)
+  3. md heading(`# 제목`)은 줄째로 삭제되는데 org heading(`* 제목`)은 마커만 제거 →
+     제목 텍스트가 한쪽에만 남음.
+  4. md 이미지 참조(`![](images/<hash>.jpg)`)와 HTML 표 태그가 본문 문자로 계상됨.
+
+CER 은 이 모듈이 내지 않는다. 여기 `ratio` 는 difflib 정렬 유사도일 뿐
+편집거리가 아니다 — 정량 CER 은 `scripts/cer_eval.py` 를 쓴다.
 
 순수 stdlib. NixOS flake python으로 그대로 실행 가능(컴파일 의존성 없음).
 """
@@ -22,37 +37,74 @@ import difflib
 import re
 import sys
 
-# 정규화에서 제거할 괄호/따옴표류 (양쪽 엔진 스타일 차이 흡수)
-BRACKETS = "[](){}「」『』〈〉《》""''\"'…"
+# 정규화에서 제거할 괄호/따옴표류 (양쪽 엔진 스타일 차이 흡수).
+# ⚠️ 곡선 따옴표는 반드시 \u 이스케이프로 적는다 — 리터럴로 두면 편집기/인코딩이
+# ASCII 로 눌러버려 조용히 빠진다(실제로 그렇게 U+0027 이 3번 중복돼 있었다).
+BRACKETS = (
+    "[](){}"
+    "「」『』"      # 「」『』
+    "〈〉《》"      # 〈〉《》
+    "‘’“”"      # ‘’“”  ← 이게 빠져 있어 delete 노이즈 95% 를 만들었다
+    "'\""                           # ASCII
+    "…"                        # …
+)
+
+# 각주 마커 — 본문은 건드리지 않고 마커만 뗀다.
+FOOTNOTE_MARKERS = (
+    r"<sup>\s*\d+\s*</sup>",   # md/HTML
+    r"\$\s*\^\{?\d+\}?\s*\$",  # MinerU LaTeX 위첨자: $^1$ / $^{12}$
+    r"\[fn:[^\]]*\]",          # org 인라인 참조 + 정의줄 라벨
+)
 
 
-def strip_markup(text: str) -> str:
-    """org/md 구조 마크업 제거 — 내용 문자만 남긴다."""
+def strip_markup(text: str, footnotes: str = "keep") -> str:
+    """org/md 구조 마크업 제거 — 내용 문자만 남긴다.
+
+    footnotes: keep(본문 유지) | drop(각주 정의줄 제거) | only(각주 정의줄만)
+    """
     out = []
     for line in text.splitlines():
         s = line
-        # org 주석/속성 라인 통째 제거
-        if re.match(r"^\s*#\+?", s):
+        # org 키워드 줄(#+TITLE, #+begin_quote …)만 통째 제거.
+        # md heading(`# 제목`)은 여기서 걸리면 안 된다 — 아래에서 마커만 뗀다.
+        if re.match(r"^\s*#\+", s):
             continue
         if re.match(r"^\s*:[A-Z_]+:\s*$", s):
             continue
-        # 각주 정의 라인(org): "[fn:foo] 내용" → 제거 (위치가 달라 노이즈)
-        if re.match(r"^\s*\[fn:[^\]]+\]", s):
+        # org 각주 정의줄: 라벨만 떼고 본문은 **제자리에** 남긴다(대칭 원칙 1).
+        # ⚠️ 문서 끝으로 모으지 말 것 — 구간(span) 비교에서 각주가 범위 밖으로
+        # 밀려나 projection 이 무력해진다(2026-07-30 실제로 그랬다).
+        is_fn = bool(re.match(r"^\s*\[fn:[^\]]*\]", s))
+        if is_fn:
+            s = re.sub(r"^\s*\[fn:[^\]]*\]\s*", "", s)
+        if footnotes == "only" and not is_fn:
+            continue
+        if footnotes == "drop" and is_fn:
             continue
         out.append(s)
+
     s = "\n".join(out)
-    # 인라인 각주 마커
-    s = re.sub(r"<sup>\d+</sup>", "", s)
-    s = re.sub(r"\[fn:[^\]]+\]", "", s)
-    # md/org heading 기호, 강조 기호
-    s = re.sub(r"^[#*]+\s*", "", s, flags=re.MULTILINE)
+
+    # 각주 마커(본문 아님)
+    for pat in FOOTNOTE_MARKERS:
+        s = re.sub(pat, "", s)
+    # md 이미지 참조는 내용이 아니다 — 통째 제거(대칭 원칙 4).
+    s = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", s)
+    # md 링크는 표시 텍스트만 남긴다.
+    s = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", s)
+    # HTML 태그(주로 MinerU 표) 제거
+    s = re.sub(r"</?[a-zA-Z][^>]*>", "", s)
+    # heading 마커만 제거 — md `#`+공백, org `*`+공백 (대칭 원칙 3)
+    s = re.sub(r"^\s*#{1,6}\s+", "", s, flags=re.MULTILINE)
+    s = re.sub(r"^\s*\*+\s+", "", s, flags=re.MULTILINE)
+    # 강조 기호
     s = s.replace("**", "").replace("*", "")
     return s
 
 
-def normalize(text: str) -> str:
+def normalize(text: str, footnotes: str = "keep") -> str:
     """공백·괄호류 제거한 순수 내용 문자열."""
-    s = strip_markup(text)
+    s = strip_markup(text, footnotes=footnotes)
     s = re.sub(r"\s+", "", s)
     for ch in BRACKETS:
         s = s.replace(ch, "")

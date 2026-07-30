@@ -532,6 +532,19 @@ cmd_diff_review() {
     run_cmd "python3 scripts/diff_review.py '${a}' '${b}'"
 }
 
+cmd_cer_eval() {
+    # DESC: 전사본 정량 CER(정규화 편집거리/기준길이). diff-review 의 유사도와 다르다.
+    # USAGE: cer-eval <hyp...> --ref <gold> [--span] [--projection body|body-no-fn|fn-only] [--noise REGEX]
+    # EXAMPLE: cer-eval a.md b.md --ref gold.org --span --noise '\d{1,3}물질,생명,인간'
+    # NOTE: projection 3종을 함께 볼 것 — 각주 포함/제외로 순위가 뒤집힌다(실측).
+    #       기준본이 vision 전사본이면 vision-gold 이지 absolute gold 가 아니다.
+    #       쪽번호/러닝헤드는 책마다 달라 --noise 로 선언한다(하드코딩 안 함).
+    ensure_project_dir
+    # ⚠️ run_cmd 는 eval 이라 --noise 정규식(\d{1,3} 등)이 뭉개진다. 직접 넘긴다.
+    info "실행: ${DIM}python3 scripts/cer_eval.py $*${NC}"
+    python3 scripts/cer_eval.py "$@"
+}
+
 cmd_para_splits() {
     # DESC: MinerU 페이지 OCR로 쪼개진 문단(페이지경계/그림·표·수식 끼임/오분할) 후보 리스트.
     # USAGE: para-splits <book> [--category page_boundary] [--limit 0] [--json]
@@ -912,6 +925,7 @@ COMMANDS=(
     "--- ScanPDF→Org"
     "scanpdf2org-render:cmd_scanpdf2org_render"
     "diff-review:cmd_diff_review"
+    "cer-eval:cmd_cer_eval"
     "para-splits:cmd_para_splits"
     "mineru-setup:cmd_mineru_setup"
     "mineru-parse:cmd_mineru_parse"

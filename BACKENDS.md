@@ -50,14 +50,23 @@ repo-local skill **`.claude/skills/scanbook/SKILL.md`** 를 읽는다. run.sh는
 
 ### 원격 MinerU 서버
 
-- 서버: `gpu2i` tmux session `mineru-vllm`, vLLM `MinerU2.5-Pro`, port `30000`.
-- 새 parse 전 먼저 확인:
+- 서버: `gpu2i` tmux session **`mineru`**, vLLM `MinerU2.5-Pro-2605-1.2B`, port `30000`, served-name `mineru`.
+  - ⚠️ 세션명은 `mineru-vllm` **이 아니다**. 2026-06-06 범용 런처(`vllm-serve.sh`)로 흡수되면서 **프로파일명 = 세션명**이 됐다. 옛 이름으로 grep 하면 빈 결과가 나와 "서버 죽었네" 로 오판한다.
+- 새 parse 전 먼저 확인 (health 가 tmux 이름보다 확실하다):
 
 ```bash
-ssh gpu2i 'tmux ls | grep mineru-vllm'
+ssh gpu2i 'curl -sf localhost:30000/health && echo OK'
+ssh gpu2i 'tmux ls'          # 참고용. 세션명 = mineru
 ```
 
-- 없으면 GLG / nixos 담당에게 요청한다. memex-kb 세션에서 직접 서버를 띄우지 않는다.
+- 없으면 GLG / nixos 담당에게 요청한다. 기동 절차는 `~/repos/work/hej-nixos-cluster`:
+
+```bash
+./scripts/vllm-serve.sh gpu2i mineru {start|status|stop|logs}
+```
+
+  - 프로파일 `scripts/vllm-models/mineru.env` 에 함정이 캡처돼 있다(`--max-model-len 8192` 필수 — 16384 는 모델 `max_position_embeddings` 초과로 기동 실패). 구 `serve-mineru.sh` 는 deprecated.
+  - ⚠️ **GPU 16GB 배타적**: 상주 `vllm-api`(Qwen2.5-7B-AWQ, :8000)가 ~15GB 를 점유하면 런처가 `exit 1` 로 거부한다. `sudo systemctl stop vllm-api` 로 스왑해야 하고 **sudo 는 패스워드가 필요해 에이전트가 못 한다** — GLG 또는 nixos 담당의 손이 필요.
 - `./run.sh mineru-parse`는 `localhost:30000 → gpu2i:30000` SSH tunnel만 자동 보장한다.
 
 ### 교정 전략

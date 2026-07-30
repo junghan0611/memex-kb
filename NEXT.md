@@ -134,6 +134,42 @@ POSSE 변형 **ROSSE**(Raw Outside, Syndicate via own Site, Everywhere). 링크�
 연결고리(textlint↔kime) 실증 완료(2026-06-04). 다음 = **양 채우기** → 아래 "한글 텍스트린트" 섹션의 '다음' 참조.
 당장 후보: 룰 A(마침표 뒤 공백, `check.mjs` 로직 → 룰화), scanbook `run.sh kospell` 게이트(인공지능시대부터), ko-saisiot `PAIRS` 확장.
 
+### 🔬 작업축 — Upstage 심층 검증 (2026-07-30 착수, **1차는 스크리닝일 뿐**) — **이슈 #5**
+
+> 진행/체크리스트 관리는 **GitHub 이슈 #5**가 SSOT. 여기는 포인터만 유지한다.
+> (이슈 #3 = 5엔진 평가 에픽은 결론 정리 후 **완료 종결**, 미평가 후보·평가원칙은 #5로 승계.)
+
+**현재 상태**: Upstage 5회 호출(DP standard/enhanced·OCR·IE·classify) 실측 완료, 상세 SSOT =
+`scanpdf/work/물리학강의/upstage/README.md`. 결론 요약은 `.claude/skills/scanbook/SKILL.md` 6엔진 표.
+**단 이건 깊이 있는 비교가 아니다.** GLG 판정: "깊이 있는 분석 아니면 의미 없다." 아래를 채우기 전까지
+README/SKILL/botlog의 "6엔진 중 1위" 주장은 **상대비교 근거**임을 잊지 말 것.
+
+**⚠️ 1차의 구멍 (반드시 인지)**
+- **6엔진 표 앞 5열은 이번 실측이 아니다** — `deepseek-out/`·`paddleocr-out/`·`vltool-out/`·`glm-out/`·
+  `ppstructure-out/` 전부 **비어 있음**. 2026-06-06 NEXT 기록 인용. 실측은 **Upstage vs MinerU 뿐**.
+- **gold 대조 0회** — 물질생명인간 vision oracle 27개(`scanpdf/work/물질생명인간/org/`)와 `run.sh diff-review`가
+  있는데 안 씀. 지금 판정은 전부 "MinerU와 다르면 Upstage가 맞다" 가정. **둘 다 틀린 자리는 못 잡는다.**
+- 고유명사 8~10 토큰만 카운트, CER/WER 없음. "유사도 0.979"는 정확도가 아니라 두 산출물 일치도.
+- 표본 34쪽 = 보유 2,284쪽의 **1.5%**, 책 2권뿐. 재현성(동일요청 2회) 미확인.
+- `chart_recognition=false` 재호출 **미실행**(환각 소거 여부 미검증).
+
+**다음 한 걸음 (가치순, 1·3·4는 GPU 없이 즉시 가능)**
+1. [ ] **gold CER 대조** — ⚠️ **oracle 1개로는 안 덮인다**(2026-07-30 GPT 교차검토 정정). 산문 샘플
+   PDF p60–76 → p60–71 = `01장-05절.org`(물리 p53–71) / **p72 = 장 간지, 어느 oracle에도 없음** /
+   p73–76 = `02장-01절.org` **다른 파일**. 통짜 대조는 `scanpdf/work/물질생명인간/org/물질생명인간-epub.org`
+   (370KB, 1~4장 vision 전사 합본 = **진짜 gold**, MinerU 산출물 아님)로 할 것.
+   `./run.sh diff-review <oracle> <upstage|mineru>` 로 **절대 정확도** 산출. 상대비교 → 정량 전환.
+2. [ ] **다른 5엔진 재측정** — `ssh gpu2i/gpu3i/gpu1i` 서버 생존 확인 후 같은 구간 재실행 → 표 앞 5열을
+   실측으로 교체. 죽어 있으면 nixos 담당에게 요청(직접 띄우지 말 것).
+3. [ ] **`chart_recognition=false` 재호출** — 물질생명인간 p60–76. 칸트 도식 환각(`0.08/0.28/0.47`) 소거 확인.
+4. [ ] **결정성** — 동일 요청 2회 diff. PaddleOCR-VL `알갱이/알깡이` 비결정성 전례 있음.
+5. [ ] **OCR confidence PoC** — `literal` 282건(물리학강의)을 정답지로 confidence 임계값의 재현율/정밀도 실측.
+   성공 시 `engine_vote.py` 구상을 단일엔진 confidence로 대체 가능.
+6. [ ] (선택) 표본 확대 5권 각 1구간 — "조판 유형이 구조 성능을 가른다" 가설 검증.
+
+**Do not touch**: 커밋/푸시 금지(GLG 승인 전). API 키 출력 금지. 저작권 원문·raw 대량 산출물은
+private `scanpdf/` 밖으로 내보내지 말 것. Opus vision 전사 같은 구식 경로 복귀 금지.
+
 ### scanbook — 안정화, 저우선 후속
 - [ ] **인공지능시대 char 잔여 4건** (oracle 없어 보류, `.candidates.log`): `섬ピ`/`바WWW하게`(L476)/`'WWW'를 다했나`(L556)/`되Mrkm되어`. 교정어 미상 → DeepSeek-OCR 의심페이지 대조 or reading-pass.
 - [ ] (선택) 인공지능시대 para-splits 평가 → 봉합 on 여부 (현재 봉합 off).
@@ -142,6 +178,7 @@ POSSE 변형 **ROSSE**(Raw Outside, Syndicate via own Site, Everywhere). 링크�
 ### 백로그
 - [ ] (선택) 봉합 워크플로 스킬화 — 리스트→봉합→로그검수→환류 루프.
 - [ ] (선택) `scanbook/eval/` — 4엔진 총교정비용 점수표(MinerU vs DeepSeek-OCR vs **PaddleOCR-VL** vs **GLM-OCR**). 벤치는 항상 **물리학강의 5강(PDF p121–137)** 동일구간(= DeepSeek 비교 때 쓴 구간).
+  - ⬆️ **이 항목은 위 "🔬 Upstage 심층 검증" 작업축이 흡수한다** — 거기 1·2번(gold CER + 5엔진 재측정)이 곧 이 점수표의 실체. 별도로 착수하지 말 것.
   - **⚠️ eval 설계 원칙(GLG 2026-06-05)**: 후처리(구조복원+교정+감독형 봉합)는 우리가 결정론적으로 **소유**한다 → 엔진은 **우리가 못 고치는 부분 = raw OCR 글자/레이아웃 충실도**로만 줄세운다. 엔진이 뱉는 markdown 구조 예쁨(heading/표/reading order)은 어차피 mineru2org/assemble에서 재구성하므로 **점수에서 제외**. 메트릭 = 글자 오독(literal/safe_regex 발생수) + 띄어쓰기 붕괴 + 도판 asset(픽셀·bbox) 품질. 목적은 "문서 보면서 custom하게 org 생성".
   - **⚙️ 모델 layer vs 도구 layer 구분 (2026-06-06 측정 결론 — GLG 핵심질문 "MinerU가 모델로서/도구로서 의미있나")**: 엔진은 **2겹**이다. 비교도 2층으로 나눠야 공정.
     - **모델**(페이지→텍스트): MinerU2.5-VLM / PaddleOCR-VL / DeepSeek-OCR / GLM-OCR. 글자정확도 경쟁.
@@ -239,7 +276,13 @@ catalog), `~/repos/3rd/textlint-rule-preset-ja-technical-writing`(preset 조합 
 - **flake.nix nix-ld 자립**(2026-06-04): MinerU 클라(numpy/opencv manylinux wheel)가 `nix-ld.libraries=[libcap]`만인 호스트에서 `libstdc++/libz` 부재로 실패 → flake shellHook이 `MINERU_LD_LIBRARY_PATH = makeLibraryPath [stdenv.cc.cc.lib zlib] + nix-ld path` export, run.sh mineru 명령을 nix develop 안에서 그 변수로 실행. 호스트 nix-ld 설정 무관 자립.
   - **nodejs 추가 완료**(2026-06-04, 한글 텍스트린트 작업축): 같은 flake buildInputs 에 `pkgs.nodejs`. textlint/kiwi-nlp 는 npm 으로 `textlint-ko/` 안에서(nix 엔 런타임만 — 가볍게). kiwi 모델은 `~/repos/3rd/Kiwi/models/cong/base` 외부 주입(리포에 안 담음). 외부 의존 0 유지.
 - **nixpkgs 26.05 이관**(2026-07-28): `python312`/`nodejs_24` 핀 → `python3`/`nodejs`(채널 기본 추종). 실측 Python 3.13.14 / Node v24.18.0 / pandoc 3.7.0.2. 버전 핀을 다시 박지 말 것 — 채널 올릴 때마다 같은 작업 반복된다.
-- **원격 서버**(nixos 담당): MinerU = gpu2i tmux `mineru-vllm` :30000. DeepSeek-OCR = gpu1i tmux `deepseek-ocr` :8000. `run.sh mineru-parse`/`deepseek-parse` 가 터널 자동.
+  - **부작용 1건 — mineru-client venv 파손 → 복구 완료**(2026-07-30). `.venv/bin/python` 이 옛 `python3-3.12.13-env` store path 를 가리켰는데 채널 이관으로 GC → `bad interpreter`. **서버가 떠 있어도 파싱 불가**였다. 원인은 `mineru-client/pyproject.toml` 의 `requires-python = ">=3.10,<3.13"` 상한(옛 flake python312 에 맞춘 값). mineru 는 3.2.1 부터 이미 `<3.14` 지원 → **상한만 `<3.14` 로 풀고 재빌드**, 패키지 버전은 3.2.1 그대로(업그레이드 0).
+  - **재빌드 규칙 — 관리형 CPython 금지**: `UV_PYTHON_DOWNLOADS=never` + `--python "$(command -v python3)"` 로 **nix 채널 파이썬에 붙인다**. uv 가 자기 CPython 을 따로 받으면 26.05 와 이중 저장이라 용량이 샌다(GLG 방침). 검증: `.venv/bin/python → …python3-3.13.14-env`, `import cv2, magika` OK, `판권지.pdf` 4쪽 13.4s 엔드투엔드 통과.
+  - **다른 언어별 venv/node_modules 도 같은 파손 가능성** — 채널 올린 뒤 store path 를 박아둔 산출물은 전부 의심 대상.
+- **원격 서버**(nixos 담당): MinerU = gpu2i tmux **`mineru`** :30000. DeepSeek-OCR = gpu1i tmux `deepseek-ocr` :8000. `run.sh mineru-parse`/`deepseek-parse` 가 터널 자동.
+  - ⚠️ **tmux 세션명은 `mineru-vllm` 아님** — 2026-06-06 범용 런처(`vllm-serve.sh`) 흡수로 **프로파일명 = 세션명**이 됐다. 옛 이름으로 grep 하면 빈 결과 → "서버 죽었네" 오판(2026-07-30 실제 발생).
+  - 기동/정지(operator에서, `~/repos/work/hej-nixos-cluster`): `./scripts/vllm-serve.sh gpu2i mineru {start|status|stop|logs}`. 프로파일 = `scripts/vllm-models/mineru.env`(함정 주석 포함), 구 `serve-mineru.sh` 는 deprecated.
+  - ⚠️ **GPU 16GB 배타적** — 상주 `vllm-api`(Qwen2.5-7B-AWQ :8000)가 15GB를 먹어 런처가 `exit 1` 로 막는다. 스왑 필요: `sudo systemctl stop vllm-api` → mineru start → 작업 후 `stop` + `sudo systemctl start vllm-api`. **sudo 는 패스워드 필요 = GLG 손**(에이전트 불가).
 - **빌드**: `nix develop --command ./run.sh org2epub-build` (zip/unzip 필요, flake에 포함). ltximg는 빌드캐시(gitignore) — RSC-007 시 `rm -rf ltximg *.epub` 후 재빌드.
 
 ---

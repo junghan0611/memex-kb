@@ -64,16 +64,34 @@ The single most important frame: an engine is **two layers**. Compare *within* a
   PaddleOCR **PP-StructureV3**. These give what a pure OCR model cannot.
 - **Model** (page→text only): MinerU2.5-VLM, DeepSeek-OCR, PaddleOCR-VL.
 
-| | MinerU | PP-StructureV3 | DeepSeek-OCR | PaddleOCR-VL | GLM-OCR |
-|---|---|---|---|---|---|
-| layer | tool+model | **tool** | model | model | model |
-| serving | gpu2i:30000 | gpu3i:8118 (PaddleX `/layout-parsing`) | gpu1i:8000 | gpu3i:8000 | gpu3i:8101 |
-| run.sh | `mineru-parse` | `ppstructure-parse` | `deepseek-parse` | `paddleocr-parse` | (재측정: paddleocr 클라 `--url …:8101 --model glm-ocr --prompt "Text Recognition:"`) |
-| image px crop | ✓ 9 | ✓ 9 (크롭10) | bbox만 | ✗ | ✗ |
-| formula LaTeX | ✓ `\mathrm{}` | ✓ **inline까지** | ✓ `H_2` | ✗ 평문 `2H2` | ✗ |
-| structure | content_list | parsing_res_list (동급) | grounding(부분) | ✗ | ✗ |
-| spacing 공백비율 | 정상 | **0.12 붕괴** | 0.21 | 0.23 | 0.22 |
-| 한국어 글자 | mosaic/焮 환각 | 보통(mobile-rec) | 우수 | 우수 | **최악 + 한자환각(磊嚣螽)** |
+| | MinerU | PP-StructureV3 | DeepSeek-OCR | PaddleOCR-VL | GLM-OCR | **Upstage DP** |
+|---|---|---|---|---|---|---|
+| layer | tool+model | **tool** | model | model | model | tool+model (**SaaS**) |
+| serving | gpu2i:30000 | gpu3i:8118 (PaddleX `/layout-parsing`) | gpu1i:8000 | gpu3i:8000 | gpu3i:8101 | **자체 GPU 없음** |
+| run.sh | `mineru-parse` | `ppstructure-parse` | `deepseek-parse` | `paddleocr-parse` | (재측정: paddleocr 클라 `--url …:8101 --model glm-ocr --prompt "Text Recognition:"`) | (미노출, curl) |
+| image px crop | ✓ 9 | ✓ 9 (크롭10) | bbox만 | ✗ | ✗ | ✓ **11 (base64)** |
+| formula LaTeX | ✓ `\mathrm{}` | ✓ **inline까지** | ✓ `H_2` | ✗ 평문 `2H2` | ✗ | ✗ 평문 **+ heading 오분류** |
+| structure | content_list | parsing_res_list (동급) | grounding(부분) | ✗ | ✗ | elements **5/12종**(caption·equation 0) |
+| spacing 공백비율 | 정상 | **0.12 붕괴** | 0.21 | 0.23 | 0.22 | **0.242 정상** |
+| 한국어 글자 | mosaic/焮 환각 | 보통(mobile-rec) | 우수 | 우수 | **최악 + 한자환각(磊嚣螽)** | **최상 · 텍스트층 환각 0**(물리학강의 샘플 한정) / **chart path 환각 확인** |
+
+> ⚠️ **Upstage 열은 1차 스크리닝이다** (2026-07-30). 실측 대조는 **Upstage vs MinerU 뿐**이고 나머지
+> 4열은 2026-06-06 기록 인용(당시 산출물 디렉토리는 비어 있음). **gold(vision oracle) 대조 0회**,
+> 표본 34쪽(2권), CER/WER 없음. 심층 검증 = **GitHub 이슈 #5**(계획·체크리스트 SSOT), 포인터는 `NEXT.md`.
+> 그 전까지 "6엔진 중 1위"는 **상대비교 근거**로만 인용할 것.
+
+**★ Upstage Document Parse (2026-07-30 측정, 6번째 엔진, 관리형 API)** — `POST /v1/document-digitization`,
+`model=document-parse`(→`document-parse-260128`), `ocr=force`, `base64_encoding=["figure"]`. 17p **12.4s**
+(0.73s/p). 키 = `~/.env.local`의 `UPSTAGE_API_KEY`(출력 금지). **글자 층 6엔진 중 1위**: 다섯 엔진이
+*서로 다르게* 깨먹던 고유명사(톰슨·돌턴·슈뢰딩거·찐빵)를 **전부 맞힌 유일 엔진**, MinerU 한자환각
+4건 자리 정확(`꺌岁月을`→`꿰뚫을`). **단 구조 층은 base 불가**: ① 수식 평문화 + `heading1` 오분류
+(문서상 `equation` 카테고리는 LaTeX 지원 → 기능부재 아닌 **분류 실패**), ② 2단 캡션이 본문 문장
+**한가운데를 가름**(`과학의 아버`+`그림 5-1: 돌턴`+`지라고`) — `caption` 카테고리 0건, ③ **인쇄 줄바꿈
+그대로 보존**(432줄 중 306 지점 어절 분할, `데카르\n트는` → grep 오판 유발; 단 한국어는 붙임표가 없어
+공백 없이 join 하면 대개 복원 = 후처리 흡수 가능), ④ heading1 오탐 7건 중 5건(본문조각·수식·캡션).
+`mode=enhanced`는 **구조 개선 0**(카테고리·오탐 동일), 대신 figure에 **영문 VLM 설명** 부착(텍스트
+12.8k→23.5k) — 정본 금지, 검색색인/alt 용도. 원자료 = `scanpdf/work/물리학강의/upstage/README.md`.
+입력 포맷에 **HWP/HWPX 포함**(미측정, 후속 대상).
 
 **Measured on 물리학강의 5강 (PDF p121–137).** Proper-noun failures **DON'T overlap** —
 this is the key: 톰슨 = MinerU `톈슨`(+mosaic환각)·Paddle 4변형·PP `통슨`·GLM `통속` / **DeepSeek ✓**;
@@ -95,9 +113,18 @@ this is the key: 톰슨 = MinerU `톈슨`(+mosaic환각)·Paddle 4변형·PP `�
   둘 다 회피하는 단일 최강. **MinerU = 빠른 대안 base**(asset+content_list, 속도 ↑; 텍스트는
   oracle 교정). PP-StructureV3(mobile-rec)는 **kime 띄어쓰기 복원 전제**라 후순위
   (scanbook ↔ textlint-ko 연결점).
-- **Body char oracle = DeepSeek** (이 구간 garble 최소) 또는 PaddleOCR-VL(환각 없고 본문 깨끗).
-  MinerU 깨진 span만 `deepseek-parse --pages N` → 정확 토큰 → `corrections/<book>.json`.
-  Proven: Guq은→굽은, mosaic→톰슨, 짧빵→찐빵.
+- **Body char oracle = Upstage `ocr`** (2026-07-30 갱신, **잠정 — 이슈 #5 gold 검증 전**). 역할 분리:
+  - **`ocr`**($0.0015/p) = **저가 글자 oracle + word confidence 기반 후보 생성.** DP와 글자 결과
+    사실상 동일(유사도 0.979)한데 1/6.7 가격, 구조는 없음. confidence 최저값이 자기 이물질
+    (`볼Bal츠만`·`�`)을 지목 → candidate 자동생성 축. **이 자리의 1순위.**
+  - **`document-parse`**($0.01/p) = **산문 문서의 구조+텍스트**(heading·각주·목록·표). 산문책
+    단독 base 후보. 수식·2단 도판 책에서는 구조 base 불가.
+  - **`chart_recognition=false` 필수** — 도식/개념도 문서에서 **없는 수치를 생성**(칸트 도식
+    → `0.08/0.28/0.47`). 기본 true이고 `mode=enhanced`에서는 강제 활성이라 enhanced 자체를 피한다.
+  - 유료 API이므로 책 전체가 아니라 **깨진 span 의 해당 쪽만** 뽑아 호출
+    (`mutool merge -o span.pdf <book>.pdf N-M`). 대안(무료·로컬) = DeepSeek(고유명사 강, 단 돌턴✗)
+    또는 PaddleOCR-VL(환각 없고 본문 깨끗).
+  → 정확 토큰 → `corrections/<book>.json`. Proven: Guq은→굽은, mosaic→톰슨, 짧빵→찐빵, 꺌岁月→꿰뚫.
 - **고유명사 = multi-engine voting.** 엔진 불일치 토큰 = 오독 의심점 → 교정후보 자동생성
   (차기 `engine_vote.py`). 한 엔진의 *반복* 오독은 못 잡지만(예: 시간펼침→시간필침 ×14),
   엔진 *불일치* 는 그 자체로 신호. consistency≠accuracy 의 역(逆)활용.

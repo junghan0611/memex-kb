@@ -9,7 +9,11 @@ MinerU VLM 파싱의 **얇은 클라이언트**. 추론은 gpu2i RTX 5080의 vLL
 thinkpad (이 클라이언트) ──SSH터널──> gpu2i:30000 (vLLM 0.11.2, MinerU2.5-Pro-2605-1.2B, served-name: mineru)
 ```
 
-서버는 nixos 담당이 gpu2i tmux(`mineru-vllm`)로 띄운다. 순수 vLLM(미네루 로직 0).
+서버는 nixos 담당이 gpu2i tmux(**`mineru`**)로 띄운다. 순수 vLLM(미네루 로직 0).
+
+> ⚠️ 세션명은 `mineru-vllm` 이 아니다 — 2026-06-06 `vllm-serve.sh` 범용 런처 흡수로 **프로파일명 = 세션명**.
+> 기동: `~/repos/work/hej-nixos-cluster` 에서 `./scripts/vllm-serve.sh gpu2i mineru start`.
+> GPU 16GB 배타적이라 상주 `vllm-api`(:8000)를 먼저 `sudo systemctl stop` 해야 한다(패스워드 필요 = 사람 손).
 
 ## 설치 — 한 방
 

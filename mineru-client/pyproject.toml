@@ -2,7 +2,11 @@
 name = "memex-mineru-client"
 version = "0.1.0"
 description = "MinerU vlm-http-client (remote vLLM on gpu2i). No local GPU/torch."
-requires-python = ">=3.10,<3.13"
+# ⚠️ 상한은 nix 채널을 따라간다 — 버전 핀 금지(NEXT.md "인프라 메모").
+# 구 `<3.13` 은 옛 flake `python312` 에 맞춘 값이었고, nixpkgs 26.05 이관(python3=3.13.14)으로
+# .venv 인터프리터 심볼릭링크가 GC 되어 깨졌다(2026-07-30). mineru 자체는 3.2.1 부터 `<3.14` 지원.
+# uv 가 관리형 CPython 을 따로 받지 않도록 `UV_PYTHON_DOWNLOADS=never` 로 동기화한다.
+requires-python = ">=3.10,<3.14"
 dependencies = [
     "mineru",
     "opencv-python-headless",   # 헤드리스 NixOS: full opencv는 libxcb 부재로 크래시

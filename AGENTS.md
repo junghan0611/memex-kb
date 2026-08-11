@@ -151,6 +151,23 @@ does not cover the remote server orchestration or the correction judgment.
 
 Together: scanned PDF → Org → EPUB. `epub2org/` is the reverse (EPUB → Org, conventions in `PATTERNS.org`).
 
+#### Book translation (booktrans) — **read `PHILOSOPHY.md` "두 번째 기둥" first**
+
+Foreign-language works → Korean the maintainer can actually read, translated by his own agents
+against his own glossary. This is the last link in the same chain as `scanbook` / `paper2org` /
+`epub2org`: making unreadable things readable.
+
+The stance is not decoration — it decides quality calls. **Term consistency outranks sentence
+polish**, the author's voice must not be flattened into smooth Korean, and the pass/fail test is
+listening to a real chapter, not `epubcheck`. Source stays beside the translation so the original
+is always reachable. Legally obtained sources, personal reading only, never distributed —
+same copyright rule as `scanpdf/`.
+
+Implementation is **upstream-first**: use `~/repos/3rd/translate-book` (`deusyu/translate-book`)
+unmodified, artifacts under its `tests/.artifacts/` only. Do **not** rebuild a
+vendor/capture/inventory framework inside memex-kb — that was tried and discarded on 2026-08-10.
+Live handoff state: `NEXT--feat_booktrans.md`.
+
 #### `orgadoc2odt/`
 Org + AsciiDoc merged-cell tables → ODT. This is the entry point for Korean HWP deliverables:
 **Org → ODT → DOC → open in 한글 → save as HWP**.
@@ -423,6 +440,7 @@ Update all relevant surfaces before finishing:
 ## 10. Important files to read before larger edits
 
 - `README.md`
+- `PHILOSOPHY.md` — why this repo exists. Read the booktrans section before any translation work.
 - `BACKENDS.md`
 - `DEVELOPMENT.md`
 - `DENOTE-RULES.md`

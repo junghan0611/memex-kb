@@ -15,6 +15,9 @@
 
 # NOW
 
+- **Why**: `PHILOSOPHY.md` "두 번째 기둥 — 위대한 저작을 그 숨결로 읽기". 번역 품질 판단이
+  흔들리면 거기로 돌아온다. 요지: **용어 일관성 > 문장미**, 숨결을 표백하지 않는다,
+  합격은 epubcheck 아니라 실제 읽기/듣기.
 - **Stem**: upstream 번역도구를 고치지 않고 Chapter 1을 한국어로 끝까지 옮겨 실제로 듣는다.
 - **Current**: memex-kb에는 booktrans 코드가 없고, upstream repo도 코드 변경 0. 이 branch는 handoff만 추적한다.
 - **Next**:
@@ -24,6 +27,7 @@
      남은 Chapter 1은 `chunk0007`, `chunk0009`–`chunk0014` 총 7개라 `1 → 2 → 4`로 닫힌다.
 - **Blocker**: 없음. 다음 세션에서 pilot을 시작하면 된다.
 - **Read**:
+  - **관점(먼저)**: `PHILOSOPHY.md` 두 번째 기둥 + `AGENTS.md` booktrans 절
   - upstream 계약: `~/repos/3rd/translate-book/AGENTS.md`, `SKILL.md`
   - 작은 baseline receipt: `~/repos/3rd/translate-book/tests/.artifacts/vendor0-ko/VENDOR0.md`
   - 실제 책 receipt: `~/repos/3rd/translate-book/tests/.artifacts/why-machines-vendor1/VENDOR1.md`
@@ -42,6 +46,9 @@
 
 # RECENT
 
+- [2026-08-11] **왜 이걸 하는가를 `PHILOSOPHY.md`에 영속화**. 번역축은 스킬 호출이 아니라
+  리포의 두 번째 기둥 — 위대한 저작을 내 용어집으로, 내 에이전트를 통해 읽는다.
+  용어집=SSOT(책을 건너 누적), 원문 chunk 나란히 보존, 개인 독서용 비배포.
 - [2026-08-10] 과도한 `a2edcbc`를 버리고 branch를 `099ae35`로 reset. `booktrans/`와 `out/booktrans/` 삭제.
 - [2026-08-10] upstream CI-equivalent **226 PASS**. Vendor-0에서 실제 한글 chunk·glossary/meta·EPUB 경로 확인.
 - [2026-08-10] 실제 EPUB SHA-256 `2c3bddb70d918a349bcb7f544f98dc85fb4a4e5aa51dd794855868bcf1169d2e` 불변.

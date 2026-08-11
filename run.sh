@@ -819,6 +819,24 @@ cmd_env_check() {
     echo -e "\n${BOLD}[Threads API]${NC}"
     if [[ -f "${CONFIG_DIR}/.env" ]] && grep -q "THREADS_ACCESS_TOKEN=." "${CONFIG_DIR}/.env" 2>/dev/null; then
         success "THREADS_ACCESS_TOKEN: 설정됨"
+
+        # 만료 예정일 (refresh_threads_token.py가 갱신할 때마다 기록)
+        local expires
+        expires=$(grep -E "^THREADS_TOKEN_EXPIRES=" "${CONFIG_DIR}/.env" 2>/dev/null \
+                  | head -1 | cut -d= -f2- | tr -d "\"'" | tr -d '[:space:]')
+        if [[ -n "${expires}" ]] && date -d "${expires}" +%s >/dev/null 2>&1; then
+            local days
+            days=$(( ( $(date -d "${expires}" +%s) - $(date -d "$(date +%F)" +%s) ) / 86400 ))
+            if (( days < 0 )); then
+                error "토큰 만료일 경과: ${expires} ($(( -days ))일 지남) → run.sh threads-token-refresh"
+            elif (( days <= 14 )); then
+                warn "토큰 만료 임박: ${expires} (${days}일 남음) → run.sh threads-token-refresh"
+            else
+                success "토큰 만료 예정: ${expires} (${days}일 남음)"
+            fi
+        else
+            warn "THREADS_TOKEN_EXPIRES: 미기록 (한 번 갱신하면 기록됨)"
+        fi
     else
         warn "THREADS_ACCESS_TOKEN: 미설정"
     fi

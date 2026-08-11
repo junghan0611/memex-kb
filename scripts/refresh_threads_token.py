@@ -44,6 +44,9 @@ load_dotenv(ENV_PATH)
 THREADS_API_BASE = "https://graph.threads.net"
 THREADS_OAUTH_URL = "https://threads.net/oauth/authorize"
 
+# 장기 토큰 기본 수명 (60일). API가 expires_in을 안 주면 이 값으로 만료일을 기록한다.
+DEFAULT_TOKEN_TTL = 60 * 86400
+
 # 환경변수
 APP_ID = os.getenv('THREADS_APP_ID')
 APP_SECRET = os.getenv('THREADS_APP_SECRET')
@@ -188,12 +191,12 @@ def exchange_for_long_lived_token(short_token: str) -> dict:
         raise Exception(f"장기 토큰 교환 실패: {response.text}")
 
 
-def run_oauth_flow() -> str:
+def run_oauth_flow() -> dict:
     """
     전체 OAuth 플로우 실행
 
     Returns:
-        장기 액세스 토큰
+        장기 토큰 정보 {'access_token': ..., 'expires_in': ...}
     """
     if not APP_ID or not APP_SECRET:
         print("❌ THREADS_APP_ID와 THREADS_APP_SECRET이 설정되지 않았습니다.")
@@ -250,18 +253,69 @@ def run_oauth_flow() -> str:
     # 장기 토큰으로 교환
     long_token_data = exchange_for_long_lived_token(short_token)
 
-    return long_token_data['access_token']
+    return long_token_data
 
 
-def save_token(token: str):
+def save_token(token: str, expires_in: int = None):
     """
     토큰을 .env 파일에 저장
 
     Args:
         token: 저장할 토큰
+        expires_in: 만료까지 남은 초. 주어지면 THREADS_TOKEN_EXPIRES(YYYY-MM-DD)를
+                    함께 갱신한다. 없으면 장기 토큰 기본값(60일)으로 계산한다.
     """
     set_key(str(ENV_PATH), 'THREADS_ACCESS_TOKEN', token)
+
+    seconds = expires_in if expires_in else DEFAULT_TOKEN_TTL
+    expires_date = (datetime.now() + timedelta(seconds=seconds)).strftime('%Y-%m-%d')
+    set_key(str(ENV_PATH), 'THREADS_TOKEN_EXPIRES', expires_date)
+    set_key(str(ENV_PATH), 'THREADS_TOKEN_REFRESHED', datetime.now().strftime('%Y-%m-%d'))
+
     print(f"\n💾 토큰이 {ENV_PATH}에 저장되었습니다.")
+    print(f"📅 만료 예정일: {expires_date} ({seconds // 86400}일 후)")
+    print("   ※ 구글 캘린더 반복 알림을 이 날짜 기준으로 맞춰두면 된다.")
+
+
+def days_until_expiry() -> int:
+    """
+    THREADS_TOKEN_EXPIRES 기준 남은 일수
+
+    Returns:
+        남은 일수. 기록이 없거나 형식이 깨졌으면 None
+    """
+    raw = os.getenv('THREADS_TOKEN_EXPIRES')
+    if not raw:
+        return None
+
+    try:
+        expires = datetime.strptime(raw.strip(), '%Y-%m-%d')
+    except ValueError:
+        return None
+
+    return (expires.date() - datetime.now().date()).days
+
+
+def print_expiry_status():
+    """만료 기록이 있으면 남은 일수를 출력"""
+    expires = os.getenv('THREADS_TOKEN_EXPIRES', '').strip()
+    remaining = days_until_expiry()
+
+    if remaining is None:
+        if expires:
+            print(f"⚠️  만료일 형식 오류: THREADS_TOKEN_EXPIRES='{expires}' (YYYY-MM-DD 필요)")
+        else:
+            print("ℹ️  만료일 기록 없음 (THREADS_TOKEN_EXPIRES) — 한 번 갱신하면 기록된다.")
+        return
+
+    if remaining < 0:
+        print(f"❌ 만료일 경과: {expires} ({-remaining}일 지남)")
+    elif remaining <= 7:
+        print(f"🚨 만료 임박: {expires} ({remaining}일 남음) — 지금 갱신하라")
+    elif remaining <= 14:
+        print(f"⚠️  만료 임박: {expires} ({remaining}일 남음)")
+    else:
+        print(f"📅 만료 예정: {expires} ({remaining}일 남음)")
 
 
 def test_token(token: str) -> bool:
@@ -333,9 +387,11 @@ def main():
 
 === 환경변수 (config/.env) ===
 
-  THREADS_APP_ID          필수 - Threads App ID
-  THREADS_APP_SECRET      필수 - Threads App Secret
-  THREADS_ACCESS_TOKEN    현재 토큰 (자동 업데이트)
+  THREADS_APP_ID            필수 - Threads App ID
+  THREADS_APP_SECRET        필수 - Threads App Secret
+  THREADS_ACCESS_TOKEN      현재 토큰 (자동 업데이트)
+  THREADS_TOKEN_EXPIRES     만료 예정일 YYYY-MM-DD (자동 기록, --test에서 남은 일수 출력)
+  THREADS_TOKEN_REFRESHED   마지막 갱신일 YYYY-MM-DD (자동 기록)
 
 ※ User Token Generator는 테스터 계정 문제로 작동 안 함
 ※ Graph API Explorer + threads.net API 조합이 핵심!
@@ -357,7 +413,7 @@ def main():
     parser.add_argument(
         '--test', '-t',
         action='store_true',
-        help='현재 토큰 유효성 테스트만 수행'
+        help='현재 토큰 유효성 + 만료까지 남은 일수만 확인'
     )
 
     args = parser.parse_args()
@@ -372,10 +428,9 @@ def main():
             print("❌ THREADS_ACCESS_TOKEN이 설정되지 않았습니다.")
             sys.exit(1)
 
-        if test_token(CURRENT_TOKEN):
-            sys.exit(0)
-        else:
-            sys.exit(1)
+        valid = test_token(CURRENT_TOKEN)
+        print_expiry_status()
+        sys.exit(0 if valid else 1)
 
     # 단기 토큰 → 장기 토큰 교환 모드 (★ 권장)
     if args.exchange:
@@ -389,15 +444,8 @@ def main():
 
         try:
             result = exchange_for_long_lived_token(args.exchange)
-            new_token = result['access_token']
-            expires_in = result.get('expires_in', 0)
-            expires_days = expires_in // 86400
-            expires_date = datetime.now() + timedelta(seconds=expires_in)
-
-            print(f"\n📅 만료일: {expires_date.strftime('%Y-%m-%d')} ({expires_days}일 후)")
-
-            save_token(new_token)
-            test_token(new_token)
+            save_token(result['access_token'], result.get('expires_in'))
+            test_token(result['access_token'])
             print("\n🎉 완료!")
             sys.exit(0)
         except Exception as e:
@@ -409,9 +457,9 @@ def main():
     # 새 토큰 발급 모드
     if args.new:
         print("\n📋 새 토큰 발급 모드")
-        new_token = run_oauth_flow()
-        save_token(new_token)
-        test_token(new_token)
+        result = run_oauth_flow()
+        save_token(result['access_token'], result.get('expires_in'))
+        test_token(result['access_token'])
         print("\n🎉 완료!")
         sys.exit(0)
 
@@ -421,11 +469,11 @@ def main():
 
         # 먼저 토큰 테스트
         if test_token(CURRENT_TOKEN):
+            print_expiry_status()
             # 토큰 유효 → 갱신 시도
             try:
                 result = refresh_long_lived_token(CURRENT_TOKEN)
-                new_token = result['access_token']
-                save_token(new_token)
+                save_token(result['access_token'], result.get('expires_in'))
                 print("\n🎉 토큰 갱신 완료!")
                 sys.exit(0)
             except Exception as e:
@@ -437,9 +485,9 @@ def main():
         print("\n📋 토큰이 없습니다. 새 토큰을 발급합니다...")
 
     # OAuth 플로우로 새 토큰 발급
-    new_token = run_oauth_flow()
-    save_token(new_token)
-    test_token(new_token)
+    result = run_oauth_flow()
+    save_token(result['access_token'], result.get('expires_in'))
+    test_token(result['access_token'])
     print("\n🎉 완료!")
 
 

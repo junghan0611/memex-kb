@@ -119,9 +119,19 @@ GOOGLE_DRIVE_FOLDER_ID=your_folder_id
 
 # Threads API (60일마다 갱신 필요)
 THREADS_ACCESS_TOKEN=your_access_token
+THREADS_TOKEN_EXPIRES=2026-10-10    # 자동 기록 (갱신 시 재계산)
+THREADS_TOKEN_REFRESHED=2026-08-11  # 자동 기록
 USER_ID=your_user_id
 APP_ID=your_app_id
 APP_SECRET=your_app_secret
+```
+
+`THREADS_TOKEN_EXPIRES` / `THREADS_TOKEN_REFRESHED`는 시크릿이 아니라 만료 추적용 날짜다.
+`refresh_threads_token.py`가 토큰을 저장할 때마다 자동으로 다시 쓴다. 남은 일수는 다음으로 확인:
+
+```bash
+./run.sh env-check              # 남은 일수 + 14일 이내면 경고
+./run.sh threads-token-test     # 토큰 유효성 + 남은 일수
 ```
 
 ### 권장사항

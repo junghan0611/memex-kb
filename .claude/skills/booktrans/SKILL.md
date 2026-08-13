@@ -1,6 +1,6 @@
 ---
 name: booktrans
-description: "PM/coordinator skill for translating a foreign-language book into Korean for GLG's personal reading and audiobook listening. Discuss the book and division of work with GLG, then sequentially assign exactly one bounded chunk to one fresh Sonnet at a time, review it, close the upstream glossary/meta barrier, and only then open the next worker. Uses ~/repos/3rd/translate-book unchanged; preserves voice and source surface forms; finishes the EPUB before ontology or platform work. Triggers: booktrans, 책 번역, 영어책 번역, 번역 EPUB, 오디오북 번역, translate-book, Why Machines Learn."
+description: "PM/coordinator skill for translating a foreign-language book into Korean for GLG's personal reading and audiobook listening. Discuss the book and division of work with GLG, calibrate with one Sonnet on one chunk, review quality and context cost, close the upstream glossary/meta barrier, then decide the next bounded assignment; scale only after evidence and GLG approval. Uses ~/repos/3rd/translate-book unchanged; preserves voice and source surface forms; finishes the EPUB before ontology or platform work. Triggers: booktrans, 책 번역, 영어책 번역, 번역 EPUB, 오디오북 번역, translate-book, Why Machines Learn."
 user_invocable: true
 ---
 
@@ -14,7 +14,7 @@ This is a **PM/coordinator skill**, not a translation engine and not a bulk-agen
 agent reading it may be Opus, GPT, or another capable model. That agent owns the conversation with
 GLG, the work plan, sequential dispatch, review, glossary/meta barriers, and final EPUB acceptance.
 It delegates conversion, chunking, glossary/meta feedback, resume state, and EPUB build to upstream,
-and delegates each bounded translation unit to a fresh Sonnet.
+and delegates bounded translation assignments to Sonnet workers under a measured PM loop.
 
 ## Read order
 
@@ -105,52 +105,58 @@ Pass this intent through upstream's `custom_instructions` slot:
 Natural Korean is welcome, but smoothness must not erase the author. Never omit content to make a
 sentence simpler.
 
-## Sequential dispatch — one worker, one chunk, one closed barrier
+## Calibration-first dispatch — learn the unit before scaling it
 
-Upstream's default parallel batches are **not** GLG's operating mode. Here, batch size is always 1.
-Never launch ten translators because that appears faster. Parallel agents translate against stale
-shared terminology, make review pile up, and move the integration burden onto the next context.
-
-The PM repeats this loop:
+Do not assume the right allocation before observing this book. Start in **calibration mode**:
 
 ```text
-inspect plan and choose exactly one chunk
+inspect plan and choose exactly one representative chunk
 → open one fresh visible Sonnet
-→ give only that chunk, the current term table, neighbor context, and this book's policy
-→ Sonnet writes exactly one output_chunkNNNN.md and one honest .meta.json
-→ Sonnet reports completion to the PM
-→ PM compares source/output and checks structure, meaning, terminology, voice, and boundary continuity
+→ give that chunk, the current term table, neighbor context, and this book's policy
+→ Sonnet writes one output_chunkNNNN.md and one honest .meta.json
+→ Sonnet immediately reports completion and its current context usage
+→ PM compares source/output: structure, meaning, terminology, voice, and boundary continuity
 → if PASS, record the output against the glossary actually used
 → prepare-merge → resolve evidence-backed findings → apply-merge
-→ inspect the changed glossary and selective-retranslation plan
-→ only now open a new fresh Sonnet for the next chunk
+→ inspect the changed glossary, selective-retranslation plan, output quality, and worker context cost
+→ PM and GLG decide the next assignment
 ```
 
-There is never more than one active translation worker. Do not dispatch the next chunk while the
-current output is unreviewed, unrecorded, or has unmerged meta. A failed chunk is corrected or
-reassigned before advancing. Human decisions may be shown compactly on one screen, but the
-machine barrier still closes after every chunk.
+During calibration there is **one active translation worker** and no parallel dispatch. Do not send
+the next chunk while the current output is unreviewed, unrecorded, or has unmerged meta. A failed
+chunk is corrected or reassigned before advancing.
 
-Each Sonnet is a bounded translator, not a long-running book owner. Its assignment is **exactly one
-upstream source chunk**. When another chunk is ready, open another fresh Sonnet rather than extending
-the previous worker's job.
+One calibration assignment is one chunk, but that does not mean every Sonnet must be discarded
+after one chunk forever. After the barrier closes, the PM may give the **same** Sonnet one more
+chunk when its observed context is below 300k tokens and the next assignment is expected to remain
+below 400k (40% of a 1M context). If either condition is uncertain, open a fresh Sonnet. Never make
+a worker carry the whole book or continue merely to avoid opening a replacement.
+
+After enough representative chunks establish real quality, context cost, and review load, GLG and
+the PM may explicitly leave calibration mode and choose larger bounded assignments or a controlled
+parallel wave. Parallelism is a later measured decision, not a default prohibition and not a shortcut
+the PM may take unilaterally. Before enabling it, define non-overlapping chunk ranges, one glossary
+snapshot per wave, completion/report routing, and the review/merge barrier. Until GLG makes that
+phase change explicit, remain sequential.
 
 Keep worker prompts narrow. A translator does not need the whole issue history, the entire book, or
 ontology plans. It needs the exact source/output paths, current generated term table, read-only
-neighbor excerpt, custom instructions, meta schema, and the requirement to touch no other chunk.
-Every dispatch must state:
+neighbor excerpt, custom instructions, meta schema, and the requirement to touch no unassigned
+chunk. Every calibration dispatch must state:
 
 ```text
 assignment: chunkNNNN only
 read: chunkNNNN + supplied term table + supplied neighbor excerpt
 write: output_chunkNNNN.md + output_chunkNNNN.meta.json only
 policy: preserve meaning, structure, voice, and source surface form
-forbidden: other chunks, glossary mutation, run_state/merge/build, repo code/docs, commit/push
-return: paths written + concise uncertainties/conflicts; then stop and wait
+forbidden: unassigned chunks, glossary mutation, run_state/merge/build, repo code/docs, commit/push
+report: immediately send paths, checks, uncertainties, and current context usage to the named PM;
+        print the same completion report in the visible conversation, then stop and wait
 ```
 
 The PM, never the chunk worker, mutates the glossary, records run state, resolves merge decisions,
-and chooses the next assignment.
+and chooses whether the next assignment goes to the same worker, a fresh worker, or—only after the
+explicit phase change—a measured wave.
 
 Use upstream state deliberately: when passthrough `output_chunk*.md` files exist without records,
 plan with `--retranslate-untracked` so byte-identical English placeholders are not accepted as

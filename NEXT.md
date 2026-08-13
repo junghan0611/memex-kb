@@ -7,7 +7,30 @@ per-book `mineru/README.md` 로 옮긴다. 이 파일은 "지금 다음 한 걸�
 
 ---
 
-## NOW
+# RAIL — 현재 좌표
+
+- [x] **1. booktrans upstream-first 경계 확정** — 자체 프레임워크 폐기, PM 스킬을 main에 고정
+- [x] **2. 번역 단위 1차 calibration** — fresh Sonnet이 `chunk0010` 번역, PM 기계·의미 검수 PASS
+- [ ] **3. calibration barrier 닫기** ← **CURRENT: McCulloch 역어 결정 → record/meta merge → 다음 1-chunk 실측**
+- [ ] **4. Chapter 1 EPUB/TTS 실청취** — 실측 뒤에만 작업 단위 확대·병렬 여부 결정
+
+현재 좌표: 운영 계약 완료 → `chunk0010` 품질 PASS/context 11% → glossary barrier 미완료 → 오늘 중단.
+
+# NOW — booktrans calibration detour (issue #6)
+
+- **Stem**: scanbook 엔진 판정(이슈 #5)은 아래 복귀 좌표에 보존. GLG가 booktrans 실물을 먼저 듣기 위해 잠시 detour.
+- **Current**: 실제 번역은 `chunk0008`–`0010` 3개. `chunk0010`은 39줄/18문단, 이미지 5·blockquote 6,
+  팽창률 1.22x, 누락·환각·의미역전 없음. worker `20260813T173601-b78e8e` context 11%에서 종료.
+- **Next**: (1) `McCulloch`을 기존 GLG 어휘 `맥컬록`으로 맞출지 결정 → (2) 필요 시 같은 output/meta만 교정
+  → (3) PM이 `record → prepare-merge → apply-merge` → (4) fresh Sonnet에 `chunk0011` 하나를 맡겨 context 증가량 재측정.
+- **Scale rule**: calibration 중 한 worker/한 chunk부터 시작하고 검수·barrier 뒤 context <300k이며 다음 완료가
+  400k 미만일 때만 같은 worker에 다음 chunk. 병렬은 대표 실측이 쌓인 뒤 GLG가 명시적으로 phase 전환할 때만.
+- **Blocker**: 없음. GLG가 퇴근을 위해 오늘 작업을 닫음.
+- **Read**: `.claude/skills/booktrans/SKILL.md` → 이슈 #6 → upstream `SKILL.md`. 산출물은 upstream ignored temp.
+- **Do not touch**: 영어 passthrough 204개를 완료로 record 금지(`--retranslate-untracked`). upstream 수정/fork,
+  `git clean`, 병렬 선개시, 번역 본문 PUBLIC commit 금지.
+
+## RETURN — scanbook 엔진 판정
 
 - **Stem**: scanbook 엔진 판정 — Upstage 를 채택할지(이슈 #5). 단 2026-07-30 에 드러났듯
   **엔진보다 계측기가 먼저**였다.

@@ -16,6 +16,12 @@ Usage:
     # 전체 크롤링 → Denote org + 이미지
     python3 naver_blog_crawler.py crawl saiculture --output-dir ./output
 
+    # 이어받기: 글 목록을 새로 받아 새 글만 추가 (기존 글은 #+source: 인덱스로 스킵)
+    python3 naver_blog_crawler.py crawl saiculture --output-dir ./output --refresh-list
+
+    # 원문 대조용: 이미지 없이 org만
+    python3 naver_blog_crawler.py crawl saiculture --output-dir ./raw --skip-images
+
     # 소규모 테스트
     python3 naver_blog_crawler.py crawl saiculture --output-dir ./output --limit 10
 
@@ -137,6 +143,71 @@ def build_category_map(blog_id: str, posts: list[dict], delay: float = 0.3) -> d
 
 # ── 본문 추출 (텍스트 + 이미지 순서 보존) ──────────────────────
 
+def _slice_div(html: str, start: int) -> str:
+    """start(=`<div` 위치)부터 짝이 맞는 `</div>`까지 잘라낸다."""
+    depth = 0
+    pos = start
+    for m in re.finditer(r"<(/?)div\b", html[start:]):
+        depth += -1 if m.group(1) else 1
+        if depth == 0:
+            return html[start:start + m.end()]
+        pos = start + m.end()
+    return html[start:pos]
+
+
+def fetch_legacy_body(blog_id: str, log_no: str) -> tuple[list, list]:
+    """구버전(스마트에디터 이전) 글 본문을 데스크톱 PostView에서 추출.
+
+    2012~2014년 글은 모바일 페이지에 본문이 실려 오지 않아 se-component 파서가
+    빈 문서를 만든다. 이 경로는 `post-view<logNo>` 컨테이너를 직접 읽어
+    <p> 텍스트와 <img>를 등장 순서대로 복원한다.
+    """
+    url = (f"https://blog.naver.com/PostView.naver"
+           f"?blogId={blog_id}&logNo={log_no}")
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0",
+        "Referer": "https://m.blog.naver.com/",
+    })
+    html = urllib.request.urlopen(req, timeout=15).read().decode("utf-8", "replace")
+
+    marker = f'id="post-view{log_no}"'
+    i = html.find(marker)
+    if i < 0:
+        return [], []
+    start = html.rfind("<div", 0, i)
+    body = _slice_div(html, start if start >= 0 else i)
+
+    content_blocks = []
+    images = []
+    # <p>…</p> 와 <img …> 를 문서 순서대로 순회
+    for m in re.finditer(r"<p\b[^>]*>(.*?)</p>|<img\b[^>]*>", body, re.DOTALL | re.I):
+        chunk = m.group(0)
+        if chunk.lower().startswith("<img"):
+            src_m = re.search(r'(?:data-lazy-src|src)="([^"]+)"', chunk)
+            if not src_m:
+                continue
+            img_url = src_m.group(1)
+            if "pstatic" not in img_url and "naver.net" not in img_url:
+                continue  # 아이콘·이모티콘 등 본문 외 이미지
+            img_url = re.sub(r"\?type=\w+", "?type=w966", img_url)
+            images.append({"url": img_url, "caption": "", "index": len(images)})
+            content_blocks.append(("image", len(images) - 1))
+        else:
+            # 문단 안 이미지도 순서를 지켜 꺼낸다
+            for sub in re.finditer(r'<img\b[^>]*>', m.group(1), re.I):
+                src_m = re.search(r'(?:data-lazy-src|src)="([^"]+)"', sub.group(0))
+                if src_m and ("pstatic" in src_m.group(1) or "naver.net" in src_m.group(1)):
+                    u = re.sub(r"\?type=\w+", "?type=w966", src_m.group(1))
+                    images.append({"url": u, "caption": "", "index": len(images)})
+                    content_blocks.append(("image", len(images) - 1))
+            text = _clean_html(m.group(1))
+            # `<p>&nbsp;</p>` 는 디코딩되면 공백 한 칸만 남는다. 빈 문단으로 본다.
+            if text.strip():
+                content_blocks.append(("text", text))
+
+    return content_blocks, images
+
+
 def extract_post(blog_id: str, log_no: str) -> dict:
     """모바일 URL에서 본문 추출. 텍스트/이미지 순서 보존."""
     url = f"https://m.blog.naver.com/{blog_id}/{log_no}"
@@ -191,10 +262,9 @@ def extract_post(blog_id: str, log_no: str) -> dict:
             paras = re.findall(
                 r'class="se-text-paragraph[^"]*"[^>]*>(.*?)</p>', block, re.DOTALL
             )
-            text = "\n\n".join(
-                _clean_html(p) for p in paras if _clean_html(p)
-            )
-            if text:
+            cleaned = [_clean_html(p) for p in paras]
+            text = "\n\n".join(t for t in cleaned if t.strip())
+            if text.strip():
                 content_blocks.append(("text", text))
 
         elif ctype == "image":
@@ -228,7 +298,7 @@ def extract_post(blog_id: str, log_no: str) -> dict:
             )
         for p in old_paras:
             text = _clean_html(p)
-            if text:
+            if text.strip():
                 content_blocks.append(("text", text))
 
         # 구버전 이미지
@@ -237,12 +307,24 @@ def extract_post(blog_id: str, log_no: str) -> dict:
             images.append({"url": img_m.group(1), "caption": "", "index": img_idx})
             content_blocks.append(("image", img_idx))
 
+    # 모바일 페이지에 본문이 없는 2012~2014년 글 → 데스크톱 PostView로 재시도
+    if not content_blocks:
+        try:
+            content_blocks, images = fetch_legacy_body(blog_id, log_no)
+        except Exception as e:
+            print(f"  ⚠️ {log_no}: 구버전 본문 추출 실패 ({e})", file=sys.stderr)
+
     # 해시태그 수집
+    # URL 안의 fragment(`...?idxno=1#x3D;...`)를 태그로 오인하지 않도록
+    # 링크를 먼저 지우고, 줄 시작이나 공백 뒤의 `#`만 태그로 본다.
     hashtags = set()
     for btype, bdata in content_blocks:
         if btype == "text":
-            for tag in re.findall(r"#(\S+)", bdata):
-                hashtags.add(tag)
+            text = re.sub(r"https?://\S+", " ", bdata)
+            for tag in re.findall(r"(?:^|\s)#([^\s#]+)", text):
+                tag = _clean_hashtag(tag)
+                if tag:
+                    hashtags.add(tag)
 
     return {
         "log_no": log_no,
@@ -260,14 +342,22 @@ def extract_post(blog_id: str, log_no: str) -> dict:
 
 
 def _decode_entities(s: str) -> str:
-    """HTML 엔티티 변환. 제목/본문 공통."""
-    s = s.replace("&lt;", "<").replace("&gt;", ">")
-    s = s.replace("&amp;", "&").replace("&quot;", '"')
-    s = s.replace("&apos;", "'").replace("&#39;", "'")
-    s = s.replace("&nbsp;", " ").replace("&ndash;", "–").replace("&mdash;", "—")
-    # &#xNN; / &#NNN; 숫자 엔티티
-    s = re.sub(r'&#x([0-9A-Fa-f]+);', lambda m: chr(int(m.group(1), 16)), s)
-    s = re.sub(r'&#(\d+);', lambda m: chr(int(m.group(1))), s)
+    """HTML 엔티티 변환. 제목/본문 공통.
+
+    네이버 본문에는 `&amp;#x3D;`처럼 이중 인코딩된 엔티티가 섞여 있어
+    한 번만 풀면 `&#x3D;`가 그대로 남는다. 변화가 없을 때까지 반복한다.
+    """
+    for _ in range(3):
+        before = s
+        s = s.replace("&lt;", "<").replace("&gt;", ">")
+        s = s.replace("&amp;", "&").replace("&quot;", '"')
+        s = s.replace("&apos;", "'").replace("&#39;", "'")
+        s = s.replace("&nbsp;", " ").replace("&ndash;", "–").replace("&mdash;", "—")
+        # &#xNN; / &#NNN; 숫자 엔티티
+        s = re.sub(r'&#x([0-9A-Fa-f]+);', lambda m: chr(int(m.group(1), 16)), s)
+        s = re.sub(r'&#(\d+);', lambda m: chr(int(m.group(1))), s)
+        if s == before:
+            break
     s = s.replace("\u200b", "")
     # 연속 공백 정리
     s = re.sub(r'  +', ' ', s)
@@ -400,17 +490,37 @@ def cmd_get(blog_id: str, log_no: str):
           file=sys.stderr)
 
 
-def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0):
-    """전체 크롤링 → Denote org + 이미지."""
+def build_existing_index(output_dir) -> dict:
+    """이미 받은 글의 log_no → org 경로 인덱스.
+
+    파일명에는 log_no가 없으므로(Denote 규칙) `#+source:` 헤더에서 뽑는다.
+    후처리로 파일명/제목이 바뀌어도 인덱스는 유지되므로 이어받기가 깨지지 않는다.
+    """
+    out = Path(output_dir)
+    index = {}
+    for org in out.rglob("*.org"):
+        try:
+            head = org.read_text(errors="replace")[:2000]
+        except OSError:
+            continue
+        m = re.search(r"^#\+source:\s*\S+/(\d+)\s*$", head, re.M)
+        if m:
+            index[m.group(1)] = org
+    return index
+
+
+def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0,
+              refresh_list: bool = False, skip_images: bool = False):
+    """전체 크롤링 → Denote org + 이미지. 이미 받은 글은 건너뛴다."""
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     # 1. 글 목록
     list_file = out / "posts.json"
     cat_file = out / "categories.json"
-    if list_file.exists():
+    if list_file.exists() and not refresh_list:
         posts = json.loads(list_file.read_text())
-        print(f"기존 목록 사용: {len(posts)}편", file=sys.stderr)
+        print(f"기존 목록 사용: {len(posts)}편 (갱신하려면 --refresh-list)", file=sys.stderr)
     else:
         posts = fetch_all_posts(blog_id, delay=0.3)
         cat_map = build_category_map(blog_id, posts)
@@ -427,23 +537,22 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0)
     if cat_file.exists():
         cat_map = json.loads(cat_file.read_text())
 
+    # 3. 이미 받은 글 인덱스 (log_no 기반, 카테고리 이동/파일명 변경에 안전)
+    existing_index = build_existing_index(out)
+    print(f"기존 아카이브: {len(existing_index)}편", file=sys.stderr)
+    todo = [p for p in posts if p["log_no"] not in existing_index]
+    print(f"받을 글: {len(todo)}편 (스킵 {len(posts) - len(todo)}편)", file=sys.stderr)
+
     done = 0
-    skipped = 0
     img_count = 0
 
-    for i, p in enumerate(posts):
+    for p in todo:
         log_no = p["log_no"]
 
         # 카테고리 폴더
         cat_name = p.get("category") or cat_map.get(p["category_no"], "")
         cat_dir = out / category_dirname(cat_name)
         cat_dir.mkdir(parents=True, exist_ok=True)
-
-        # 이미 있는지 체크 (denote_id 기반)
-        existing = list(cat_dir.glob(f"*{log_no}*"))
-        if existing:
-            skipped += 1
-            continue
 
         try:
             post = extract_post(blog_id, log_no)
@@ -457,12 +566,13 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0)
             fpath = cat_dir / fname
 
             # 이미지 다운로드
-            img_dir = cat_dir / "images"
-            for img in post["images"]:
-                ext = _img_ext(img["url"])
-                img_fname = f"{log_no}_{img['index']:03d}{ext}"
-                if download_image(img["url"], img_dir / img_fname):
-                    img_count += 1
+            if not skip_images:
+                img_dir = cat_dir / "images"
+                for img in post["images"]:
+                    ext = _img_ext(img["url"])
+                    img_fname = f"{log_no}_{img['index']:03d}{ext}"
+                    if download_image(img["url"], img_dir / img_fname):
+                        img_count += 1
 
             # org 파일 저장
             content = to_denote_org(post)
@@ -470,15 +580,14 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0)
             done += 1
 
             if done % 20 == 0:
-                print(f"  {done}/{len(posts)} 완료 (이미지: {img_count}, 스킵: {skipped})",
-                      file=sys.stderr)
+                print(f"  {done}/{len(todo)} 완료 (이미지: {img_count})", file=sys.stderr)
 
         except Exception as e:
             print(f"  ❌ {log_no}: {e}", file=sys.stderr)
 
         time.sleep(delay)
 
-    print(f"\n완료: {done}편 저장, 이미지 {img_count}개, 스킵 {skipped}편", file=sys.stderr)
+    print(f"\n완료: {done}편 저장, 이미지 {img_count}개", file=sys.stderr)
 
 
 def cmd_verify(output_dir: str) -> list[dict]:
@@ -760,7 +869,9 @@ def main():
         output_dir = _parse_flag(sys.argv, "--output-dir", f"./naver-{blog_id}")
         delay = float(_parse_flag(sys.argv, "--delay", "1.0"))
         limit = int(_parse_flag(sys.argv, "--limit", "0"))
-        cmd_crawl(blog_id, output_dir, delay, limit)
+        refresh_list = "--refresh-list" in sys.argv
+        skip_images = "--skip-images" in sys.argv
+        cmd_crawl(blog_id, output_dir, delay, limit, refresh_list, skip_images)
 
     elif cmd == "verify":
         output_dir = _parse_flag(sys.argv, "--output-dir", "./output")

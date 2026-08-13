@@ -254,10 +254,11 @@ cmd_naver_get() {
 
 cmd_naver_crawl() {
     # DESC: 네이버 블로그 전체 크롤링 → Denote org + 이미지 (카테고리 폴더)
-    # USAGE: naver-crawl <BLOG_ID> [--output-dir DIR] [--delay SEC] [--limit N]
+    # USAGE: naver-crawl <BLOG_ID> [--output-dir DIR] [--delay SEC] [--limit N] [--refresh-list] [--skip-images]
     # EXAMPLE: naver-crawl saiculture
-    # EXAMPLE: naver-crawl saiculture --output-dir ./naver-saiculture --limit 100
-    # NOTE: 이어받기 지원. 중간에 끊어도 다시 실행하면 이어서 받음.
+    # EXAMPLE: naver-crawl saiculture --output-dir ./naver-saiculture --refresh-list
+    # NOTE: 이어받기는 org 헤더의 #+source: log_no 인덱스로 판정한다 (파일명 무관).
+    # NOTE: 새 글을 받으려면 --refresh-list 필수. 없으면 캐시된 posts.json을 그대로 쓴다.
     local blog_id="${1:?BLOG_ID가 필요합니다}"
     shift
     ensure_project_dir

@@ -233,11 +233,27 @@ Use `./run.sh` when possible.
 ```bash
 ./run.sh naver-list <BLOG_ID>
 ./run.sh naver-get <BLOG_ID> <LOG_NO>
-./run.sh naver-crawl <BLOG_ID>
+./run.sh naver-crawl <BLOG_ID> [--refresh-list] [--skip-images]
 ./run.sh naver-verify
 ./run.sh naver-retry <BLOG_ID>
 ./run.sh naver-wordmap
 ```
+
+**memex-kb owns the crawler; the archive repo owns the archive.** The largest consumer is
+`~/repos/gh/naver-saiculture` (private — 이기상 교수 블로그, 3,400+ org). Collecting and
+tidying that archive is **that repo's job**, not this one: its `AGENTS.md` and the repo-local
+skill `.claude/skills/saiculture/` are the SSOT for procedure, copyright rules, and gotchas.
+Fix parser bugs here; run collection there.
+
+Two crawler facts worth carrying (both fixed 2026-08-13, learned the hard way):
+
+- Resume matches on the **`#+source:` log_no index**, never on filename — Denote filenames
+  carry no log_no, so the old `glob("*<log_no>*")` check never matched and silently
+  re-downloaded everything. `--refresh-list` is required to see new posts at all;
+  without it the cached `posts.json` wins.
+- Pre-2015 posts serve no body on the mobile page. `fetch_legacy_body()` falls back to
+  desktop `PostView.naver` (`post-view<logNo>` container). Without it those posts save as
+  header-only shells.
 
 ### ROSSE 배포 (syndicate) — **see the `syndicate` skill**
 

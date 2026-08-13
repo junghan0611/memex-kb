@@ -164,9 +164,13 @@ is always reachable. Legally obtained sources, personal reading only, never dist
 same copyright rule as `scanpdf/`.
 
 Implementation is **upstream-first**: use `~/repos/3rd/translate-book` (`deusyu/translate-book`)
-unmodified, artifacts under its `tests/.artifacts/` only. Do **not** rebuild a
-vendor/capture/inventory framework inside memex-kb — that was tried and discarded on 2026-08-10.
-Live handoff state: `NEXT--feat_booktrans.md`.
+unmodified at pin `5d07e73`, artifacts under its `tests/.artifacts/` only. Do **not** rebuild a
+vendor/capture/inventory framework inside memex-kb — that was tried and discarded on 2026-08-10
+(10,312 lines, commit `a2edcbc`; reverting the assumption that upstream is a library rather than a
+finished application). Translated bodies are copyright derivatives and never land in this PUBLIC
+repo. The two gaps we may eventually own are the **run-local glossary** and the **missing Org
+output stage** — never the middle of the pipeline. Live work axis: **issue #6** (RAIL, measured
+figures, recovery trigger, prohibitions).
 
 #### `orgadoc2odt/`
 Org + AsciiDoc merged-cell tables → ODT. This is the entry point for Korean HWP deliverables:

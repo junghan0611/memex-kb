@@ -26,6 +26,15 @@ per-book `mineru/README.md` 로 옮긴다. 이 파일은 "지금 다음 한 걸�
 
 ---
 
+## 작업축 — booktrans (외부 도구 1차 채택) → **이슈 #6**
+
+RAIL·실측·간극·회수 트리거·금지선 전부 **이슈 #6 이 SSOT**. 관점은 `PHILOSOPHY.md` 두 번째 기둥.
+- **Current**: RAIL 3 = fresh Sonnet 으로 `chunk0009` 1개 파일럿 → Opus `chunk0008` 과 문체·용어 연속성 검수 → PASS 면 2 → 4 chunks.
+- **Blocker**: 없음. memex-kb 코드 0줄이 정상이다(upstream `deusyu/translate-book` pin `5d07e73` 직접 사용).
+- **Do not touch**: upstream 수정·`git clean -xdf` 금지(유일 산출물이 그 `tests/.artifacts/` 안). 번역 본문을 이 PUBLIC 리포에 커밋 금지.
+
+---
+
 ## 후속 — Anthropic Distill paper2org
 
 Closed work moved to `CHANGELOG.md` for `v2026.7.7`:

@@ -322,7 +322,8 @@ def extract_post(blog_id: str, log_no: str) -> dict:
         if btype == "text":
             text = re.sub(r"https?://\S+", " ", bdata)
             for tag in re.findall(r"(?:^|\s)#([^\s#]+)", text):
-                tag = _clean_hashtag(tag)
+                # org는 원본 층 — 파편·엔티티만 걷고 문장부호는 그대로 둔다
+                tag = _normalize_tag_raw(tag)
                 if tag:
                     hashtags.add(tag)
 
@@ -708,17 +709,55 @@ def cmd_retry(blog_id: str, output_dir: str, delay: float = 1.0):
     print(f"\n완료: 성공 {done}, 실패 {failed}", file=sys.stderr)
 
 
+def _normalize_tag_raw(tag: str) -> str:
+    """org `#+blog_tags:` 용 — 크롤러 손상만 걷어낸다.
+
+    org에 적히는 태그는 **원본 층**이다. 네이버가 태그를 별도 필드로 주지 않아
+    본문의 `#태그`를 정규식으로 긁는 것이라, `#철학,`의 쉼표까지가 원문 텍스트다.
+    문장부호 정규화는 분석 층(`wordmap`)의 몫이므로 여기서는 하지 않는다.
+    """
+    # 엔티티로 *시작하면* 태그가 아니라 URL 파편이다 (`x3D;18509&fbclid&#x3D;IwAR...`)
+    if re.match(r'^x[0-9A-Fa-f]+;', tag):
+        return ""
+
+    # 토큰 *안*의 엔티티는 오염된 진짜 태그다. 지우면 원문이 죽는다 —
+    # `얼나&#x3D;얼의`(다석 개념)가 `얼나얼의`가 되고
+    # `창조적_진화(L&#x27;évolution`이 `창조적_진화(Lévolution`이 된다. 되돌린다.
+    tag = _decode_entities(tag).strip()
+    if not tag or re.match(r'^[^가-힣a-zA-Z0-9]+$', tag):
+        return ""
+
+    return tag
+
+
+def _strip_trailing_punct(tag: str) -> str:
+    """끝 문장부호를 뒤에서 한 글자씩 판정하며 벗긴다.
+
+    닫는 괄호는 짝이 맞으면 내용의 일부다 — `#개별자와_보편자의_통일(종합)`의 `)`는 남기고,
+    `#존재와_시간).`은 `.`을 뗀 뒤에야 `)`가 짝없음으로 드러나 떨어진다.
+    한 번에 `[...]+$`로 지우면 이 구분이 불가능하다.
+    """
+    pairs = {")": "(", "]": "[", "}": "{", ">": "<"}
+    while tag:
+        last = tag[-1]
+        if last in pairs:
+            if tag.count(pairs[last]) >= tag.count(last):
+                break  # 짝이 맞다 = 내용의 일부
+            tag = tag[:-1]
+        elif last in ",:;.!?\"'":
+            tag = tag[:-1]
+        else:
+            break
+    return tag
+
+
 def _clean_hashtag(tag: str) -> str:
-    """해시태그 정규화. HTML entity 잔여물 제거, 문장부호 strip."""
-    # HTML entity 잔여물 (&#x27; → ', &#x3D; → = 등이 깨진 형태)
-    if re.match(r'^x[0-9A-Fa-f]{2};', tag):
-        return ""  # x27;..., x3D;... 패턴 통째 제거
+    """wordmap 용 — 원본 정규화에 더해 문장부호까지 다듬는다."""
+    tag = _normalize_tag_raw(tag)
+    if not tag:
+        return ""
 
-    # HTML entity 중간에 남은 것 제거
-    tag = re.sub(r'&#?x?[0-9A-Fa-f]{2,4};', '', tag)
-
-    # 끝 문장부호 strip (반복): 콜론, 쉼표, 마침표, 세미콜론, 물음표, 느낌표, 따옴표, 꺾쇠, 괄호
-    tag = re.sub(r'[,:;.!?\"\'>)\]]+$', '', tag)
+    tag = _strip_trailing_punct(tag)
     # 앞 문장부호 strip
     tag = re.sub(r'^[,:;.!?\"\'\[(<]+', '', tag)
 

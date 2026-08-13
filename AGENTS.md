@@ -151,7 +151,12 @@ does not cover the remote server orchestration or the correction judgment.
 
 Together: scanned PDF → Org → EPUB. `epub2org/` is the reverse (EPUB → Org, conventions in `PATTERNS.org`).
 
-#### Book translation (booktrans) — **read `PHILOSOPHY.md` "두 번째 기둥" first**
+#### Book translation (booktrans) — **read the repo-local `booktrans` skill first**
+
+The operating SSOT is `.claude/skills/booktrans/SKILL.md`; it begins with `PHILOSOPHY.md`
+"두 번째 기둥" and then hands runtime procedure to upstream's `SKILL.md`. Do not invoke upstream
+directly while skipping this front door — it carries GLG's voice, surface-form, audiobook
+acceptance, scope-stop, and vocabulary-handoff rules.
 
 Foreign-language works → Korean the maintainer can actually read, translated by his own agents
 against his own glossary. This is the last link in the same chain as `scanbook` / `paper2org` /
@@ -168,8 +173,10 @@ unmodified at pin `5d07e73`, artifacts under its `tests/.artifacts/` only. Do **
 vendor/capture/inventory framework inside memex-kb — that was tried and discarded on 2026-08-10
 (10,312 lines, commit `a2edcbc`; reverting the assumption that upstream is a library rather than a
 finished application). Translated bodies are copyright derivatives and never land in this PUBLIC
-repo. The two gaps we may eventually own are the **run-local glossary** and the **missing Org
-output stage** — never the middle of the pipeline. Live work axis: **issue #6** (RAIL, measured
+repo. For the first usable path, upstream's v2 glossary/meta interface remains the translation
+working surface; chapter/book barriers leave a small machine-readable vocabulary handoff for the
+dictcli/andenken owners. Their tuple/ontology design and an optional Org output stage are separate
+follow-ups and must not delay a listenable EPUB. Live work axis: **issue #6** (RAIL, measured
 figures, recovery trigger, prohibitions).
 
 #### `orgadoc2odt/`

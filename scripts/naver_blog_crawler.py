@@ -118,8 +118,103 @@ def fetch_category_name(blog_id: str, log_no: str) -> str:
     return ""
 
 
+def fetch_category_tree(blog_id: str) -> dict:
+    """카테고리 계층을 한 번의 API 호출로 가져온다.
+
+    `m.blog.naver.com`만 JSON을 준다 (`blog.naver.com`은 HTML을 돌려준다).
+    응답의 `postCnt`는 **하위를 포함한 누적값**이므로 그대로 쓰면 이중 계산된다.
+
+    반환: {cat_no(str): {"name", "parent"(str|None), "post_count", "open"}}
+    실패하면 {} — 호출자가 글 페이지 폴백으로 넘어간다.
+    """
+    url = f"https://m.blog.naver.com/api/blogs/{blog_id}/category-list"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                      "(KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        "Referer": f"https://m.blog.naver.com/{blog_id}",
+    })
+    try:
+        data = json.loads(urllib.request.urlopen(req, timeout=15).read().decode("utf-8"))
+    except Exception as e:
+        print(f"카테고리 API 실패: {e}", file=sys.stderr)
+        return {}
+    if not data.get("isSuccess"):
+        print("카테고리 API: isSuccess=false", file=sys.stderr)
+        return {}
+
+    tree = {}
+    for c in data.get("result", {}).get("mylogCategoryList", []):
+        parent = c.get("parentCategoryNo")
+        tree[str(c["categoryNo"])] = {
+            "name": c.get("categoryName", ""),
+            "parent": str(parent) if parent is not None else None,
+            "post_count": c.get("postCnt", 0),
+            "open": bool(c.get("openYN", True)),
+        }
+    return tree
+
+
+def category_index(cat_data) -> dict:
+    """`categories.json`을 계층 인덱스로 정규화한다.
+
+    구형(평평한 `{"57": "사색의 꼭지"}`)과 신형(계층) 양쪽을 받는다.
+    구형은 parent가 전부 None이므로 폴더 구조가 예전과 같아진다 — 다운그레이드가
+    조용한 재배치를 일으키지 않는다.
+    """
+    if not cat_data:
+        return {}
+    index = {}
+    for no, v in cat_data.items():
+        if isinstance(v, str):
+            index[str(no)] = {"name": v, "parent": None, "post_count": 0, "open": True}
+        elif isinstance(v, dict):
+            p = v.get("parent")
+            index[str(no)] = {
+                "name": v.get("name", ""),
+                "parent": str(p) if p is not None else None,
+                "post_count": v.get("post_count", 0),
+                "open": v.get("open", True),
+            }
+    return index
+
+
 def build_category_map(blog_id: str, posts: list[dict], delay: float = 0.3) -> dict:
-    """카테고리 번호 → 이름 매핑 구축."""
+    """카테고리 번호 → 계층 정보. API 우선, 실패 시 글 페이지 폴백.
+
+    API는 요청 1번으로 이름·부모·글수를 전부 준다. 폴백은 카테고리마다 글 하나를
+    받아 이름만 뽑으므로 요청이 카테고리 수만큼 들고 계층을 알 수 없다.
+    """
+    tree = fetch_category_tree(blog_id)
+    if tree:
+        used = {p.get("category_no", "0") for p in posts} - {"0"}
+        known = sum(1 for c in used if c in tree)
+        print(f"카테고리 API: {len(tree)}개 (글이 쓰는 {len(used)}개 중 {known}개 해석)",
+              file=sys.stderr)
+        for no, c in sorted(tree.items(), key=lambda kv: int(kv[0])):
+            if c["parent"]:
+                print(f"  {no}: {tree[c['parent']]['name']} / {c['name']}", file=sys.stderr)
+            else:
+                print(f"  {no}: {c['name']}", file=sys.stderr)
+        # 목록에만 있고 API에 없는 카테고리는 폴백으로 이름만 채운다
+        missing = [c for c in used if c not in tree]
+        if missing:
+            print(f"API에 없는 카테고리 {len(missing)}개, 글 페이지 폴백", file=sys.stderr)
+            samples = {}
+            for p in posts:
+                c = p.get("category_no", "0")
+                if c in missing and c not in samples:
+                    samples[c] = p["log_no"]
+            for cat_no, log_no in samples.items():
+                try:
+                    name = fetch_category_name(blog_id, log_no)
+                except Exception as e:
+                    name = f"category-{cat_no}"
+                    print(f"  {cat_no}: error ({e})", file=sys.stderr)
+                tree[cat_no] = {"name": name, "parent": None, "post_count": 0, "open": True}
+                time.sleep(delay)
+        return tree
+
+    # 폴백: API가 죽었을 때. 계층 없이 이름만.
     cat_samples = {}
     for p in posts:
         c = p.get("category_no", "0")
@@ -127,15 +222,15 @@ def build_category_map(blog_id: str, posts: list[dict], delay: float = 0.3) -> d
             cat_samples[c] = p["log_no"]
 
     cat_map = {}
-    print(f"카테고리 {len(cat_samples)}개 이름 수집 중...", file=sys.stderr)
+    print(f"카테고리 {len(cat_samples)}개 이름 수집 중 (계층 없음)...", file=sys.stderr)
     for cat_no, log_no in cat_samples.items():
         try:
             name = fetch_category_name(blog_id, log_no)
-            cat_map[cat_no] = name
             print(f"  {cat_no}: {name}", file=sys.stderr)
         except Exception as e:
-            cat_map[cat_no] = f"category-{cat_no}"
+            name = f"category-{cat_no}"
             print(f"  {cat_no}: error ({e})", file=sys.stderr)
+        cat_map[cat_no] = {"name": name, "parent": None, "post_count": 0, "open": True}
         time.sleep(delay)
 
     return cat_map
@@ -421,6 +516,36 @@ def category_dirname(name: str) -> str:
     return re.sub(r"\s+", "-", name.strip())
 
 
+def category_relpath(cat_no: str, index: dict, fallback_name: str = "") -> Path:
+    """카테고리 번호 → 계층 디렉토리 경로 (`살림의-생명학/논문`).
+
+    이름은 겹쳐도 번호는 겹치지 않는다 — "논문"은 8·11·19 세 개이고 부모가 각각
+    다르다. 번호로 부모 체인을 타야 세 카테고리가 한 폴더로 뭉치지 않는다.
+
+    부모가 없거나 인덱스에 없으면 한 단계 폴더로 떨어진다(구형과 동일).
+    """
+    c = index.get(str(cat_no))
+    if not c:
+        return Path(category_dirname(fallback_name))
+
+    chain, seen, cur = [], set(), str(cat_no)
+    while cur and cur in index and cur not in seen:
+        seen.add(cur)  # 자기참조/순환이 와도 무한루프에 빠지지 않는다
+        chain.append(index[cur]["name"])
+        cur = index[cur]["parent"]
+
+    return Path(*[category_dirname(n) for n in reversed(chain) if n])
+
+
+def annotate_posts(posts: list[dict], index: dict) -> None:
+    """글 목록에 카테고리 이름과 부모 이름을 채운다 (제자리 수정)."""
+    for p in posts:
+        c = index.get(str(p.get("category_no", "0")))
+        p["category"] = c["name"] if c else ""
+        parent = index.get(c["parent"]) if c and c["parent"] else None
+        p["parent_category"] = parent["name"] if parent else ""
+
+
 def to_denote_org(post: dict, img_dir: str = "images") -> str:
     """포스트를 Denote org-mode 형식으로 변환."""
     lines = [
@@ -431,6 +556,11 @@ def to_denote_org(post: dict, img_dir: str = "images") -> str:
     ]
     if post["category"]:
         lines.append(f"#+category:   {post['category']}")
+    # 카테고리의 정체는 이름이 아니라 번호다 — 이름은 겹쳐도 번호는 겹치지 않는다.
+    if post.get("category_no") and post["category_no"] != "0":
+        lines.append(f"#+category_no: {post['category_no']}")
+    if post.get("parent_category"):
+        lines.append(f"#+parent_category: {post['parent_category']}")
     if post["hashtags"]:
         tags_str = " ".join(f"#{t}" for t in post["hashtags"])
         lines.append(f"#+blog_tags:  {tags_str}")
@@ -466,8 +596,8 @@ def cmd_list(blog_id: str, output: str = None):
     cat_map = build_category_map(blog_id, posts)
 
     # 카테고리명 추가
-    for p in posts:
-        p["category"] = cat_map.get(p["category_no"], "")
+    index = category_index(cat_map)
+    annotate_posts(posts, index)
 
     if output:
         out = Path(output)
@@ -479,7 +609,7 @@ def cmd_list(blog_id: str, output: str = None):
         print(f"저장: {output} ({len(posts)}편), {cat_file}", file=sys.stderr)
     else:
         for p in posts:
-            cat = cat_map.get(p["category_no"], "?")
+            cat = str(category_relpath(p["category_no"], index, p.get("category", "")))
             print(f"{p['log_no']}\t{p['add_date']}\t[{cat}]\t{p['title']}")
 
 
@@ -525,18 +655,17 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0,
     else:
         posts = fetch_all_posts(blog_id, delay=0.3)
         cat_map = build_category_map(blog_id, posts)
-        for p in posts:
-            p["category"] = cat_map.get(p["category_no"], "")
+        annotate_posts(posts, category_index(cat_map))
         list_file.write_text(json.dumps(posts, ensure_ascii=False, indent=2))
         cat_file.write_text(json.dumps(cat_map, ensure_ascii=False, indent=2))
 
     if limit > 0:
         posts = posts[:limit]
 
-    # 2. 카테고리 매핑
-    cat_map = {}
+    # 2. 카테고리 매핑 (구형 평평한 형식도 읽힌다)
+    cat_index = {}
     if cat_file.exists():
-        cat_map = json.loads(cat_file.read_text())
+        cat_index = category_index(json.loads(cat_file.read_text()))
 
     # 3. 이미 받은 글 인덱스 (log_no 기반, 카테고리 이동/파일명 변경에 안전)
     existing_index = build_existing_index(out)
@@ -550,25 +679,43 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0,
     for p in todo:
         log_no = p["log_no"]
 
-        # 카테고리 폴더
-        cat_name = p.get("category") or cat_map.get(p["category_no"], "")
-        cat_dir = out / category_dirname(cat_name)
-        cat_dir.mkdir(parents=True, exist_ok=True)
-
         try:
             post = extract_post(blog_id, log_no)
             if not post["denote_id"]:
                 print(f"  ⚠️ {log_no}: 날짜 없음, 스킵", file=sys.stderr)
                 continue
 
+            # 카테고리 폴더 — 번호 하나로 폴더와 org 헤더를 함께 결정한다.
+            # 글 페이지 값을 우선하되 인덱스에 없으면 목록 값으로 떨어진다.
+            cat_no = post.get("category_no", "0")
+            if cat_no not in cat_index:
+                cat_no = p.get("category_no", "0")
+            c = cat_index.get(cat_no)
+            post["category_no"] = cat_no
+            if c:
+                post["category"] = c["name"]
+                parent = cat_index.get(c["parent"]) if c["parent"] else None
+                post["parent_category"] = parent["name"] if parent else ""
+            else:
+                post["category"] = post.get("category") or p.get("category", "")
+                post["parent_category"] = ""
+            cat_dir = out / category_relpath(cat_no, cat_index, post["category"])
+            cat_dir.mkdir(parents=True, exist_ok=True)
+
             # Denote 파일명
             slug = slugify(post["title"])
             fname = f"{post['denote_id']}--{slug}.org"
             fpath = cat_dir / fname
 
-            # 이미지 다운로드
+            # 이미지는 저장소 루트 한 곳에 모은다.
+            # 파일명이 <log_no>_<순번>이라 전역 유일이 구조적으로 보장되고,
+            # 글이 카테고리를 옮겨도 이미지가 옛 폴더에 고아로 남지 않는다.
+            # org 링크는 폴더 깊이만큼 `../`를 붙여 상대경로로 건다.
+            depth = len(cat_dir.relative_to(out).parts)
+            img_ref = "/".join([".."] * depth + ["images"])
+
             if not skip_images:
-                img_dir = cat_dir / "images"
+                img_dir = out / "images"
                 for img in post["images"]:
                     ext = _img_ext(img["url"])
                     img_fname = f"{log_no}_{img['index']:03d}{ext}"
@@ -576,7 +723,7 @@ def cmd_crawl(blog_id: str, output_dir: str, delay: float = 1.0, limit: int = 0,
                         img_count += 1
 
             # org 파일 저장
-            content = to_denote_org(post)
+            content = to_denote_org(post, img_dir=img_ref)
             fpath.write_text(content)
             done += 1
 
@@ -604,7 +751,9 @@ def cmd_verify(output_dir: str) -> list[dict]:
     for org_file in org_files:
         dir_path = org_file.parent
         text = org_file.read_text()
-        for m in re.finditer(r'\[\[file:(images/[^\]]+)\]\]', text):
+        # `images/`(카테고리 옆)와 `../images/`(루트 집중) 양쪽을 잡는다.
+        # 앞쪽만 잡으면 중앙 배치에서 참조가 0으로 보여 전량이 고아로 오판된다.
+        for m in re.finditer(r'\[\[file:((?:\.\./)*images/[^\]]+)\]\]', text):
             img_rel = m.group(1)
             total_refs += 1
             full = dir_path / img_rel
@@ -663,7 +812,9 @@ def cmd_retry(blog_id: str, output_dir: str, delay: float = 1.0):
     for org_file in sorted(out.rglob("*.org")):
         dir_path = org_file.parent
         text = org_file.read_text()
-        for m in re.finditer(r'\[\[file:(images/[^\]]+)\]\]', text):
+        # `images/`(카테고리 옆)와 `../images/`(루트 집중) 양쪽을 잡는다.
+        # 앞쪽만 잡으면 중앙 배치에서 참조가 0으로 보여 전량이 고아로 오판된다.
+        for m in re.finditer(r'\[\[file:((?:\.\./)*images/[^\]]+)\]\]', text):
             img_rel = m.group(1)
             if not (dir_path / img_rel).exists():
                 log_no_m = re.search(r'(\d{9,15})_\d{3}', img_rel)
@@ -724,7 +875,11 @@ def _normalize_tag_raw(tag: str) -> str:
     # `얼나&#x3D;얼의`(다석 개념)가 `얼나얼의`가 되고
     # `창조적_진화(L&#x27;évolution`이 `창조적_진화(Lévolution`이 된다. 되돌린다.
     tag = _decode_entities(tag).strip()
-    if not tag or re.match(r'^[^가-힣a-zA-Z0-9]+$', tag):
+    # 문장부호만 남은 토큰을 버린다. 판정은 "글자가 하나라도 있는가"로 한다 —
+    # 한글·ASCII만 글자로 세면 그리스어(`αληθεια`, `λογος`)와 한자 단독 태그가
+    # 통째로 죽는다. 선생님이 실제로 쓰신 개념어이고 네이버도 `__se-hash-tag`로
+    # 태그라고 표시한다. `_`는 구분자라 글자로 세지 않는다.
+    if not tag or not re.search(r'[^\W_]', tag):
         return ""
 
     return tag
@@ -761,9 +916,9 @@ def _clean_hashtag(tag: str) -> str:
     # 앞 문장부호 strip
     tag = re.sub(r'^[,:;.!?\"\'\[(<]+', '', tag)
 
-    # 빈 문자열이나 순수 부호만 남은 경우
+    # 빈 문자열이나 순수 부호만 남은 경우 (판정 기준은 `_normalize_tag_raw`와 같다)
     tag = tag.strip()
-    if not tag or re.match(r'^[^가-힣a-zA-Z0-9]+$', tag):
+    if not tag or not re.search(r'[^\W_]', tag):
         return ""
 
     return tag
